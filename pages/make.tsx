@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Header from '@/components/Header';
 import UploadModal from '@/components/UploadModal';
+import imageCompression from 'browser-image-compression';
 
 
 const visibilityOptions = ['public', 'private', 'password'] as const;
@@ -127,16 +128,31 @@ export default function MakePage() {
     setVideoRows([{ url: '', name: '', stime: '', etime: '', valid: true }]);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(e.target.files || []);
-    const filtered = selectedFiles.filter(file => {
-      if (activeTab === 'image') return /\.(jpe?g|png)$/i.test(file.name);
-      if (activeTab === 'gif') return /\.gif$/i.test(file.name);
-      return false;
-    });
-    setFiles(prev => [...prev, ...filtered]);
-    setFileNames(prev => [...prev, ...filtered.map(f => f.name.replace(/\.(jpe?g|png|gif)$/i, ''))]);
-  };
+  const MAX_FILE_SIZE_MB = 10;
+
+const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const selectedFiles = Array.from(e.target.files || []);
+
+  const filtered = selectedFiles.filter(file => {
+    const isValidSize = file.size <= MAX_FILE_SIZE_MB * 1024 * 1024;
+
+    const isValidType =
+      (activeTab === 'image' && /\.(jpe?g|png)$/i.test(file.name)) ||
+      (activeTab === 'gif' && /\.gif$/i.test(file.name));
+
+    if (!isValidSize) {
+      alert(`「${file.name}」は${MAX_FILE_SIZE_MB}MB以下のみアップロード可能です。`);
+    }
+    return isValidSize && isValidType;
+  });
+
+  setFiles(prev => [...prev, ...filtered]);
+  setFileNames(prev => [
+    ...prev,
+    ...filtered.map(f => f.name.replace(/\.(jpe?g|png|gif)$/i, '')),
+  ]);
+};
+
 
   const clearFiles = () => {
     setFiles([]);
@@ -207,6 +223,14 @@ export default function MakePage() {
     try {
       if (activeTab === 'image' || activeTab === 'gif') {
         for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+
+          const compressedFile = await imageCompression(file, {
+            maxSizeMB: 2,            
+            maxWidthOrHeight: 1024, 
+            useWebWorker: true,
+          });
+
           const formData = new FormData();
           formData.append('file', files[i]);
           formData.append('upload_preset', 'sukito_preset');

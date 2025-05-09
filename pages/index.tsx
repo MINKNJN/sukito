@@ -4,6 +4,8 @@ import Header from '@/components/Header';
 import GameCard from '@/components/GameCard';
 import { getStorageWithExpire } from '@/lib/utils';
 import AlertModal from '@/components/AlertModal';
+import UploadModal from '@/components/UploadModal';
+
 
 
 type GameItem = {
@@ -51,16 +53,24 @@ export default function IndexPage() {
   const [alertMessage, setAlertMessage] = useState('');
   const [showAlert, setShowAlert] = useState(false);
 
+  const [isLoading, setIsLoading] = useState(true);
+  
   const showAlertModal = (msg: string) => {
     setAlertMessage(msg);
     setShowAlert(true);
   };
 
+
+  
+
   useEffect(() => {
+    setIsLoading(true); 
+
     fetch('/api/games')
       .then((res) => res.json())
       .then((data) => setGames(data))
-      .catch(console.error);
+      .catch(console.error)
+      .finally(() => setIsLoading(false));
   
     const stored = localStorage.getItem('sukito_game');
     const userId = getStorageWithExpire('userId'); // 
@@ -144,6 +154,16 @@ export default function IndexPage() {
       </Head>
       <Header />
 
+      <section style={{ backgroundColor: '#f9f9f9', padding: '24px 16px', marginBottom: 24, borderBottom: '1px solid #ddd' }}>
+      <h2 style={{ fontSize: '1.5rem', marginBottom: 12 }}>スキトについて</h2>
+      <p style={{ fontSize: '1rem', lineHeight: 1.6 }}>
+        スキトは、ユーザーが自分の好きな画像・GIF・動画をアップロードし、理想のキャラクターやコンテンツをトーナメント形式で選ぶことができる無料のエンタメプラットフォームです。
+        誰でも簡単にゲームを作成でき、多くの人とシェアして楽しむことができます。ログインなしでもプレイ可能で、毎日新しい人気ゲームが追加されます。
+        好きなアイドル、アニメキャラ、動物などを選びながら、あなたの“推し”を見つけましょう。
+      </p>
+    </section>
+
+
       {showAlert && (
         <AlertModal
           message={alertMessage}
@@ -151,29 +171,58 @@ export default function IndexPage() {
         />
       )}
 
+      <UploadModal visible={isLoading} message="ローディング中です…" />
+
       {showResumeModal && resumeData && (
         <div style={modalOverlayStyle}>
           <div style={modalContentStyle}>            
           <div style={previewWrapperStyle}>
+
             {resumeData.items?.[resumeData.matchIndex * 2] && (
-              <div style={previewItemStyle}>
+            <div style={previewItemStyle}>
+              {resumeData.items[resumeData.matchIndex * 2].type === 'video' &&
+              resumeData.items[resumeData.matchIndex * 2].url.endsWith('.mp4') ? (
+                <video
+                  src={resumeData.items[resumeData.matchIndex * 2].url}
+                  style={previewImageStyle}
+                  muted
+                  autoPlay
+                  loop
+                  playsInline
+                />
+              ) : (
                 <img
                   src={getPreviewImage(resumeData.items[resumeData.matchIndex * 2])}
                   style={previewImageStyle}
                   alt="Preview 1"
                 />
-              </div>
-            )}
+              )}
+            </div>
+          )}
+
             <div style={vsStyle}>VS</div>
             {resumeData.items?.[resumeData.matchIndex * 2 + 1] && (
-              <div style={previewItemStyle}>
+            <div style={previewItemStyle}>
+              {resumeData.items[resumeData.matchIndex * 2 + 1].type === 'video' &&
+              resumeData.items[resumeData.matchIndex * 2 + 1].url.endsWith('.mp4') ? (
+                <video
+                  src={resumeData.items[resumeData.matchIndex * 2 + 1].url}
+                  style={previewImageStyle}
+                  muted
+                  autoPlay
+                  loop
+                  playsInline
+                />
+              ) : (
                 <img
                   src={getPreviewImage(resumeData.items[resumeData.matchIndex * 2 + 1])}
                   style={previewImageStyle}
                   alt="Preview 2"
                 />
-              </div>
-            )}
+              )}
+            </div>
+          )}
+
           </div>
 
 

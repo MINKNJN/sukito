@@ -66,19 +66,15 @@ export default function GameCard({ id, title, desc, items, adminButtons }: GameC
               backgroundImage: `url(${convertToThumbnail(item.url)})`,
             }} />
             <div style={previewNameStyle}>
-              {item.name.length > nameLimit ? item.name.slice(0, nameLimit) + '...' : item.name}
+              {item.name}
             </div>
           </div>
         ))}
       </div>
 
       <div style={{ marginTop: 8 }}>
-        <h3 style={titleStyle}>
-          {title.length > titleLimit ? title.slice(0, titleLimit) + '...' : title}
-        </h3>
-        <p style={descStyle}>
-          {desc.length > descLimit ? desc.slice(0, descLimit) + '...' : desc}
-        </p>
+        <h3 style={titleStyle}>{title}</h3>
+        <p style={descStyle}>{desc}</p>
       </div>
 
       <div style={buttonGroupStyle}>
@@ -142,31 +138,37 @@ const previewNameStyle: React.CSSProperties = {
   marginTop: 4,
   fontSize: '0.8rem',
   fontWeight: 500,
-  whiteSpace: 'nowrap',
+  display: '-webkit-box',
+  WebkitLineClamp: 1,
+  WebkitBoxOrient: 'vertical',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
-  minWidth: 0,
 };
+
 
 const titleStyle: React.CSSProperties = {
   fontSize: '1rem',
   fontWeight: 'bold',
   margin: '0 0 4px',
+  display: '-webkit-box',
+  WebkitLineClamp: 1,
+  WebkitBoxOrient: 'vertical',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-  minWidth: 0,
 };
+
 
 const descStyle: React.CSSProperties = {
   fontSize: '0.85rem',
   color: '#555',
   margin: 0,
+  display: '-webkit-box',
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: 'vertical',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-  minWidth: 0,
 };
+
 
 const buttonGroupStyle: React.CSSProperties = {
   display: 'flex',

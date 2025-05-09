@@ -219,33 +219,83 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setIsUploading(true); 
     let items: { name: string; url: string; type: 'image' | 'gif' | 'video' | 'youtube' }[] = [];
     let newUploadedUrls: string[] = [];
-
+  
     try {
-      if (activeTab === 'image' || activeTab === 'gif') {
+      if (activeTab === 'image') {
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
-
           const compressedFile = await imageCompression(file, {
-            maxSizeMB: 2,            
-            maxWidthOrHeight: 1024, 
+            maxSizeMB: 2,
+            maxWidthOrHeight: 1024,
             useWebWorker: true,
           });
-
+      
           const formData = new FormData();
-          formData.append('file', files[i]);
+          formData.append('file', compressedFile);
           formData.append('upload_preset', 'sukito_preset');
-
-          const res = await fetch('https://api.cloudinary.com/v1_1/dpow8xm10/upload', {
+      
+          const res = await fetch('https://api.cloudinary.com/v1_1/dpow8xm10/image/upload', {
             method: 'POST',
             body: formData,
           });
           const data = await res.json();
           newUploadedUrls.push(data.secure_url);
         }
+      
         const allUrls = [...uploadedUrls, ...newUploadedUrls];
-        items = fileNames.map((name, i) => ({ name, url: allUrls[i], type: activeTab }));
+        items = fileNames.map((name, i) => ({
+          name,
+          url: allUrls[i],
+          type: 'image',
+        }));
       }
+      
+      if (activeTab === 'gif') {
+        for (const file of files) {
+          const formData = new FormData();
+          formData.append('file', file); 
+      
+          try {
+            const res = await fetch('/api/upload-gif', {
+              method: 'POST',
+              body: formData,
+            });
+      
+            if (!res.ok) {
+              const errorText = await res.text();
+              console.error('❌ GIF :', errorText);
+              alert('GIF エラー');
+              continue;
+            }
+      
+            const data = await res.json();
+      
+            if (!data.secure_url) {
+              console.warn('⚠️ secure_url :', data);
+              alert('URL エラー');
+              continue;
+            }
+      
+            newUploadedUrls.push(data.secure_url);
+          } catch (error) {
+            console.error('❌ server:', error);
+            alert('server エラー');
+            continue;
+          }
+        }
+      
+        const allUrls = [...uploadedUrls, ...newUploadedUrls];
+      
+        items = fileNames.map((name, i) => ({
+          name,
+          url: allUrls[i],
+          type: 'video', 
+        }));
+      }
+      
+      
 
+  
       if (activeTab === 'video') {
         items = videoRows.map((row) => {
           const videoId = extractVideoId(row.url);
@@ -253,9 +303,9 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           return { name: row.name, url: embedUrl, type: 'youtube' };
         });
       }
-
+  
       const finalItemsHistory = mergeItemsHistory(itemsHistory, items);
-
+  
       const payload = {
         title,
         desc,
@@ -267,12 +317,13 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         createdBy: userId,
         [isEditMode ? 'updatedAt' : 'createdAt']: new Date().toISOString(),
       };
-
+  
       const res = await fetch(isEditMode ? `/api/games?id=${id}` : '/api/games', {
         method: isEditMode ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
+  
       const result = await res.json();
       if (res.ok) {
         alert(isEditMode ? '編集完了!' : '登録完了!');
@@ -284,10 +335,9 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       console.error('リクエスト失敗:', err);
       alert('ネットワークエラー');
     } finally {
-      setIsUploading(false); 
+      setIsUploading(false);
     }
   };
-
 
   return (
     <>
@@ -337,16 +387,37 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
               <input type="file" ref={fileInputRef} multiple accept={activeTab === 'image' ? '.jpg,.jpeg,.png' : '.gif'} onChange={handleFileChange} style={{ display: 'none' }} />
             </div>
             {fileNames.map((name, i) => {
-              const isNew = i >= uploadedUrls.length;
-              const previewUrl = isNew && files[i - uploadedUrls.length] ? URL.createObjectURL(files[i - uploadedUrls.length]) : uploadedUrls[i];
-              return (
-                <div key={i} style={{ marginTop: 8 }}>
-                  <img src={previewUrl} alt={name} width={100} height={100} style={{ objectFit: 'cover', marginRight: 8 }} />
-                  <input value={name} onChange={(e) => handleFileNameChange(i, e.target.value)} style={{ width: 200 }} />
-                  <button onClick={() => handleRemoveFile(i)} style={{ marginLeft: 8 }}>削除</button>
-                </div>
-              );
-            })}
+  const isNew = i >= uploadedUrls.length;
+  const file = files[i - uploadedUrls.length];
+  const previewUrl = isNew && file ? URL.createObjectURL(file) : uploadedUrls[i];
+
+  return (
+    <div key={i} style={{ marginTop: 8 }}>
+      {activeTab === 'gif' ? (
+        isNew ? (
+          <img src={previewUrl} alt={name} width={100} height={100} style={{ objectFit: 'cover', marginRight: 8 }} />
+        ) : (
+          <video
+            src={previewUrl}
+            width={100}
+            height={100}
+            muted
+            loop
+            playsInline
+            controls
+            autoPlay 
+            style={{ objectFit: 'cover', marginRight: 8 }}
+          />
+        )
+      ) : (
+        <img src={previewUrl} alt={name} width={100} height={100} style={{ objectFit: 'cover', marginRight: 8 }} />
+      )}
+
+      <input value={name} onChange={(e) => handleFileNameChange(i, e.target.value)} style={{ width: 200 }} />
+      <button onClick={() => handleRemoveFile(i)} style={{ marginLeft: 8 }}>削除</button>
+    </div>
+  );
+})}
           </div>
         )}
 

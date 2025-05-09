@@ -105,14 +105,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       
       const history = Array.isArray(game.itemsHistory) ? game.itemsHistory : game.items || [];
+
       for (const item of history) {
-        if (item.type === 'image' || item.type === 'gif') {
-          const match = item.url.match(/\/upload\/v\d+\/([^/.]+)\.(jpg|jpeg|png|gif)/i);
+        const isImage = item.type === 'image' || item.type === 'gif';
+        const isVideo = item.type === 'video';
+
+        if (isImage || isVideo) {
+          const match = item.url.match(/\/upload\/v\d+\/([^/.]+)\.(jpg|jpeg|png|gif|mp4)/i);
           if (match && match[1]) {
             const publicId = match[1];
             try {
               await cloudinary.uploader.destroy(publicId, {
-                resource_type: 'image'
+                resource_type: isVideo ? 'video' : 'image', 
               });
             } catch (err) {
               console.warn('Cloudinary 削除 エラー:', publicId, err);
@@ -120,6 +124,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         }
       }
+
 
       
       const result = await collection.deleteOne({ _id: new ObjectId(id) });

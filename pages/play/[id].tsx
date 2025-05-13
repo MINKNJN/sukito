@@ -27,6 +27,11 @@ interface PlayPageProps {
 const ROUND_OPTIONS = [2, 4, 8, 16, 32, 64, 128, 256];
 const ANIMATION_DURATION = 800;
 
+const optimizeCloudinaryImage = (url: string): string => {
+  if (!url.includes('/upload/')) return url;
+  return url.replace('/upload/', '/upload/w_640,f_auto,q_auto,dpr_auto/');
+};
+
 const Media: React.FC<{ url: string; type: GameItem['type'] }> = ({ url, type }) => {
   const baseStyle: React.CSSProperties = {
     width: '100%',
@@ -43,10 +48,11 @@ const Media: React.FC<{ url: string; type: GameItem['type'] }> = ({ url, type })
       return <img src={url} alt="gif" style={baseStyle} />;
     case 'image':
     default:
+      const optimizedUrl = optimizeCloudinaryImage(url);
       return <div style={{
         width: '100%',
         height: '100%',
-        backgroundImage: `url(${url})`,
+        backgroundImage: `url(${optimizedUrl})`,
         backgroundSize: 'contain',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
@@ -94,7 +100,7 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
     }
   }, [game]);
 
-  if (!game) return <div style={{ padding: 40 }}>存在しないトーナメントです。	</div>;
+  if (!game) return <div style={{ padding: 40 }}>存在しないトーナメントです。</div>;
 
   const availableRounds = ROUND_OPTIONS.filter(r => r * 2 <= game.items.length);
   const totalMatches = Math.floor(roundItems.length / 2);
@@ -146,6 +152,7 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
                 winnerUrl: winner.url,
               }),
             });
+            localStorage.setItem(`sukito_winner_${game._id}`, JSON.stringify(winner));
           } catch (e) {
             console.error('エラー:', e);
           }
@@ -216,60 +223,28 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
   return (
     <>
       <Head>
-        <title>{`${game.title} - ${left?.name || ''} vs ${right?.name || ''} | sukito | スキト - 好きトーナメント`}</title>
-        <meta name="description" content={`${left?.name} vs ${right?.name} ベスト·オブ·ベスト`} />
-  
-        {/* Open Graph */}
-        <meta property="og:title" content={`${game.title} - ${left?.name} vs ${right?.name}`} />
-        <meta property="og:description" content={`あなたの理想のタイプは誰？ ${left?.name} vs ${right?.name}`} />
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content={`https://sukito.net/play/${game._id}`} />
-        <meta property="og:image" content={left?.url || '/og-image.jpg'} />
-  
-        {/* Twitter */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={`${game.title} - ${left?.name} vs ${right?.name}`} />
-        <meta name="twitter:description" content={`スキト - 好きトーナメント ${left?.name} vs ${right?.name}`} />
-        <meta name="twitter:image" content={left?.url || '/og-image.jpg'} />
+        <title>{`${game.title} - ${left?.name || ''} vs ${right?.name || ''}`}</title>
       </Head>
-
-
       <div className="battle" style={{ backgroundColor: 'black', flexDirection: 'column' }}>
-        <div style={{ width: '100%', height: 100, border: '2px dashed #ccc', margin: '20px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          광고 자리입니다
-        </div>
-
         <div className="info-bar">
-          <h2 style={{ color: 'white', textAlign: 'center', padding: '0.5rem 0' }}>{game.title} ベスト{roundItems.length} {matchIndex + 1}/{totalMatches}</h2>
+          <h2 style={{ color: 'white', textAlign: 'center' }}>{game.title} ベスト{roundItems.length} {matchIndex + 1}/{totalMatches}</h2>
         </div>
-
         <div style={{ display: 'flex', flex: 1, width: '100%' }}>
-          <div className={`media-wrapper ${isLeftExpanded ? 'expanded' : selectedSide === 'right' ? 'collapsed' : ''}`} onClick={() => left.type === 'video' || left.type === 'youtube' ? null : handleSelect('left')}>
+          <div className={`media-wrapper ${isLeftExpanded ? 'expanded' : selectedSide === 'right' ? 'collapsed' : ''}`} onClick={() => handleSelect('left')}>
             <Media url={left.url} type={left.type} />
             <div className="overlay name">{left.name}</div>
-            {(left.type === 'video' || left.type === 'youtube') && <button className="select-button left" onClick={() => handleSelect('left')}>✔ 選択</button>}
           </div>
-
-          <div className={`media-wrapper ${isRightExpanded ? 'expanded' : selectedSide === 'left' ? 'collapsed' : ''}`} onClick={() => right.type === 'video' || right.type === 'youtube' ? null : handleSelect('right')}>
+          <div className={`media-wrapper ${isRightExpanded ? 'expanded' : selectedSide === 'left' ? 'collapsed' : ''}`} onClick={() => handleSelect('right')}>
             <Media url={right.url} type={right.type} />
             <div className="overlay name">{right.name}</div>
-            {(right.type === 'video' || right.type === 'youtube') && <button className="select-button right" onClick={() => handleSelect('right')}>✔ 選択</button>}
           </div>
         </div>
-
         <style jsx>{`
           .battle { display: flex; width: 100vw; height: 80vh; overflow: hidden; }
           .media-wrapper { flex: 1; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; transition: all ${ANIMATION_DURATION}ms ease; height: 90%; }
           .media-wrapper.expanded { flex: 1 0 100%; }
           .media-wrapper.collapsed { flex: 0 0 0%; }
-          .overlay.name { position: absolute; bottom: 30%; width: 100%; text-align: center; font-size: 1.8rem; color: white; text-shadow: 0 0 4px black, 0 0 8px black, 0 0 12px black; pointer-events: none; }
-          .select-button { position: absolute; bottom: 2%; left: 50%; transform: translateX(-50%); padding: 1rem 2rem; font-size: 1.5rem; border: none; border-radius: 8px; cursor: pointer; color: white; }
-          .select-button.left { background-color: #d94350; }
-          .select-button.right { background-color: #0070f3; }
-          @media (max-width: 768px) {
-            .overlay.name { font-size: 1.2rem; }
-            .select-button { font-size: 1rem; padding: 0.75rem 1.5rem; }
-          }
+          .overlay.name { position: absolute; bottom: 30%; width: 100%; text-align: center; font-size: 1.8rem; color: white; text-shadow: 0 0 4px black; pointer-events: none; }
         `}</style>
       </div>
     </>

@@ -19,6 +19,7 @@ type Game = {
   createdAt: string;
   createdBy: string;
   items: GameItem[];
+  thumbnails?: GameItem[];
 };
 
 export default function MyGamesPage() {
@@ -165,6 +166,7 @@ export default function MyGamesPage() {
                       title={game.title}
                       desc={game.desc}
                       items={game.items}
+                      thumbnailItems={game.thumbnails}
                       adminButtons={
                         <div style={{ marginTop: 8, display: 'flex', gap: 4 }}>
                           <button onClick={() => location.href = `/make?id=${game._id}`} style={{ flex: 1, backgroundColor: '#ddeeff', border: '1px solid #42a5f5', color: '#1565c0', borderRadius: 4, fontSize: '0.8rem', padding: '4px 0' }}>編集する</button>
@@ -190,6 +192,7 @@ export default function MyGamesPage() {
                   title={game.title}
                   desc={game.desc}
                   items={game.items}
+                  thumbnailItems={game.thumbnails}
                   adminButtons={
                     <div style={{ marginTop: 8, display: 'flex', gap: 4 }}>
                       <button onClick={() => location.href = `/make?id=${game._id}`} style={{ flex: 1, backgroundColor: '#ddeeff', border: '1px solid #42a5f5', color: '#1565c0', borderRadius: 4, fontSize: '0.8rem', padding: '4px 0' }}>編集する</button>

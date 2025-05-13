@@ -15,22 +15,38 @@ export default function ResultPage() {
   const [ranking, setRanking] = useState<{ name: string; url: string; count: number }[]>([]);
   const [totalPlays, setTotalPlays] = useState<number>(0);
   const [searchKeyword, setSearchKeyword] = useState('');
-  const [nickname, setNickname] = useState('匿名');
+  const [nickname, setNickname] = useState('ゲスト');
   const [commentContent, setCommentContent] = useState('');
   const [comments, setComments] = useState<any[]>([]);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const maxCommentLength = 200;
+  const [isMyWinner, setIsMyWinner] = useState(false);
+
 
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/result?id=${id}` : '';
 
   useEffect(() => {
     if (!id) return;
 
+    const local = localStorage.getItem(`sukito_winner_${id}`);
+  if (local) {
+    try {
+      const parsed = JSON.parse(local);
+      if (parsed?.name && parsed?.url) {
+        setWinner(parsed);
+        setIsMyWinner(true);
+      }
+    } catch (e) {
+      console.warn('ローカルwinner読込エラー:', e);
+    }
+  }
+
     fetch(`/api/winner?id=${id}`)
       .then(res => res.ok ? res.json() : null)
       .then(data => {
-        if (data && data.winner) {
+        if (!local && data?.winner) {
           setWinner(data.winner);
+          setIsMyWinner(false);
         }
       });
 
@@ -131,7 +147,9 @@ export default function ResultPage() {
   if (!id) return <div>お待ちください。</div>;
 
   const title = winner ? `${winner.name} - スキト結果` : 'スキト結果';
-  const description = winner ? `あなたが選んだ最終優勝者は ${winner.name}です！ Top 10: ${topNames}` : '優勝者をチェックしよう！';
+  const description = winner
+    ? `${isMyWinner ? 'あなたが選んだ' : '多くの人が選んだ'}最終優勝者は ${winner.name} です！ Top 10: ${topNames}`
+    : '優勝者をチェックしよう！';
   const image = winner ? convertToThumbnail(winner.url) : '/og-image.png';
 
   return (
@@ -159,7 +177,9 @@ export default function ResultPage() {
 
         {winner ? (
           <div style={{ backgroundColor: '#000', color: '#fff', padding: '2rem', borderRadius: '12px', textAlign: 'center', marginBottom: '3rem' }}>
-            <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>🏆 あなたが選んだ最終優勝者</h1>
+            <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>
+              🏆 {isMyWinner ? 'あなたが選んだ最終優勝者' : '多くの人が選んだ優勝者'}
+            </h1>
             <img src={convertToThumbnail(winner.url)} alt={winner.name} style={{maxWidth: '300px', objectFit: 'cover', borderRadius: '12px', border: '4px solid gold', boxShadow: '0 0 12px rgba(255,215,0,0.6)', margin: '0 auto', display: 'block' }} />
             <h2 style={{ fontSize: '2rem', marginTop: '1rem' }}>{winner.name}</h2>
             {winnerRank > 0 && <p style={{ fontSize: '1rem', color: '#ccc' }}>総合ランキング {winnerRank}位</p>}

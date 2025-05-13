@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import Header from '@/components/Header';
 import UploadModal from '@/components/UploadModal';
 import imageCompression from 'browser-image-compression';
+import { convertToThumbnail } from '@/lib/utils';
 
 
 const visibilityOptions = ['public', 'private', 'password'] as const;
@@ -40,6 +41,8 @@ export default function MakePage() {
   const [userId, setUserId] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [itemsHistory, setItemsHistory] = useState<any[]>([]);
+
+  const [selectedThumbnails, setSelectedThumbnails] = useState<number[]>([]);
 
 
   useEffect(() => {
@@ -87,6 +90,13 @@ export default function MakePage() {
           setPassword(data.password || '');
           setActiveTab(data.type);
           setItemsHistory(data.itemsHistory || []); 
+
+          if (data.thumbnails && Array.isArray(data.thumbnails)) {
+            const selectedIndexes = data.thumbnails.map((thumb: any) => {
+              return data.items.findIndex((item: any) => item.url === thumb.url);
+            }).filter((i: number) => i !== -1);
+            setSelectedThumbnails(selectedIndexes);
+          }
 
           if (data.type === 'video') {
             const videos = data.items.map((i: any) => {
@@ -201,22 +211,62 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     }
   };
 
-  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>, index: number) => {
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>, index: number) => {
     const pastedText = e.clipboardData.getData('text');
     if (!pastedText.includes('\t')) return;
     e.preventDefault();
     const lines = pastedText.trim().split('\n');
     const newRows = lines.map((line) => {
-      const [url, name, stime, etime] = line.split('\t');
-      return { url: url?.trim() || '', name: name?.trim() || '', stime: stime?.trim() || '', etime: etime?.trim() || '', valid: true };
+      const [name, url, stime, etime] = line.split('\t');
+      return { name: name?.trim() || '', url: url?.trim() || '', stime: stime?.trim() || '', etime: etime?.trim() || '', valid: true };
     }).filter(row => row.url);
     const updatedRows = [...videoRows];
     updatedRows.splice(index, 1, ...newRows);
     setVideoRows(updatedRows);
   };
 
+  const handleThumbnailSelect = (index: number) => {
+    setSelectedThumbnails((prev) => {
+      if (prev.includes(index)) {
+        return prev.filter((i) => i !== index); 
+      } else if (prev.length < 2) {
+        return [...prev, index]; 
+      } else {
+        alert('代表は最大2つまで選べます'); 
+        return prev;
+      }
+    });
+  };
+  
+
   const handleSubmit = async () => {
+    if (selectedThumbnails.length < 2){
+    const confirmUseDefault = confirm(
+      '代表画像が2つ選択されていません。\n最初の2つを代表画像として設定してもよろしいですか？'
+    );
+
+    if (confirmUseDefault) {
+      const defaultIndexes =
+        activeTab === 'video'
+          ? [0, 1].filter(i => i < videoRows.length)
+          : [0, 1].filter(i => i < fileNames.length);
+
+      const newSelection = [...selectedThumbnails];
+      for (const idx of defaultIndexes) {
+        if (!newSelection.includes(idx) && newSelection.length < 2) {
+          newSelection.push(idx);
+        }
+      }
+      setSelectedThumbnails(newSelection);
+
+      return; 
+    } else {
+      return;
+    }
+  }
+    
     setIsUploading(true); 
+
     let items: { name: string; url: string; type: 'image' | 'gif' | 'video' | 'youtube' }[] = [];
     let newUploadedUrls: string[] = [];
   
@@ -243,6 +293,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         }
       
         const allUrls = [...uploadedUrls, ...newUploadedUrls];
+
         items = fileNames.map((name, i) => ({
           name,
           url: allUrls[i],
@@ -293,9 +344,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         }));
       }
       
-      
-
-  
+        
       if (activeTab === 'video') {
         items = videoRows.map((row) => {
           const videoId = extractVideoId(row.url);
@@ -305,6 +354,17 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       }
   
       const finalItemsHistory = mergeItemsHistory(itemsHistory, items);
+
+      const allUrls =
+        activeTab === 'image' || activeTab === 'gif'
+          ? [...uploadedUrls, ...newUploadedUrls]
+          : [];
+
+      const thumbnailItems = selectedThumbnails.map(i => ({
+        name: activeTab === 'video' ? videoRows[i]?.name : fileNames[i],
+        url: activeTab === 'video' ? items[i]?.url : allUrls[i],
+        type: activeTab === 'video' ? 'youtube' : activeTab,
+      }));
   
       const payload = {
         title,
@@ -313,6 +373,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         password: visibility === 'password' ? password : '',
         type: activeTab,
         items,
+        thumbnails: thumbnailItems, 
         itemsHistory: finalItemsHistory,
         createdBy: userId,
         [isEditMode ? 'updatedAt' : 'createdAt']: new Date().toISOString(),
@@ -327,7 +388,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const result = await res.json();
       if (res.ok) {
         alert(isEditMode ? '編集完了!' : '登録完了!');
-        router.push(`/play/${isEditMode ? id : result.id}`);
+        router.push('/');
       } else {
         alert(result.message || 'リクエスト失敗');
       }
@@ -381,103 +442,315 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 
         {activeTab !== 'video' && (
           <div>
+            <strong style={{ fontSize: '1.2rem'}}>トーナメントの作り方 :</strong><br />
+            <p style={{
+              backgroundColor: '#f0f0f0',
+              padding: '12px',
+              borderRadius: '8px',
+              fontSize: '0.9rem',
+              overflowX: 'auto',
+              whiteSpace: 'pre',
+              marginBottom: '12px',
+              border: '1px solid #ccc',
+            }}>
+              1.ファイル選択」ボタンをクリックして、画像やGIFファイルをアップロードしてください。<br />
+              2.ファイル名は自動的に「タイトル」として入力されます。（必要に応じて編集可能）<br />
+              3.代表画像を2つ選択してください。選択しない場合は、最初にアップロードされた2つが自動的に選ばれます。<br />
+              
+            </p>
             <div style={{ marginBottom: 8 }}>
               <button type="button" onClick={() => fileInputRef.current?.click()} style={{ padding: '6px 12px', backgroundColor: '#0070f3', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}>ファイル 選択</button>
               <span style={{ marginLeft: 12 }}>{fileNames.length} ファイル</span>
               <input type="file" ref={fileInputRef} multiple accept={activeTab === 'image' ? '.jpg,.jpeg,.png' : '.gif'} onChange={handleFileChange} style={{ display: 'none' }} />
             </div>
             {fileNames.map((name, i) => {
-  const isNew = i >= uploadedUrls.length;
-  const file = files[i - uploadedUrls.length];
-  const previewUrl = isNew && file ? URL.createObjectURL(file) : uploadedUrls[i];
+              const isNew = i >= uploadedUrls.length;
+              const file = files[i - uploadedUrls.length];
+              const previewUrl = isNew && file ? URL.createObjectURL(file) : uploadedUrls[i];
+              const isSelected = selectedThumbnails.includes(i);
 
-  return (
-    <div key={i} style={{ marginTop: 8 }}>
-      {activeTab === 'gif' ? (
-        isNew ? (
-          <img src={previewUrl} alt={name} width={100} height={100} style={{ objectFit: 'cover', marginRight: 8 }} />
-        ) : (
-          <video
-            src={previewUrl}
-            width={100}
-            height={100}
-            muted
-            loop
-            playsInline
-            controls
-            autoPlay 
-            style={{ objectFit: 'cover', marginRight: 8 }}
-          />
-        )
-      ) : (
-        <img src={previewUrl} alt={name} width={100} height={100} style={{ objectFit: 'cover', marginRight: 8 }} />
-      )}
+              return (
+                <div
+                  key={i}
+                  style={{
+                    marginTop: 12,
+                    border: isSelected ? '2px solid #0070f3' : '1px solid #ccc',
+                    padding: 10,
+                    borderRadius: 8,
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 12,
+                    backgroundColor: '#fff',
+                  }}
+                >
+                  {activeTab === 'gif' && !isNew && previewUrl.endsWith('.mp4') ? (
+                    <video
+                      src={previewUrl}
+                      width={100}
+                      height={100}
+                      muted
+                      loop
+                      autoPlay
+                      playsInline
+                      style={{ objectFit: 'cover', borderRadius: 6 }}
+                    />
+                  ) : (
+                    <img
+                      src={previewUrl}
+                      width={100}
+                      height={100}
+                      style={{ objectFit: 'cover', borderRadius: 6 }}
+                    />
+                  )}
 
-      <input value={name} onChange={(e) => handleFileNameChange(i, e.target.value)} style={{ width: 200 }} />
-      <button onClick={() => handleRemoveFile(i)} style={{ marginLeft: 8 }}>削除</button>
-    </div>
-  );
-})}
+
+                  <div style={{ flex: 1 }}>
+                    <input
+                      value={name}
+                      onChange={(e) => handleFileNameChange(i, e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '6px 8px',
+                        fontSize: '0.9rem',
+                        marginBottom: 6,
+                        border: '1px solid #ccc',
+                        borderRadius: 4,
+                      }}
+                    />
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.85rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {
+                          if (!isSelected && selectedThumbnails.length >= 2) {
+                            alert('代表画像は最大2つまでです。');
+                            return;
+                          }
+                          handleThumbnailSelect(i);
+                        }}
+                        style={{ width: 16, height: 16 }}
+                      />
+                        代表画像
+                      </label>
+
+                      <button
+                        onClick={() => handleRemoveFile(i)}
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: '0.85rem',
+                          backgroundColor: '#eee',
+                          border: '1px solid #999',
+                          borderRadius: 4,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        削除
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+
+
           </div>
         )}
 
         {activeTab === 'video' && (
           <div>
-            <p style={{ marginBottom: 8, fontSize: '0.9rem', color: '#666', lineHeight: 1.6 }}>
+            <strong style={{ fontSize: '1.2rem'}}>トーナメントの作り方 :</strong><br />
+            <p style={{
+              backgroundColor: '#f0f0f0',
+              padding: '12px',
+              borderRadius: '8px',
+              fontSize: '0.9rem',
+              overflowX: 'auto',
+              whiteSpace: 'pre',
+              marginBottom: '12px',
+              border: '1px solid #ccc',
+            }}>
               下記の形式で入力すれば、YouTube動画を登録できます。<br />
               複数のデータをまとめてコピー＆ペーストすることも可能です。<br /><br />
                 
-              <strong>入力形式(ⓣ⇨:Tab):</strong><br />
-              ①YouTubeリンク&ID <strong>ⓣ⇨</strong> ②タイトル <strong>ⓣ⇨</strong> ③開始秒 <strong>ⓣ⇨</strong> ④終了秒<br /><br />
-
-              <strong>入力例</strong><br />
-              [YouTubeリンク&ID]&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;[タイトル]&emsp;[開始秒]&emsp;[終了秒]<br />
-              https://www.youtube.com/watch?&emsp;できる1&emsp;&emsp;10&emsp;&emsp;&emsp;&emsp;20<br />
-              https://www.youtube.com/watch?&emsp;できる2&emsp;&emsp;30&emsp;&emsp;&emsp;&emsp;40<br />
-              https://www.youtube.com/watch?&emsp;できる3&emsp;&emsp;50&emsp;&emsp;&emsp;&emsp;60<br /><br />
-
+              <strong>複数のデータ入力形式(ⓣ⇨:Tab):</strong><br />
+              タイトル <strong>[TAB⇨]</strong> YouTubeリンク <strong>[TAB⇨]</strong> 開始秒 <strong>[TAB⇨]</strong> 終了秒 <strong>[ENTER]</strong><br />
+              
             </p>
 
+            <strong style={{ fontSize: '1.2rem'}}>複数のデータ入力例(コピー可)</strong><br />
+
+            <textarea
+              readOnly
+              value={`タイトル\tYouTubeリンク\t開始秒\t終了秒\nダンスシーン1\thttps://youtu.be/abc123xyz\t10\t20\n面白い瞬間2\thttps://youtu.be/def456uvw\t30\t40`}
+              style={{
+                width: '100%',
+                height: 100,
+                fontSize: '0.95rem',
+                marginBottom: 16,
+                padding: '10px 14px',
+                border: '2px dashed #66aaff',
+                borderRadius: 8,
+                backgroundColor: '#f9fafe',
+                color: '#333',
+                whiteSpace: 'pre',
+                outline: 'none',
+                resize: 'vertical',
+                transition: 'border-color 0.3s',
+              }}
+            />
+
+            <textarea
+              placeholder="ここにコピー貼り付け(複数行まとめて貼り付け可)"
+              onPaste={(e) => handlePaste(e, 0)}
+              style={{
+                width: '100%',
+                height: 100,
+                fontSize: '0.95rem',
+                marginBottom: 16,
+                padding: '10px 14px',
+                border: '2px dashed #0070f3',
+                borderRadius: 8,
+                backgroundColor: '#e8f2ff',
+                color: '#333',
+                whiteSpace: 'pre',
+                outline: 'none',
+                resize: 'vertical',
+                transition: 'border-color 0.3s',
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#0050c3';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = '#0070f3';
+              }}
+            />
+
+
             <div style={{ display: 'flex', gap: 8, marginTop: 16, fontWeight: 'bold', fontSize: '0.9rem', color: '#333' }}>
-              <div style={{ width: '25%' }}>YouTubeリンク&ID</div>
+              <div style={{ width: '25%' }}>YouTubeリンク</div>
               <div style={{ width: '15%' }}>タイトル</div>
               <div style={{ width: '10%' }}>開始秒</div>
               <div style={{ width: '10%' }}>終了秒</div>
             </div>
 
-            {videoRows.map((row, i) => (
-              <div key={i} style={{ marginTop: 10, display: 'flex', gap: 8 }}>
-                <input style={{ width: '25%' }} placeholder="YouTubeリンク&ID" value={row.url} onChange={(e) => {
-                  const updated = [...videoRows];
-                  updated[i].url = e.target.value;
-                  setVideoRows(updated);
-                }} onPaste={(e) => handlePaste(e, i)} />
-                <input style={{ width: '15%' }} placeholder="タイトル" value={row.name} onChange={(e) => {
-                  const updated = [...videoRows];
-                  updated[i].name = e.target.value;
-                  setVideoRows(updated);
-                }} />
-                <input style={{ width: '10%' }} placeholder="開始秒" value={row.stime} onChange={(e) => {
-                  const updated = [...videoRows];
-                  updated[i].stime = e.target.value;
-                  setVideoRows(updated);
-                }} />
-                <input style={{ width: '10%' }} placeholder="終了秒" value={row.etime} onChange={(e) => {
-                  const updated = [...videoRows];
-                  updated[i].etime = e.target.value;
-                  setVideoRows(updated);
-                }} />
-                {i > 0 && (
-                  <button onClick={() => {
-                    const updated = [...videoRows];
-                    updated.splice(i, 1);
-                    setVideoRows(updated);
-                  }}>
-                    削除
-                  </button>
-                )}
-              </div>
-            ))}
+            {videoRows.map((row, i) => {
+              const videoId = extractVideoId(row.url);
+              const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}?start=${row.stime}&end=${row.etime}` : '';
+              const thumbnailUrl = convertToThumbnail(embedUrl);
+              const isSelected = selectedThumbnails.includes(i);
+
+              return (
+                <div key={i} style={{
+                  marginTop: 12,
+                  border: isSelected ? '2px solid #0070f3' : '1px solid #ccc',
+                  padding: 10,
+                  borderRadius: 8,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 12,
+                  backgroundColor: '#fff',
+                }}>
+                  <div style={{
+                    width: 100,
+                    height: 100,
+                    borderRadius: 6,
+                    backgroundImage: `url(${thumbnailUrl})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundColor: '#f0f0f0',
+                  }} />
+
+                  <div style={{ flex: 1 }}>
+                    <input
+                      value={row.name}
+                      onChange={(e) => {
+                        const updated = [...videoRows];
+                        updated[i].name = e.target.value;
+                        setVideoRows(updated);
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '6px 8px',
+                        fontSize: '0.9rem',
+                        marginBottom: 6,
+                        border: '1px solid #ccc',
+                        borderRadius: 4,
+                      }}
+                      placeholder="タイトル"
+                    />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        value={row.url}
+                        onChange={(e) => {
+                          const updated = [...videoRows];
+                          updated[i].url = e.target.value;
+                          setVideoRows(updated);
+                        }}
+                        onPaste={(e) => handlePaste(e, i)}
+                        placeholder="YouTubeリンク&ID"
+                        style={{ width: '60%' }}
+                      />
+                      <input
+                        value={row.stime}
+                        onChange={(e) => {
+                          const updated = [...videoRows];
+                          updated[i].stime = e.target.value;
+                          setVideoRows(updated);
+                        }}
+                        placeholder="開始秒"
+                        style={{ width: '20%' }}
+                      />
+                      <input
+                        value={row.etime}
+                        onChange={(e) => {
+                          const updated = [...videoRows];
+                          updated[i].etime = e.target.value;
+                          setVideoRows(updated);
+                        }}
+                        placeholder="終了秒"
+                        style={{ width: '20%' }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.85rem' }}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleThumbnailSelect(i)}
+                          style={{ width: 16, height: 16 }}
+                        />
+                        代表画像
+                      </label>
+
+                      {i > 0 && (
+                        <button
+                          onClick={() => {
+                            const updated = [...videoRows];
+                            updated.splice(i, 1);
+                            setVideoRows(updated);
+                          }}
+                          style={{
+                            padding: '4px 8px',
+                            fontSize: '0.85rem',
+                            backgroundColor: '#eee',
+                            border: '1px solid #999',
+                            borderRadius: 4,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          削除
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
             <button onClick={() => setVideoRows([...videoRows, { url: '', name: '', stime: '', etime: '', valid: true }])} style={{ marginTop: 10 }}>+ 行追加</button>
           </div>
         )}

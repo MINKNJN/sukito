@@ -58,7 +58,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   }
 
-  // ✅ 게임 삭제에 따른 댓글 일괄 삭제
   if (req.method === 'DELETE') {
     try {
       const { gameId } = req.body;

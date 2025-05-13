@@ -1,3 +1,4 @@
+// pages/index.tsx
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import Header from '@/components/Header';
@@ -20,6 +21,7 @@ type Game = {
   desc: string;
   createdAt: string;
   items: GameItem[];
+  thumbnails?: GameItem[];
 };
 
 function getPreviewImage(item: { type: string; url: string }) {
@@ -60,9 +62,6 @@ export default function IndexPage() {
     setShowAlert(true);
   };
 
-
-  
-
   useEffect(() => {
     setIsLoading(true); 
 
@@ -73,9 +72,8 @@ export default function IndexPage() {
       .finally(() => setIsLoading(false));
   
     const stored = localStorage.getItem('sukito_game');
-    const userId = getStorageWithExpire('userId'); // 
     
-    if (stored && stored !== 'undefined' && userId) { 
+    if (stored && stored !== 'undefined') { 
       try {
         const parsed = JSON.parse(stored);
         if (parsed && parsed.gameId) {
@@ -291,7 +289,7 @@ export default function IndexPage() {
               return (
                 <>
                   <div key={game._id} className="col-6 col-md-3 col-xl-2" style={{ padding: '2px' }}>
-                    <GameCard id={game._id} title={game.title} desc={game.desc} items={game.items} />
+                    <GameCard id={game._id} title={game.title} desc={game.desc} items={game.items} thumbnailItems={game.thumbnails} />
                   </div>
                   <div className="col-12 col-md-6 col-xl-4" style={{ padding: '2px' }}>
                     <div style={{ height: '95%', border: '2px dashed #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -303,7 +301,7 @@ export default function IndexPage() {
             }
             return (
               <div key={game._id} className="col-6 col-md-3 col-xl-2" style={{ padding: '2px' }}>
-                <GameCard id={game._id} title={game.title} desc={game.desc} items={game.items} />
+                <GameCard id={game._id} title={game.title} desc={game.desc} items={game.items} thumbnailItems={game.thumbnails} />
               </div>
             );
           })}

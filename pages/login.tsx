@@ -35,6 +35,8 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (res.ok) {
+        localStorage.clear();
+
         const expire = Date.now() + 1000 * 60 * 60 * 24 * 7; 
       
         localStorage.setItem('token', data.token); 

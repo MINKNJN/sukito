@@ -2,15 +2,30 @@
 import { useEffect, useState } from 'react';
 import { convertToThumbnail } from '@/lib/utils';
 
+
+
+const YoutubeIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="#FF0000"
+  >
+    <path d="M23.498 6.186a2.892 2.892 0 0 0-2.034-2.044C19.596 3.5 12 3.5 12 3.5s-7.596 0-9.464.642a2.892 2.892 0 0 0-2.034 2.044A30.196 30.196 0 0 0 0 12a30.196 30.196 0 0 0 .502 5.814 2.892 2.892 0 0 0 2.034 2.044C4.404 20.5 12 20.5 12 20.5s7.596 0 9.464-.642a2.892 2.892 0 0 0 2.034-2.044A30.196 30.196 0 0 0 24 12a30.196 30.196 0 0 0-.502-5.814ZM9.75 15.02V8.98l6.27 3.02-6.27 3.02Z" />
+  </svg>
+);
+
 interface GameCardProps {
   id: string;
   title: string;
   desc: string;
   items: { url: string; name: string }[];
+  thumbnailItems?: { url: string; name: string }[];
   adminButtons?: React.ReactNode;
 }
 
-export default function GameCard({ id, title, desc, items, adminButtons }: GameCardProps) {
+export default function GameCard({ id, title, desc, items,thumbnailItems, adminButtons }: GameCardProps) {
   const [windowWidth, setWindowWidth] = useState(1200);
   const [isShareOpen, setIsShareOpen] = useState(false);
 
@@ -59,17 +74,33 @@ export default function GameCard({ id, title, desc, items, adminButtons }: GameC
   return (
     <div style={cardWrapperStyle}>
       <div style={previewWrapperStyle}>
-        {items.slice(0, 2).map((item) => (
-          <div key={item.url} style={previewItemStyle}>
-            <div style={{
-              ...previewImageStyle,
-              backgroundImage: `url(${convertToThumbnail(item.url)})`,
-            }} />
-            <div style={previewNameStyle}>
-              {item.name}
-            </div>
-          </div>
-        ))}
+        {(thumbnailItems ?? items.slice(0, 2)).map((item) => (
+  <div key={item.url} style={previewItemStyle}>
+    <div style={{
+      ...previewImageStyle,
+      backgroundImage: `url(${convertToThumbnail(item.url)})`,
+      position: 'relative',
+    }}>
+      {item.url.includes('youtube.com/embed') && (
+        <div style={{
+          position: 'absolute',
+          top: 6,
+          right: 6,
+          backgroundColor: 'rgba(255, 255, 255, 0.75)',
+          borderRadius: 4,
+          padding: 2,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <YoutubeIcon />
+        </div>
+      )}
+    </div>
+    <div style={previewNameStyle}>{item.name}</div>
+  </div>
+))}
+
       </div>
 
       <div style={{ marginTop: 8 }}>

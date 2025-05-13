@@ -40,7 +40,9 @@ export default function Header() {
       } else {
         setIsLoggedIn(false);
         setNickname('');
-        localStorage.clear(); 
+        localStorage.removeItem('token');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('nickname');
       }
     };
   

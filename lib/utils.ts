@@ -8,17 +8,19 @@ export function convertToThumbnail(url: string): string {
     if (url.match(/\.(mp4)$/i)) {
       return url.replace('/upload/', '/upload/pg_1/').replace('.mp4', '.jpg');
     }
-    return url;
+    return url; 
   }
+
   if (url.includes('youtube.com/embed')) {
-    const match = url.match(/embed\/([^?&]+)/);
-    const videoId = match ? match[1] : null;
-    if (videoId) {
-      return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+    const match = url.match(/embed\/([a-zA-Z0-9_-]{11})/);
+    if (match) {
+      return `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`;
     }
   }
+
   return '/no-image.png';
 }
+
 
 
 export function getStorageWithExpire(key: string) {

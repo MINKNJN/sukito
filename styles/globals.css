@@ -1,3 +1,4 @@
+/* style/globals.css */
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -26,7 +27,6 @@ body {
   line-height: 1.5;
 }
 
-/* 최소한의 브라우저 통일 처리 */
 button,
 input,
 textarea,
@@ -36,12 +36,8 @@ select {
   background-color: transparent;
   border: 1;
   outline: none;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
 }
 
-/* 박스 크기 통일 */
 * {
   box-sizing: border-box;
   padding: 0;

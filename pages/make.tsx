@@ -629,12 +629,6 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             />
 
 
-            <div style={{ display: 'flex', gap: 8, marginTop: 16, fontWeight: 'bold', fontSize: '0.9rem', color: '#333' }}>
-              <div style={{ width: '25%' }}>YouTubeリンク</div>
-              <div style={{ width: '15%' }}>タイトル</div>
-              <div style={{ width: '10%' }}>開始秒</div>
-              <div style={{ width: '10%' }}>終了秒</div>
-            </div>
 
             {videoRows.map((row, i) => {
               const videoId = extractVideoId(row.url);
@@ -663,7 +657,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                     backgroundColor: '#f0f0f0',
                   }} />
 
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: 1 }}>``
                     <input
                       value={row.name}
                       onChange={(e) => {

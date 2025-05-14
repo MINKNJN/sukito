@@ -2,8 +2,6 @@
 import { useEffect, useState } from 'react';
 import { convertToThumbnail } from '@/lib/utils';
 
-
-
 const YoutubeIcon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -16,12 +14,18 @@ const YoutubeIcon = () => (
   </svg>
 );
 
+interface GameItem {
+  url: string;
+  name: string;
+  type: 'image' | 'gif' | 'video' | 'youtube';
+}
+
 interface GameCardProps {
   id: string;
   title: string;
   desc: string;
-  items: { url: string; name: string }[];
-  thumbnailItems?: { url: string; name: string }[];
+  items: GameItem[];
+  thumbnailItems?: GameItem[];
   adminButtons?: React.ReactNode;
 }
 
@@ -72,36 +76,73 @@ export default function GameCard({ id, title, desc, items,thumbnailItems, adminB
   };
 
   return (
-    <div style={cardWrapperStyle}>
-      <div style={previewWrapperStyle}>
-        {(thumbnailItems ?? items.slice(0, 2)).map((item) => (
-  <div key={item.url} style={previewItemStyle}>
-    <div style={{
-      ...previewImageStyle,
-      backgroundImage: `url(${convertToThumbnail(item.url)})`,
-      position: 'relative',
-    }}>
-      {item.url.includes('youtube.com/embed') && (
-        <div style={{
-          position: 'absolute',
-          top: 6,
-          right: 6,
-          backgroundColor: 'rgba(255, 255, 255, 0.75)',
-          borderRadius: 4,
-          padding: 2,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-          <YoutubeIcon />
-        </div>
-      )}
-    </div>
-    <div style={previewNameStyle}>{item.name}</div>
-  </div>
-))}
+  <div style={cardWrapperStyle}>
+    <div style={previewWrapperStyle}>
+      {(thumbnailItems ?? items.slice(0, 2)).map((item, index) => {
+        const isYoutube = item.url.includes('youtube.com/embed');
+        const isGif = item.type === 'gif';
+        const isImage = item.type === 'image';
 
-      </div>
+        const badge =
+          isYoutube
+            ? null
+            : isGif
+              ? { text: 'GIF', bg: '#00c49a' }
+              : isImage
+                ? { text: 'IMG', bg: '#0070f3' }
+                : null;
+
+        return (
+          <div key={item.url} style={previewItemStyle}>
+            <div
+              style={{
+                ...previewImageStyle,
+                backgroundImage: `url(${convertToThumbnail(item.url)})`,
+                position: 'relative',
+              }}
+            >
+              {(index === 1 && isYoutube) && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 6,
+                    right: 6,
+                    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+                    borderRadius: 4,
+                    padding: 2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <YoutubeIcon />
+                </div>
+              )}
+
+              {(index === 1 && badge) && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 6,
+                    right: 6,
+                    backgroundColor: badge.bg,
+                    color: '#fff',
+                    fontSize: '0.6rem',
+                    fontWeight: 'bold',
+                    padding: '6px 2px',
+                    borderRadius: 4,
+                    lineHeight: 1,
+                  }}
+                >
+                  {badge.text}
+                </div>
+              )}
+            </div>
+            <div style={previewNameStyle}>{item.name}</div>
+          </div>
+        );
+      })}
+    </div>
 
       <div style={{ marginTop: 8 }}>
         <h3 style={titleStyle}>{title}</h3>
@@ -216,7 +257,7 @@ const buttonStyle: React.CSSProperties = {
   border: '1px solid #ccc',
   borderRadius: 4,
   padding: '4px 4px',
-  fontSize: '0.8rem',
+  fontSize: '0.75rem',
   cursor: 'pointer',
   fontWeight: 'bold',
 };

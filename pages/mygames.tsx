@@ -130,7 +130,7 @@ export default function MyGamesPage() {
       <Header />
 
       <div style={{ width: '100%', height: 100, border: '2px dashed #ccc', margin: '20px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        광고 자리입니다
+        好きトーナメント
       </div>
 
       <div style={{ padding: 24 }}>
@@ -178,7 +178,7 @@ export default function MyGamesPage() {
 
                   <div className="col-12 col-md-6 col-xl-4" style={{ padding: '2px' }}>
                     <div style={{ height: '95%', border: '2px dashed #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      광고 자리입니다
+                      好きトーナメント
                     </div>
                   </div>
                 </>

@@ -6,7 +6,21 @@ export default class MyDocument extends Document {
     return (
       <Html lang="ja">
         <Head>
-          <meta name="google-adsense-account" content="ca-pub-2581272518746128" />
+          <meta name="google-adsense-account" content="ca-pub-2581272518746128" />          
+          <script async src="https://www.googletagmanager.com/gtag/js?id=G-DB9B3337QF" />
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', 'G-DB9B3337QF', {
+                  page_path: window.location.pathname,
+                });
+              `,
+            }}
+          />
+
         </Head>
         <body>
           <Main />

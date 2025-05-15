@@ -92,11 +92,44 @@ export default function LoginPage() {
             {loading ? 'ログイン 中...' : 'ログイン'}
           </button>
           <button onClick={handleGoToSignup} style={signupButtonStyle}>新規登録</button>
+          
+
+            <section
+              style={{
+                backgroundColor: '#f9f9f9',
+                padding: '24px 16px',
+                marginBottom: 24,
+                borderBottom: '1px solid #ddd',
+                textAlign: 'center',
+              }}
+            >
+              <p style={{ fontSize: '0.8rem', marginBottom: 12 }}>
+                以下のリンクからご覧いただけます。
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <a href="/about" style={linkButtonStyle}>このサイトについて</a>
+                <a href="/terms" style={linkButtonStyle}>利用規約</a>
+                <a href="/privacy" style={linkButtonStyle}>プライバシーポリシー</a>
+              </div>
+            </section>
         </div>
       </div>
     </>
   );
 }
+
+
+  const linkButtonStyle: React.CSSProperties = {
+    padding: '6px 6px',
+    borderRadius: '6px',
+    backgroundColor: '#f0f0f0',
+    color: '#1565c0',
+    fontWeight: 500,
+    fontSize: '0.7rem',
+    textDecoration: 'none',
+    border: '1px solid #ccc',
+    transition: 'background-color 0.2s',
+  };
 
 const inputStyle: React.CSSProperties = {
   width: '100%',

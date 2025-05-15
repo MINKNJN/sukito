@@ -136,6 +136,9 @@ export default function IndexPage() {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
+
+
+
   return (
     <>
       <Head>
@@ -152,16 +155,7 @@ export default function IndexPage() {
       </Head>
       <Header />
 
-      <section style={{ backgroundColor: '#f9f9f9', padding: '24px 16px', marginBottom: 24, borderBottom: '1px solid #ddd' }}>
-      <h2 style={{ fontSize: '1.5rem', marginBottom: 12 }}>スキトについて</h2>
-      <p style={{ fontSize: '1rem', lineHeight: 1.6 }}>
-        スキトは、ユーザーが自分の好きな画像・GIF・動画をアップロードし、理想のキャラクターやコンテンツをトーナメント形式で選ぶことができる無料のエンタメプラットフォームです。
-        誰でも簡単にゲームを作成でき、多くの人とシェアして楽しむことができます。ログインなしでもプレイ可能で、毎日新しい人気ゲームが追加されます。
-        好きなアイドル、アニメキャラ、動物などを選びながら、あなたの“推し”を見つけましょう。
-      </p>
-    </section>
-
-
+      
       {showAlert && (
         <AlertModal
           message={alertMessage}

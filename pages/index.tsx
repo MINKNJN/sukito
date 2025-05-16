@@ -245,6 +245,25 @@ export default function IndexPage() {
         </div>
       )}
 
+      <section
+        style={{
+          backgroundColor: '#fff8dc',
+          padding: '24px 16px',
+          marginBottom: 24,
+          border: '1px solid #ccc',
+          borderRadius: '8px',
+          textAlign: 'center',
+        }}
+      >
+        <h2 style={{ fontSize: '1.3rem', marginBottom: 12 }}>スキトとは？</h2>
+          <p style={{ fontSize: '1rem', color: '#333' }}>
+            好きな画像・動画・GIFを使ってトーナメント形式の人気投票を作成・プレイできる無料のエンタメプラットフォームです。<br />
+            誰でも気軽に参加でき、自分の「推し」をみんなと共有して楽しめます。<br />
+            ゲームは毎日追加され、アイドル・アニメ・スポーツ・食べ物などジャンルも多彩！ログインなしでも遊べます。
+          </p>
+      </section>
+
+
       <div style={{ width: '100%', height: 100, border: '2px dashed #ccc', margin: '20px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         好きトーナメント
       </div>
@@ -322,6 +341,30 @@ export default function IndexPage() {
           </div>
         )}
       </div>
+
+
+      <footer style={{
+        padding: '32px 16px',
+        marginTop: '48px',
+        borderTop: '1px solid #ddd',
+        textAlign: 'center',
+        fontSize: '0.85rem',
+        backgroundColor: '#fafafa',
+        color: '#666'
+      }}>
+        <div style={{ marginBottom: '12px' }}>
+          <a href="/about" style={footerLinkStyle}>このサイトについて</a>
+          <span style={footerDividerStyle}>|</span>
+          <a href="/terms" style={footerLinkStyle}>利用規約</a>
+          <span style={footerDividerStyle}>|</span>
+          <a href="/privacy" style={footerLinkStyle}>プライバシー</a>
+        </div>
+        <div style={{ fontSize: '0.75rem', color: '#aaa' }}>
+          &copy; 2025 スキト All rights reserved.
+        </div>
+      </footer>
+
+
     </>
   );
 }
@@ -422,4 +465,15 @@ const closeButtonStyle: React.CSSProperties = {
   border: 'none',
   borderRadius: 6,
   cursor: 'pointer',
+};
+
+const footerLinkStyle: React.CSSProperties = {
+  margin: '0 8px',
+  color: '#1565c0',
+  textDecoration: 'none',
+};
+
+const footerDividerStyle: React.CSSProperties = {
+  margin: '0 4px',
+  color: '#ccc',
 };

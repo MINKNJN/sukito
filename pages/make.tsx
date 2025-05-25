@@ -142,26 +142,33 @@ export default function MakePage() {
 
 const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   const selectedFiles = Array.from(e.target.files || []);
+  const MAX_FILE_SIZE_MB = 10;
 
   const filtered = selectedFiles.filter(file => {
     const isValidSize = file.size <= MAX_FILE_SIZE_MB * 1024 * 1024;
 
     const isValidType =
       (activeTab === 'image' && /\.(jpe?g|png)$/i.test(file.name)) ||
-      (activeTab === 'gif' && /\.gif$/i.test(file.name));
+      (activeTab === 'gif' && /\.(gif)$/i.test(file.name)); 
 
     if (!isValidSize) {
       alert(`「${file.name}」は${MAX_FILE_SIZE_MB}MB以下のみアップロード可能です。`);
     }
+    if (!isValidType) {
+      alert(`「${file.name}」はサポートされていない形式です。`);
+    }
+
     return isValidSize && isValidType;
   });
 
   setFiles(prev => [...prev, ...filtered]);
+
   setFileNames(prev => [
     ...prev,
-    ...filtered.map(f => f.name.replace(/\.(jpe?g|png|gif)$/i, '')),
+    ...filtered.map(f => f.name.replace(/\.(jpe?g|png|gif)$/i, '')), 
   ]);
 };
+
 
 
   const clearFiles = () => {
@@ -210,6 +217,16 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       return null;
     }
   };
+
+  const isYoutubeThumbnailValid = (videoId: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+      img.onload = () => resolve(true);
+      img.onerror = () => resolve(false);
+    });
+  };
+
 
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>, index: number) => {
     const pastedText = e.clipboardData.getData('text');
@@ -344,14 +361,38 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         }));
       }
       
-        
+
       if (activeTab === 'video') {
+        const invalidRows: VideoRow[] = [];
+
+        for (const row of videoRows) {
+          const videoId = extractVideoId(row.url);
+          const isValid = videoId ? await isYoutubeThumbnailValid(videoId) : false;
+
+          if (!isValid) {
+            invalidRows.push(row);
+          }
+        }
+
+        if (invalidRows.length > 0) {
+          alert('以下のYouTubeリンクが無効または削除されている可能性があります:\n' + 
+                invalidRows.map(r => `・${r.name} (${r.url})`).join('\n'));
+          setIsUploading(false);
+          return;
+        }
+
         items = videoRows.map((row) => {
           const videoId = extractVideoId(row.url);
           const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}?start=${row.stime}&end=${row.etime}` : '';
-          return { name: row.name, url: embedUrl, type: 'youtube' };
+          return {
+            name: row.name,
+            url: embedUrl,
+            type: 'youtube',
+          };
         });
       }
+
+
   
       const finalItemsHistory = mergeItemsHistory(itemsHistory, items);
 
@@ -483,7 +524,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                     backgroundColor: '#fff',
                   }}
                 >
-                  {activeTab === 'gif' && !isNew && previewUrl.endsWith('.mp4') ? (
+                  {activeTab === 'gif' && (!isNew && previewUrl.endsWith('.mp4')) || (isNew && file?.type === 'video/mp4') ? (
                     <video
                       src={previewUrl}
                       width={100}

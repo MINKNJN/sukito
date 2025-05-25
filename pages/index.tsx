@@ -47,7 +47,7 @@ export default function IndexPage() {
   const [typeFilter, setTypeFilter] = useState<'all' | 'image' | 'video'>('all');
   const [searchInput, setSearchInput] = useState('');
   const [searchKeyword, setSearchKeyword] = useState('');
-  const [visibleCount, setVisibleCount] = useState(10);
+  const [visibleCount, setVisibleCount] = useState(99);
 
   const [resumeData, setResumeData] = useState<any>(null);
   const [showResumeModal, setShowResumeModal] = useState(false);

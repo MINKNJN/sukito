@@ -5,7 +5,6 @@ import { useRouter } from 'next/router';
 import React, { useEffect, useState } from 'react';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import { getStorageWithExpire } from '@/lib/utils';
 
 interface GameItem {
   name: string;
@@ -32,7 +31,6 @@ const optimizeCloudinaryImage = (url: string): string => {
   return url.replace('/upload/', '/upload/w_640,f_auto,q_auto,dpr_auto/');
 };
 
-// Media.tsx 컴포넌트
 
 const Media: React.FC<{ url: string; type: GameItem['type'] }> = ({ url, type }) => {
   const mediaStyle: React.CSSProperties = {
@@ -108,29 +106,44 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
   const [matchIndex, setMatchIndex] = useState(0);
   const [selectedSide, setSelectedSide] = useState<'left' | 'right' | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [filteredItems, setFilteredItems] = useState<GameItem[]>([]);
+
 
   useEffect(() => {
-    const stored = localStorage.getItem('sukito_game');
-    if (stored && stored !== 'undefined') {
-      try {
-        const parsed = JSON.parse(stored);
-        if (parsed.gameId === game?._id) {
-          setSelectedRound(parsed.round);
-          setIsPlaying(true);
-          setRoundItems(parsed.items);
-          setAdvancing(parsed.advancing || []);
-          setMatchIndex(parsed.matchIndex || 0);
+    const checkThumbnails = async () => {
+      if (!game) return;
+
+      const checkThumbnail = (item: GameItem): Promise<boolean> => {
+        if (item.type !== 'youtube') return Promise.resolve(true);
+        const regex = /(?:youtube\.com\/embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+        const match = item.url.match(regex);
+        const videoId = match?.[1];
+        if (!videoId) return Promise.resolve(false);
+
+        return new Promise(resolve => {
+          const img = new Image();
+          img.src = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+          img.onload = () => resolve(true);
+          img.onerror = () => resolve(false);
+        });
+      };
+
+      const validItems: GameItem[] = [];
+      for (const item of game.items) {
+        if (await checkThumbnail(item)) {
+          validItems.push(item);
         }
-      } catch (error) {
-        console.error('エラー:', error);
-        localStorage.removeItem('sukito_game');
       }
-    }
+      setFilteredItems(validItems);
+    };
+
+    checkThumbnails();
   }, [game]);
 
   if (!game) return <div style={{ padding: 40 }}>存在しないトーナメントです。</div>;
 
-  const availableRounds = ROUND_OPTIONS.filter(r => r * 2 <= game.items.length);
+  const availableRounds = ROUND_OPTIONS.filter(r => r * 2 <= filteredItems.length);
+
   const totalMatches = Math.floor(roundItems.length / 2);
 
   const startTournament = () => {
@@ -138,7 +151,8 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
       alert('ラウンドを選択してください！');
       return;
     }
-    const pick = pickRandomItems(game.items, selectedRound * 2);
+    const pick = pickRandomItems(filteredItems, selectedRound * 2);
+
     const saveState = {
       gameId: game._id,
       gameTitle: game.title,

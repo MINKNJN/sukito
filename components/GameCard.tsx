@@ -32,6 +32,7 @@ interface GameCardProps {
 export default function GameCard({ id, title, desc, items,thumbnailItems, adminButtons }: GameCardProps) {
   const [windowWidth, setWindowWidth] = useState(1200);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [validThumb, setValidThumb] = useState<boolean[]>([]);
 
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
@@ -40,9 +41,25 @@ export default function GameCard({ id, title, desc, items,thumbnailItems, adminB
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const nameLimit = windowWidth > 1200 ? 10 : windowWidth > 768 ? 10 : 5;
-  const titleLimit = windowWidth > 1200 ? 10 : windowWidth > 768 ? 10 : 15;
-  const descLimit = windowWidth > 1200 ? 15 : windowWidth > 768 ? 15 : 20;
+  useEffect(() => {
+    const targets = (thumbnailItems?.length ? thumbnailItems : items.slice(0, 2)).slice(0, 2);
+    const checks = targets.map((item) => {
+      if (item.type === 'youtube') {
+        const match = item.url.match(/\/embed\/([a-zA-Z0-9_-]{11})/);
+        const videoId = match?.[1];
+        if (!videoId) return Promise.resolve(false);
+        return new Promise<boolean>((resolve) => {
+          const img = new Image();
+          img.src = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+          img.onload = () => resolve(true);
+          img.onerror = () => resolve(false);
+        });
+      }
+      return Promise.resolve(true);
+    });
+
+    Promise.all(checks).then((results) => setValidThumb(results));
+  }, [thumbnailItems, items]);
 
   const shareUrl = `${window.location.origin}/play/${id}`;
 
@@ -97,7 +114,7 @@ export default function GameCard({ id, title, desc, items,thumbnailItems, adminB
             <div
               style={{
                 ...previewImageStyle,
-                backgroundImage: `url(${convertToThumbnail(item.url)})`,
+                backgroundImage: `url(${validThumb[index] ? convertToThumbnail(item.url) : '/placeholder-thumbnail.png'})`,
                 position: 'relative',
               }}
             >

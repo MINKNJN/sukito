@@ -33,20 +33,25 @@ const uploadGif = async (req: NextApiRequest, res: NextApiResponse) => {
     }
 
     const file = Array.isArray(files.file) ? files.file[0] : files.file;
-    const gifPath = file?.filepath;
-    const originalName = file?.originalFilename || 'unnamed.gif';
+    const inputPath = file?.filepath;
 
-    if (!gifPath || !fs.existsSync(gifPath)) {
+    if (!inputPath || !fs.existsSync(inputPath)) {
       console.error('❌ ファイルパスが存在しません');
       return res.status(400).json({ error: 'ファイルが見つかりません。' });
     }
 
-    const outputPath = gifPath.replace(/\.gif$/, '.mp4');
+    const ext = path.extname(inputPath || '').toLowerCase();
+    if (ext !== '.gif') {
+      return res.status(400).json({ error: 'GIF のみアップロード可能です。' });
+    }
+
+    const outputPath = inputPath.replace(/\.gif$/i, '.mp4');
 
     try {
       await new Promise<void>((resolve, reject) => {
-        ffmpeg(gifPath)
-          .outputOptions('-movflags', 'faststart')
+        ffmpeg(inputPath)
+          .inputFormat('gif')
+          .outputOptions('-movflags', '+faststart')
           .outputOptions('-pix_fmt', 'yuv420p')
           .outputOptions('-vf', 'scale=640:-2,fps=15')
           .outputOptions('-c:v', 'libx264')
@@ -64,13 +69,8 @@ const uploadGif = async (req: NextApiRequest, res: NextApiResponse) => {
         public_id: path.basename(outputPath, '.mp4'),
       });
 
-      // 一時ファイルの削除
-      try {
-        fs.unlinkSync(gifPath);
-        fs.unlinkSync(outputPath);
-      } catch (cleanupErr) {
-        console.warn('⚠️ 一時ファイル削除中のエラー:', cleanupErr);
-      }
+      fs.unlinkSync(inputPath);
+      fs.unlinkSync(outputPath);
 
       return res.status(200).json({ secure_url: result.secure_url });
     } catch (error) {
@@ -81,4 +81,3 @@ const uploadGif = async (req: NextApiRequest, res: NextApiResponse) => {
 };
 
 export default uploadGif;
-

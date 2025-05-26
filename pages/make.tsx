@@ -698,7 +698,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                     backgroundColor: '#f0f0f0',
                   }} />
 
-                  <div style={{ flex: 1 }}>``
+                  <div style={{ flex: 1 }}>
                     <input
                       value={row.name}
                       onChange={(e) => {

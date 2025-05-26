@@ -5,6 +5,7 @@ import { useRouter } from 'next/router';
 import React, { useEffect, useState } from 'react';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { getStorageWithExpire } from '@/lib/utils';
 
 interface GameItem {
   name: string;
@@ -31,6 +32,7 @@ const optimizeCloudinaryImage = (url: string): string => {
   return url.replace('/upload/', '/upload/w_640,f_auto,q_auto,dpr_auto/');
 };
 
+// Media.tsx 컴포넌트
 
 const Media: React.FC<{ url: string; type: GameItem['type'] }> = ({ url, type }) => {
   const mediaStyle: React.CSSProperties = {
@@ -106,44 +108,29 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
   const [matchIndex, setMatchIndex] = useState(0);
   const [selectedSide, setSelectedSide] = useState<'left' | 'right' | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [filteredItems, setFilteredItems] = useState<GameItem[]>([]);
-
 
   useEffect(() => {
-    const checkThumbnails = async () => {
-      if (!game) return;
-
-      const checkThumbnail = (item: GameItem): Promise<boolean> => {
-        if (item.type !== 'youtube') return Promise.resolve(true);
-        const regex = /(?:youtube\.com\/embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-        const match = item.url.match(regex);
-        const videoId = match?.[1];
-        if (!videoId) return Promise.resolve(false);
-
-        return new Promise(resolve => {
-          const img = new Image();
-          img.src = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
-          img.onload = () => resolve(true);
-          img.onerror = () => resolve(false);
-        });
-      };
-
-      const validItems: GameItem[] = [];
-      for (const item of game.items) {
-        if (await checkThumbnail(item)) {
-          validItems.push(item);
+    const stored = localStorage.getItem('sukito_game');
+    if (stored && stored !== 'undefined') {
+      try {
+        const parsed = JSON.parse(stored);
+        if (parsed.gameId === game?._id) {
+          setSelectedRound(parsed.round);
+          setIsPlaying(true);
+          setRoundItems(parsed.items);
+          setAdvancing(parsed.advancing || []);
+          setMatchIndex(parsed.matchIndex || 0);
         }
+      } catch (error) {
+        console.error('エラー:', error);
+        localStorage.removeItem('sukito_game');
       }
-      setFilteredItems(validItems);
-    };
-
-    checkThumbnails();
+    }
   }, [game]);
 
   if (!game) return <div style={{ padding: 40 }}>存在しないトーナメントです。</div>;
 
-  const availableRounds = ROUND_OPTIONS.filter(r => r * 2 <= filteredItems.length);
-
+  const availableRounds = ROUND_OPTIONS.filter(r => r * 2 <= game.items.length);
   const totalMatches = Math.floor(roundItems.length / 2);
 
   const startTournament = () => {
@@ -151,8 +138,7 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
       alert('ラウンドを選択してください！');
       return;
     }
-    const pick = pickRandomItems(filteredItems, selectedRound * 2);
-
+    const pick = pickRandomItems(game.items, selectedRound * 2);
     const saveState = {
       gameId: game._id,
       gameTitle: game.title,
@@ -311,7 +297,7 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
           .media-wrapper { flex: 1; height: 90%; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; transition: all ${ANIMATION_DURATION}ms ease; }
           .media-wrapper.expanded { flex: 1 0 100%; opacity: 1; }
           .media-wrapper.collapsed { flex: 0 0 0%; opacity: 0; transform: scale(0); }
-          .overlay.name { position: absolute; bottom: 20%; width: 100%; text-align: center; font-size: 3rem; color: white; text-shadow: 0 0 4px black, 0 0 8px black, 0 0 12px black; pointer-events: none; }
+          .overlay.name { position: absolute; bottom: 14%; width: 100%; text-align: center; font-size: 2rem; color: white; text-shadow: 0 0 4px black, 0 0 8px black, 0 0 12px black; pointer-events: none; }
           .select-button { position: absolute; bottom: 2%; left: 50%; transform: translateX(-50%); padding: 1rem 2rem; font-size: 1.5rem; border: none; border-radius: 8px; cursor: pointer; color: white; }
           .select-button.left { background-color: #d94350; }
           .select-button.right { background-color: #0070f3; }

@@ -130,32 +130,40 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
 
   if (!game) return <div style={{ padding: 40 }}>存在しないトーナメントです。</div>;
 
-  const availableRounds = ROUND_OPTIONS.filter(r => r * 2 <= game.items.length);
+  const availableRounds = ROUND_OPTIONS.filter(r => r <= game.items.length);
+
   const totalMatches = Math.floor(roundItems.length / 2);
 
   const startTournament = () => {
-    if (!selectedRound) {
+    if (selectedRound === 0) {
       alert('ラウンドを選択してください！');
       return;
     }
-    const pick = pickRandomItems(game.items, selectedRound * 2);
+
+    const shuffled = pickRandomItems(game.items, game.items.length);
+    const pick =
+      selectedRound === -1
+        ? shuffled
+        : shuffled.slice(0, selectedRound); // 기존과 동일
+
     const saveState = {
       gameId: game._id,
       gameTitle: game.title,
       gameDesc: game.desc,
-      round: selectedRound,
+      round: Math.ceil(pick.length / 2),
       items: pick,
       advancing: [],
       matchIndex: 0,
     };
-    localStorage.setItem('sukito_game', JSON.stringify(saveState));
 
+    localStorage.setItem('sukito_game', JSON.stringify(saveState));
     setRoundItems(pick);
     setAdvancing([]);
     setMatchIndex(0);
     setSelectedSide(null);
     setIsPlaying(true);
   };
+
 
   const handleSelect = (side: 'left' | 'right') => {
     if (isAnimating) return;
@@ -169,6 +177,12 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
       const isLastMatch = matchIndex + 1 >= totalMatches;
 
       if (isLastMatch) {
+        if (roundItems.length % 2 !== 0) {
+          const byeItem = roundItems[roundItems.length - 1];
+          if (!newAdvancing.includes(byeItem)) {
+            newAdvancing.push(byeItem);
+          }
+        }
         if (newAdvancing.length === 1) {
           try {
             fetch('/api/records', {
@@ -228,8 +242,15 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
             {availableRounds.map(r => (
               <option key={r} value={r}>ベスト{r}</option>
             ))}
+            <option value={-1}>すべての候補でトーナメントを始める</option>
           </select>
-          <p>全 {game.items.length}人の候補からランダムに {selectedRound * 2}人が対戦します。</p>
+
+          <p>
+            {selectedRound === -1
+              ? `全 ${game.items.length}人の候補がすべて対戦します。`
+              : `全 ${game.items.length}人の候補からランダムに ${selectedRound}人が対戦します。`}
+          </p>
+
           <button onClick={startTournament}>スタート</button>
         </div>
         <style jsx>{`
@@ -302,7 +323,7 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
           .select-button.left { background-color: #d94350; }
           .select-button.right { background-color: #0070f3; }
           @media (max-width: 768px) {
-            .media-wrapper { height: 35vh;
+            .media-wrapper { height: 35vh; }
             .overlay.name { font-size: 1.2rem; }
             .select-button { font-size: 1rem; padding: 0.5rem 1.0rem; }
           }

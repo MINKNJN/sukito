@@ -6,6 +6,7 @@ import React, { useEffect, useState } from 'react';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { getStorageWithExpire } from '@/lib/utils';
+import GoogleAd from '@/components/GoogleAd';
 
 interface GameItem {
   name: string;
@@ -292,7 +293,7 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
 
       <div className="battle" style={{ backgroundColor: 'black', flexDirection: 'column' }}>
         <div style={{ width: '100%', height: 100, border: '2px dashed #ccc', margin: '20px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          好きトーナメント
+          <GoogleAd />
         </div>
 
         <div className="info-bar">

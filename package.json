@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "aws-sdk": "^2.1692.0",
     "bcryptjs": "^3.0.2",
     "bootstrap": "^5.3.5",
     "browser-image-compression": "^2.0.2",
@@ -24,7 +25,8 @@
     "mongoose": "^8.13.2",
     "next": "15.3.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -35,6 +37,7 @@
     "@types/node": "^20.17.45",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/uuid": "^10.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   }

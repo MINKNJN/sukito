@@ -18,7 +18,6 @@ type Game = {
   desc: string;
   createdAt: string;
   createdBy: string;
-  items: GameItem[];
   thumbnails?: GameItem[];
 };
 
@@ -30,6 +29,8 @@ export default function MyGamesPage() {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [visibleCount, setVisibleCount] = useState(10);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  
 
 
   useEffect(() => {
@@ -65,8 +66,14 @@ export default function MyGamesPage() {
 
       const res = await fetch('/api/games');
       const data = await res.json();
+
+      
+
   
-      const myGames = data.filter((game: Game) => game.createdBy === userId);
+      const myGames = data.filter((game: Game) => {
+        return game.createdBy?.toString?.() === userId;
+      });
+
       setGames(myGames);
     } catch (error) {
       console.error('エラー:', error);
@@ -114,13 +121,12 @@ export default function MyGamesPage() {
       if (dateRange !== 'all' && !isWithinRange(game.createdAt, dateRange)) return false;
       if (searchKeyword && !(
         game.title.includes(searchKeyword) ||
-        game.desc.includes(searchKeyword) ||
-        game.items.some((item) => item.name.includes(searchKeyword))
+        game.desc.includes(searchKeyword) 
       )) return false;
       return true;
     })
     .sort((a, b) => {
-      if (sortOption === 'popular') return b.items.length - a.items.length;
+      if (sortOption === 'popular') return (b.thumbnails?.length ?? 0) - (a.thumbnails?.length ?? 0);
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
@@ -165,7 +171,6 @@ export default function MyGamesPage() {
                       id={game._id}
                       title={game.title}
                       desc={game.desc}
-                      items={game.items}
                       thumbnailItems={game.thumbnails}
                       adminButtons={
                         <div style={{ marginTop: 8, display: 'flex', gap: 4 }}>
@@ -191,7 +196,6 @@ export default function MyGamesPage() {
                   id={game._id}
                   title={game.title}
                   desc={game.desc}
-                  items={game.items}
                   thumbnailItems={game.thumbnails}
                   adminButtons={
                     <div style={{ marginTop: 8, display: 'flex', gap: 4 }}>

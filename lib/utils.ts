@@ -18,10 +18,13 @@ export function convertToThumbnail(url: string): string {
     }
   }
 
+  // S3/CloudFront URL
+  if (/^https?:\/\//.test(url)) {
+    return url;
+  }
+
   return '/no-image.png';
 }
-
-
 
 export function getStorageWithExpire(key: string) {
   const stored = localStorage.getItem(key);
@@ -41,4 +44,22 @@ export function getStorageWithExpire(key: string) {
     localStorage.removeItem(key);
     return null;
   }
-};
+}
+
+// ✅ getThumbnailUrl
+export function getThumbnailUrl(item: { type: string; url: string }): string {
+  if (!item || !item.url || !item.type) return '/placeholder-thumbnail.png';
+
+  if (item.type === 'youtube') {
+    const match = item.url.match(/embed\/([^?&"'>]+)/);
+    const videoId = match ? match[1] : '';
+    return videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : '/placeholder-thumbnail.png';
+  }
+
+  if (item.type === 'video' || item.type === 'gif' || item.type === 'image') {
+    // Cloudinary 기반 썸네일 최적화
+    return item.url.replace('/upload/', '/upload/w_300,h_400,c_fill,f_auto,q_auto/');
+  }
+
+  return item.url;
+}

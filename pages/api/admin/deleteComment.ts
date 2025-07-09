@@ -2,8 +2,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { requireAdmin } from '@/utils/adminAuth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (requireAdmin(req, res)) return;
   if (req.method !== 'POST') {
     return res.status(405).json({ message: '허용되지 않는 메서드입니다.' });
   }

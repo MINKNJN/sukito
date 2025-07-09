@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { v2 as cloudinary } from 'cloudinary';
+import { requireAdmin } from '@/utils/adminAuth';
 
 // Cloudinary 설정
 cloudinary.config({
@@ -12,6 +13,7 @@ cloudinary.config({
 });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (requireAdmin(req, res)) return;
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }

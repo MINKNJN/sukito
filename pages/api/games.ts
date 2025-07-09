@@ -32,8 +32,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!game) return res.status(404).json({ message: 'ゲームが見つかりません。' });
         return res.status(200).json(game);
       }
-      const games = await collection.find({}).sort({ createdAt: -1 }).toArray();
+      const games = await collection.find(
+        {},
+        {
+          projection: {
+            title: 1,
+            desc: 1,
+            thumbnails: 1,
+            createdAt: 1,
+            createdBy: 1,
+          },
+        }
+      )
+      .sort({ createdAt: -1 })
+      .limit(24)
+      .toArray();
+
       return res.status(200).json(games);
+
     }
 
     if (req.method === 'POST') {

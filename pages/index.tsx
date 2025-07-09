@@ -6,7 +6,7 @@ import GameCard from '@/components/GameCard';
 import { getStorageWithExpire } from '@/lib/utils';
 import AlertModal from '@/components/AlertModal';
 import UploadModal from '@/components/UploadModal';
-
+import GoogleAd from '@/components/GoogleAd';
 
 
 type GameItem = {
@@ -20,7 +20,6 @@ type Game = {
   title: string;
   desc: string;
   createdAt: string;
-  items: GameItem[];
   thumbnails?: GameItem[];
 };
 
@@ -81,7 +80,7 @@ export default function IndexPage() {
           setShowResumeModal(true);
         }
       } catch (err) {
-        console.error('エラー:', err);
+        console.error('Error:', err);
       }
     }
   }, []);
@@ -122,22 +121,17 @@ export default function IndexPage() {
   const filteredGames = games
     .filter((game) => {
       if (dateRange !== 'all' && !isWithinRange(game.createdAt, dateRange)) return false;
-      if (typeFilter === 'image' && !game.items.some((item) => item.type === 'image' || item.type === 'gif')) return false;
-      if (typeFilter === 'video' && !game.items.some((item) => item.type === 'video' || item.type === 'youtube')) return false;
+      if (typeFilter !== 'all') return true;
       if (searchKeyword && !(
         game.title.includes(searchKeyword) ||
-        game.desc.includes(searchKeyword) ||
-        game.items.some((item) => item.name.includes(searchKeyword))
+        game.desc.includes(searchKeyword) 
       )) return false;
       return true;
     })
     .sort((a, b) => {
-      if (sortOption === 'popular') return b.items.length - a.items.length;
+      if (sortOption === 'popular') return (b.thumbnails?.length ?? 0) - (a.thumbnails?.length ?? 0);
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-
-
-
 
   return (
     <>
@@ -154,7 +148,6 @@ export default function IndexPage() {
         <meta name="twitter:image" content="https://sukito.net/og-image.jpg" />
       </Head>
       <Header />
-
       
       {showAlert && (
         <AlertModal
@@ -163,7 +156,7 @@ export default function IndexPage() {
         />
       )}
 
-      <UploadModal visible={isLoading} message="ローディング中です…" />
+      <UploadModal visible={isLoading} message="Loading..." />
 
       {showResumeModal && resumeData && (
         <div style={modalOverlayStyle}>
@@ -224,7 +217,7 @@ export default function IndexPage() {
               fontWeight: 'bold',
               color: '#333',
             }}>
-              {resumeData.gameTitle || '無し'}
+              {resumeData.gameTitle || 'None'}
             </h3>
 
             <h4 style={{
@@ -233,12 +226,12 @@ export default function IndexPage() {
               marginBottom: 20,
               padding: '0 10px',
             }}>
-              {resumeData.gameDesc || '無し'}
+              {resumeData.gameDesc || 'None'}
             </h4>
 
             <div style={{ marginTop: 20, display: 'flex', gap: 10 }}>
               <button style={resumeButtonStyle} onClick={handleResumeClick}>続きから</button>
-              <button style={deleteButtonStyle} onClick={handleDeleteResume}>削除する	</button>
+              <button style={deleteButtonStyle} onClick={handleDeleteResume}>削除</button>
               <button style={closeButtonStyle} onClick={handleDismissModal}>閉じる</button>
             </div>
           </div>
@@ -265,7 +258,9 @@ export default function IndexPage() {
 
 
       <div style={{ width: '100%', height: 100, border: '2px dashed #ccc', margin: '20px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        好きトーナメント
+        
+        <GoogleAd />
+
       </div>
 
       <div style={{ padding: 24 }}>
@@ -302,11 +297,13 @@ export default function IndexPage() {
               return (
                 <>
                   <div key={game._id} className="col-6 col-md-3 col-xl-2" style={{ padding: '2px' }}>
-                    <GameCard id={game._id} title={game.title} desc={game.desc} items={game.items} thumbnailItems={game.thumbnails} />
+                    <GameCard id={game._id} title={game.title} desc={game.desc} thumbnailItems={game.thumbnails} />
                   </div>
                   <div className="col-12 col-md-6 col-xl-4" style={{ padding: '2px' }}>
                     <div style={{ height: '95%', border: '2px dashed #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      好きトーナメント
+                      
+                      <GoogleAd />
+                        
                     </div>
                   </div>
                 </>
@@ -314,7 +311,7 @@ export default function IndexPage() {
             }
             return (
               <div key={game._id} className="col-6 col-md-3 col-xl-2" style={{ padding: '2px' }}>
-                <GameCard id={game._id} title={game.title} desc={game.desc} items={game.items} thumbnailItems={game.thumbnails} />
+                <GameCard id={game._id} title={game.title} desc={game.desc} thumbnailItems={game.thumbnails} />
               </div>
             );
           })}
@@ -363,7 +360,6 @@ export default function IndexPage() {
           &copy; 2025 スキト All rights reserved.
         </div>
       </footer>
-
 
     </>
   );

@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import UploadModal from '@/components/UploadModal';
 import imageCompression from 'browser-image-compression';
 import { convertToThumbnail } from '@/lib/utils';
+import fs from 'fs';
 
 
 const visibilityOptions = ['public', 'private', 'password'] as const;
@@ -43,6 +44,9 @@ export default function MakePage() {
   const [itemsHistory, setItemsHistory] = useState<any[]>([]);
 
   const [selectedThumbnails, setSelectedThumbnails] = useState<number[]>([]);
+
+  const [uploadProgress, setUploadProgress] = useState<number>(0); 
+  const [uploadMessage, setUploadMessage] = useState<string>('アップロード中...');
 
 
   useEffect(() => {
@@ -258,57 +262,71 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 
   const handleSubmit = async () => {
     if (selectedThumbnails.length < 2){
-    const confirmUseDefault = confirm(
-      '代表画像が2つ選択されていません。\n最初の2つを代表画像として設定してもよろしいですか？'
-    );
+      const confirmUseDefault = confirm(
+        '代表画像が2つ選択されていません。\n最初の2つを代表画像として設定してもよろしいですか？'
+      );
 
-    if (confirmUseDefault) {
-      const defaultIndexes =
-        activeTab === 'video'
-          ? [0, 1].filter(i => i < videoRows.length)
-          : [0, 1].filter(i => i < fileNames.length);
+      if (confirmUseDefault) {
+        const defaultIndexes =
+          activeTab === 'video'
+            ? [0, 1].filter(i => i < videoRows.length)
+            : [0, 1].filter(i => i < fileNames.length);
 
-      const newSelection = [...selectedThumbnails];
-      for (const idx of defaultIndexes) {
-        if (!newSelection.includes(idx) && newSelection.length < 2) {
-          newSelection.push(idx);
+        const newSelection = [...selectedThumbnails];
+        for (const idx of defaultIndexes) {
+          if (!newSelection.includes(idx) && newSelection.length < 2) {
+            newSelection.push(idx);
+          }
         }
-      }
-      setSelectedThumbnails(newSelection);
+        setSelectedThumbnails(newSelection);
 
-      return; 
-    } else {
-      return;
+        return; 
+      } else {
+        return;
+      }
     }
-  }
-    
+      
     setIsUploading(true); 
 
-    let items: { name: string; url: string; type: 'image' | 'gif' | 'video' | 'youtube' }[] = [];
+    setUploadMessage('アップロードを開始します...');
+    setUploadProgress(0);
+
+    let items: { name: string; url: string; type: 'image' | 'gif' | 'video' | 'youtube'; thumbUrl?: string }[] = [];
     let newUploadedUrls: string[] = [];
+    let newGifUploaded: { mp4Url: string; thumbUrl: string }[] = [];
   
     try {
       if (activeTab === 'image') {
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
+
+          setUploadMessage(`画像をアップロード中 (${i + 1}/${files.length})`);
+          setUploadProgress(Math.round((i / files.length) * 100));
+
           const compressedFile = await imageCompression(file, {
             maxSizeMB: 2,
             maxWidthOrHeight: 1024,
             useWebWorker: true,
           });
-      
+
           const formData = new FormData();
           formData.append('file', compressedFile);
-          formData.append('upload_preset', 'sukito_preset');
-      
-          const res = await fetch('https://api.cloudinary.com/v1_1/dpow8xm10/image/upload', {
+          formData.append('title', title);
+
+          const res = await fetch('/api/upload', {
             method: 'POST',
             body: formData,
           });
+
           const data = await res.json();
-          newUploadedUrls.push(data.secure_url);
+          if (!res.ok || !data.results || !data.results[0]?.url) {
+            alert(data.message || '画像のアップロードに失敗しました。もう一度お試しください。');
+            continue;
+          }
+
+          newUploadedUrls.push(data.results[0].url);
         }
-      
+
         const allUrls = [...uploadedUrls, ...newUploadedUrls];
 
         items = fileNames.map((name, i) => ({
@@ -317,52 +335,50 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           type: 'image',
         }));
       }
-      
+
       if (activeTab === 'gif') {
-        for (const file of files) {
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+
+          setUploadMessage(`GIFをアップロード中 (${i + 1}/${files.length})`);
+          setUploadProgress(Math.round((i / files.length) * 100));
+
           const formData = new FormData();
-          formData.append('file', file); 
-      
-          try {
-            const res = await fetch('/api/upload-gif', {
-              method: 'POST',
-              body: formData,
-            });
-      
-            if (!res.ok) {
-              const errorText = await res.text();
-              console.error('❌ GIF :', errorText);
-              alert('GIF エラー');
-              continue;
-            }
-      
-            const data = await res.json();
-      
-            if (!data.secure_url) {
-              console.warn('⚠️ secure_url :', data);
-              alert('URL エラー');
-              continue;
-            }
-      
-            newUploadedUrls.push(data.secure_url);
-          } catch (error) {
-            console.error('❌ server:', error);
-            alert('server エラー');
+          formData.append('file', file); // gif or webp
+          formData.append('title', title);
+
+          const res = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+          });
+
+          const data = await res.json();
+          if (!res.ok || !data.results || !data.results[0]?.mp4Url || !data.results[0]?.thumbUrl) {
+            alert(data.message || 'GIFまたはWEBPのアップロードに失敗しました。もう一度お試しください。');
             continue;
           }
+
+          // 플레이용(mp4)과 썸네일용(jpg) URL을 각각 저장
+          newGifUploaded.push({ mp4Url: data.results[0].mp4Url, thumbUrl: data.results[0].thumbUrl });
         }
-      
-        const allUrls = [...uploadedUrls, ...newUploadedUrls];
-      
+
+        const allGifUrls = [...(uploadedUrls as any[]), ...newGifUploaded];
+
         items = fileNames.map((name, i) => ({
           name,
-          url: allUrls[i],
-          type: 'video', 
+          url: allGifUrls[i].mp4Url, // 플레이용(mp4)
+          thumbUrl: allGifUrls[i].thumbUrl, // 썸네일용(jpg)
+          type: 'video', // 변환되었으므로 mp4
         }));
       }
+
       
 
       if (activeTab === 'video') {
+
+        setUploadMessage('YouTubeリンクを確認中...');
+        setUploadProgress(30);
+
         const invalidRows: VideoRow[] = [];
 
         for (const row of videoRows) {
@@ -403,7 +419,12 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 
       const thumbnailItems = selectedThumbnails.map(i => ({
         name: activeTab === 'video' ? videoRows[i]?.name : fileNames[i],
-        url: activeTab === 'video' ? items[i]?.url : allUrls[i],
+        url:
+          activeTab === 'video'
+            ? items[i]?.url
+            : activeTab === 'gif'
+              ? items[i]?.thumbUrl 
+              : items[i]?.url,
         type: activeTab === 'video' ? 'youtube' : activeTab,
       }));
   
@@ -419,6 +440,9 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         createdBy: userId,
         [isEditMode ? 'updatedAt' : 'createdAt']: new Date().toISOString(),
       };
+
+      setUploadMessage('ゲームを保存中...');
+      setUploadProgress(90);
   
       const res = await fetch(isEditMode ? `/api/games?id=${id}` : '/api/games', {
         method: isEditMode ? 'PATCH' : 'POST',
@@ -428,16 +452,21 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   
       const result = await res.json();
       if (res.ok) {
-        alert(isEditMode ? '編集完了!' : '登録完了!');
+        setUploadMessage('完了しました！');
+        setUploadProgress(100);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        alert(isEditMode ? '編集が完了しました。' : '登録が完了しました。');
         router.push('/');
       } else {
-        alert(result.message || 'リクエスト失敗');
+        alert(result.message || '保存に失敗しました。もう一度お試しください。');
       }
     } catch (err) {
       console.error('リクエスト失敗:', err);
       alert('ネットワークエラー');
     } finally {
       setIsUploading(false);
+      setUploadProgress(0);
+      setUploadMessage('');
     }
   };
 
@@ -447,7 +476,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       <div style={{ padding: 24 }}>
         <h1>{isEditMode ? 'トーナメント編集' : 'トーナメン作る'}</h1>
 
-        <UploadModal visible={isUploading} />
+        <UploadModal visible={isUploading} progress={uploadProgress} message={uploadMessage} />
 
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="タイトル" style={{ width: '100%', marginBottom: 8 }} />
         <textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="説明" style={{ width: '100%', marginBottom: 8 }} />
@@ -502,7 +531,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             <div style={{ marginBottom: 8 }}>
               <button type="button" onClick={() => fileInputRef.current?.click()} style={{ padding: '6px 12px', backgroundColor: '#0070f3', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}>ファイル 選択</button>
               <span style={{ marginLeft: 12 }}>{fileNames.length} ファイル</span>
-              <input type="file" ref={fileInputRef} multiple accept={activeTab === 'image' ? '.jpg,.jpeg,.png' : '.gif'} onChange={handleFileChange} style={{ display: 'none' }} />
+              <input type="file" ref={fileInputRef} multiple accept={activeTab === 'image' ? '.jpg,.jpeg,.png' : '.gif,.webp'} onChange={handleFileChange} style={{ display: 'none' }} />
             </div>
             {fileNames.map((name, i) => {
               const isNew = i >= uploadedUrls.length;

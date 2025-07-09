@@ -24,12 +24,11 @@ interface GameCardProps {
   id: string;
   title: string;
   desc: string;
-  items: GameItem[];
   thumbnailItems?: GameItem[];
   adminButtons?: React.ReactNode;
 }
 
-export default function GameCard({ id, title, desc, items,thumbnailItems, adminButtons }: GameCardProps) {
+export default function GameCard({ id, title, desc, thumbnailItems, adminButtons }: GameCardProps) {
   const [windowWidth, setWindowWidth] = useState(1200);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [validThumb, setValidThumb] = useState<boolean[]>([]);
@@ -42,7 +41,7 @@ export default function GameCard({ id, title, desc, items,thumbnailItems, adminB
   }, []);
 
   useEffect(() => {
-    const targets = (thumbnailItems?.length ? thumbnailItems : items.slice(0, 2)).slice(0, 2);
+    const targets = (thumbnailItems ?? []).slice(0, 2);
     const checks = targets.map((item) => {
       if (item.type === 'youtube') {
         const match = item.url.match(/\/embed\/([a-zA-Z0-9_-]{11})/);
@@ -59,7 +58,7 @@ export default function GameCard({ id, title, desc, items,thumbnailItems, adminB
     });
 
     Promise.all(checks).then((results) => setValidThumb(results));
-  }, [thumbnailItems, items]);
+  }, [thumbnailItems]);
 
   const shareUrl = `${window.location.origin}/play/${id}`;
 
@@ -93,9 +92,10 @@ export default function GameCard({ id, title, desc, items,thumbnailItems, adminB
   };
 
   return (
-  <div style={cardWrapperStyle}>
-    <div style={previewWrapperStyle}>
-      {(thumbnailItems ?? items.slice(0, 2)).map((item, index) => {
+  <div className="game-card" style={cardWrapperStyle}>
+    <div className="game-card__thumbnails" style={previewWrapperStyle}>
+      {(thumbnailItems ?? []).slice(0, 2).map((item, index) => {
+        
         const isYoutube = item.url.includes('youtube.com/embed');
         const isGif = item.type === 'gif';
         const isImage = item.type === 'image';
@@ -110,8 +110,9 @@ export default function GameCard({ id, title, desc, items,thumbnailItems, adminB
                 : null;
 
         return (
-          <div key={item.url} style={previewItemStyle}>
+          <div key={item.url} className="game-card__thumbnail" style={previewItemStyle}>
             <div
+              className="game-card__thumbnail-image"
               style={{
                 ...previewImageStyle,
                 backgroundImage: `url(${validThumb[index] ? convertToThumbnail(item.url) : '/placeholder-thumbnail.png'})`,
@@ -155,18 +156,18 @@ export default function GameCard({ id, title, desc, items,thumbnailItems, adminB
                 </div>
               )}
             </div>
-            <div style={previewNameStyle}>{item.name}</div>
+            <div className="game-card__thumbnail-name" style={previewNameStyle}>{item.name}</div>
           </div>
         );
       })}
     </div>
 
       <div style={{ marginTop: 8 }}>
-        <h3 style={titleStyle}>{title}</h3>
-        <p style={descStyle}>{desc}</p>
+        <h3 className="game-card__title" style={titleStyle}>{title}</h3>
+        <p className="game-card__desc" style={descStyle}>{desc}</p>
       </div>
 
-      <div style={buttonGroupStyle}>
+      <div className="game-card__buttons" style={buttonGroupStyle}>
         <button onClick={() => window.open(`/play/${id}`, '_blank')} style={{ ...buttonStyle, ...startButtonStyle }}>スタート</button>
         <button onClick={() => location.href = `/result?id=${id}`} style={{ ...buttonStyle, ...rankButtonStyle }}>ランキング</button>
         <button onClick={handleShareToggle} style={{ ...buttonStyle, ...shareButtonStyle }}>シェア</button>
@@ -174,7 +175,7 @@ export default function GameCard({ id, title, desc, items,thumbnailItems, adminB
       </div>
 
       {isShareOpen && (
-        <div style={shareMenuStyle}>
+        <div className="game-card__share-menu" style={shareMenuStyle}>
           <button onClick={shareToTwitter} style={{ ...shareMenuButtonStyle, backgroundColor: '#1DA1F2' }}>X</button>
           <button onClick={shareToFacebook} style={{ ...shareMenuButtonStyle, backgroundColor: '#1877F2' }}>FaceBook</button>
           <button onClick={shareToLine} style={{ ...shareMenuButtonStyle, backgroundColor: '#00C300' }}>LINE</button>
@@ -248,7 +249,7 @@ const titleStyle: React.CSSProperties = {
 
 
 const descStyle: React.CSSProperties = {
-  fontSize: '0.85rem',
+  fontSize: '0.7rem',
   color: '#555',
   margin: 0,
   display: '-webkit-box',
@@ -264,7 +265,7 @@ const buttonGroupStyle: React.CSSProperties = {
   justifyContent: 'center',
   alignItems: 'center',
   marginTop: 12,
-  gap: 4,
+  gap: 2,
   minWidth: 0,
   flexWrap: 'wrap',
 };
@@ -273,7 +274,7 @@ const buttonStyle: React.CSSProperties = {
   background: '#fff',
   border: '1px solid #ccc',
   borderRadius: 4,
-  padding: '4px 4px',
+  padding: '2px',
   fontSize: '0.75rem',
   cursor: 'pointer',
   fontWeight: 'bold',

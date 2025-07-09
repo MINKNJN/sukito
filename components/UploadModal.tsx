@@ -20,6 +20,7 @@ const modalBoxStyle: React.CSSProperties = {
   borderRadius: '10px',
   textAlign: 'center',
   boxShadow: '0 0 10px rgba(0,0,0,0.3)',
+  width: 300,
 };
 
 const spinnerStyle: React.CSSProperties = {
@@ -32,6 +33,15 @@ const spinnerStyle: React.CSSProperties = {
   margin: '20px auto',
 };
 
+const progressBarOuterStyle: React.CSSProperties = {
+  width: '100%',
+  height: '12px',
+  backgroundColor: '#eee',
+  borderRadius: '8px',
+  marginTop: '16px',
+  overflow: 'hidden',
+};
+
 const globalStyle = `
 @keyframes spin {
   0% { transform: rotate(0deg); }
@@ -39,15 +49,33 @@ const globalStyle = `
 }
 `;
 
-export default function UploadModal({ visible, message = "少々お待ちください。" }: { visible: boolean; message?: string }) {
+interface UploadModalProps {
+  visible: boolean;
+  message?: string;
+  progress?: number; // 0 ~ 100
+}
+
+export default function UploadModal({ visible, message = "少々お待ちください。", progress = 0 }: UploadModalProps) {
   if (!visible) return null;
+
   return (
     <>
       <style>{globalStyle}</style>
       <div style={modalOverlayStyle}>
         <div style={modalBoxStyle}>
           <div style={spinnerStyle}></div>
-          <p style={{ fontWeight: 'bold', color: '#333' }}>{message}</p>
+          <p style={{ fontWeight: 'bold', color: '#333', marginBottom: 10 }}>{message}</p>
+
+          <div style={progressBarOuterStyle}>
+            <div
+              style={{
+                height: '100%',
+                width: `${progress}%`,
+                backgroundColor: '#0070f3',
+                transition: 'width 0.3s ease',
+              }}
+            />
+          </div>
         </div>
       </div>
     </>

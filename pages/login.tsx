@@ -66,16 +66,41 @@ export default function LoginPage() {
   return (
     <>
       <Header />
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '70vh' }}>
-        <div style={{ width: '100%', maxWidth: 400, padding: 20, textAlign: 'center' }}>
-          <h1 style={{ marginBottom: 20 }}>ログイン</h1>
+      <div style={{ background: 'linear-gradient(120deg, #f8fafc 0%, #e6f7ff 100%)', minHeight: '100dvh', width: '100vw', padding: 0, margin: 0 }}>
+        <div style={{
+          width: '100%',
+          maxWidth: 400,
+          padding: '32px 24px',
+          background: '#fff',
+          borderRadius: 16,
+          boxShadow: '0 4px 24px #b2ebf222',
+          border: '1.5px solid #e0f7fa',
+          textAlign: 'center',
+          margin: '48px auto 0 auto',
+          position: 'relative',
+        }}>
+          <h1 style={{ marginBottom: 24, fontWeight: 700, fontSize: 28, letterSpacing: -1, color: '#4caf50', fontFamily: 'inherit' }}>ログイン</h1>
 
           <input
             type="email"
             placeholder="メールアドレス"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            style={inputStyle}
+            style={{
+              width: '100%',
+              padding: '12px 14px',
+              marginBottom: 16,
+              fontSize: '1rem',
+              borderRadius: 10,
+              border: '1.5px solid #b2ebf2',
+              background: '#f7fafd',
+              color: '#222',
+              boxSizing: 'border-box',
+              outline: 'none',
+              fontFamily: 'inherit',
+              boxShadow: '0 1px 4px #b2ebf222',
+              display: 'block',
+            }}
           />
 
           <input
@@ -83,16 +108,55 @@ export default function LoginPage() {
             placeholder="パスワード"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            style={inputStyle}
+            style={{
+              width: '100%',
+              padding: '12px 14px',
+              marginBottom: 16,
+              fontSize: '1rem',
+              borderRadius: 10,
+              border: '1.5px solid #b2ebf2',
+              background: '#f7fafd',
+              color: '#222',
+              boxSizing: 'border-box',
+              outline: 'none',
+              fontFamily: 'inherit',
+              boxShadow: '0 1px 4px #b2ebf222',
+              display: 'block',
+            }}
           />
 
-          {errorMessage && <p style={{ color: 'red', marginBottom: 12 }}>{errorMessage}</p>}
+          {errorMessage && <p style={{ color: '#d94350', marginBottom: 16, fontWeight: 600 }}>{errorMessage}</p>}
 
-          <button onClick={handleLogin} style={loginButtonStyle} disabled={loading}>
+          <button onClick={handleLogin} style={{
+            width: '100%',
+            padding: 14,
+            fontSize: '1.1rem',
+            backgroundColor: '#4caf50',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 10,
+            marginBottom: 12,
+            cursor: loading ? 'not-allowed' : 'pointer',
+            fontWeight: 700,
+            boxShadow: '0 2px 8px #4caf5022',
+            transition: 'background 0.2s',
+            opacity: loading ? 0.7 : 1,
+          }} disabled={loading}>
             {loading ? 'ログイン 中...' : 'ログイン'}
           </button>
-          <button onClick={handleGoToSignup} style={signupButtonStyle}>新規登録</button>
-          
+          <button onClick={handleGoToSignup} style={{
+            width: '100%',
+            padding: 14,
+            fontSize: '1.1rem',
+            backgroundColor: '#fff',
+            color: '#4caf50',
+            border: '2px solid #4caf50',
+            borderRadius: 10,
+            cursor: 'pointer',
+            fontWeight: 700,
+            boxShadow: '0 1px 4px #b2ebf222',
+            transition: 'background 0.2s, color 0.2s',
+          }}>新規登録</button>
         </div>
       </div>
     </>

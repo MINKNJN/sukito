@@ -133,6 +133,76 @@ export default function IndexPage() {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
+  // make.tsx/profile.tsx 스타일 기반 스타일 객체 정의 (반응형 포함)
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 600;
+  const pageBgStyle: React.CSSProperties = {
+    background: 'linear-gradient(120deg, #f8fafc 0%, #e6f7ff 100%)',
+    minHeight: '100vh',
+    padding: isMobile ? '16px 0' : '40px 0',
+  };
+  const cardStyle: React.CSSProperties = {
+    background: '#fff',
+    borderRadius: isMobile ? 12 : 18,
+    boxShadow: '0 4px 24px #b3e5fc44',
+    maxWidth: isMobile ? '98vw' : 1100,
+    margin: '0 auto',
+    padding: isMobile ? '18px 6vw 18px 6vw' : '36px 20px 28px 20px',
+    position: 'relative',
+    border: '1.5px solid #e0f7fa',
+  };
+  const buttonStyle: React.CSSProperties = {
+    background: '#f7fafd',
+    border: '1.5px solid #b2ebf2',
+    padding: isMobile ? '8px 10px' : '8px 18px',
+    borderRadius: 10,
+    cursor: 'pointer',
+    fontSize: isMobile ? '0.95rem' : '1rem',
+    color: '#4caf50',
+    fontWeight: 600,
+    boxShadow: '0 1px 4px #b2ebf222',
+    transition: 'all 0.2s',
+  };
+  const activeButtonStyle: React.CSSProperties = {
+    ...buttonStyle,
+    background: '#4caf50',
+    color: '#fff',
+    borderColor: '#4caf50',
+    boxShadow: '0 2px 8px #4caf5022',
+  };
+  const inputStyle: React.CSSProperties = {
+    padding: isMobile ? '8px 10px' : '8px 14px',
+    border: '1.5px solid #b2ebf2',
+    borderRadius: 8,
+    fontSize: isMobile ? '0.95rem' : '1rem',
+    background: '#f7fafd',
+    color: '#222',
+    outline: 'none',
+    minWidth: 120,
+  };
+  const moreButtonStyle: React.CSSProperties = {
+    width: '100%',
+    padding: isMobile ? '12px 0' : '14px 0',
+    fontSize: isMobile ? '1rem' : '1.1rem',
+    borderRadius: 10,
+    backgroundColor: '#4caf50',
+    color: '#fff',
+    border: 'none',
+    cursor: 'pointer',
+    fontWeight: 'bold',
+    boxShadow: '0 2px 8px #4caf5022',
+    marginTop: 0,
+  };
+  const adCardStyle: React.CSSProperties = {
+    height: 100,
+    border: '2px dashed #b2ebf2',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    background: '#f7fafd',
+    margin: isMobile ? '16px 0' : '20px 0',
+  };
+
   return (
     <>
       <Head>
@@ -257,14 +327,13 @@ export default function IndexPage() {
       </section>
 
 
-      <div style={{ width: '100%', height: 100, border: '2px dashed #ccc', margin: '20px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={adCardStyle}>
         
         <GoogleAd />
 
       </div>
 
-      <div style={{ padding: 24 }}>
-        <h1 style={{ marginBottom: 20 }}>好きトーナメント</h1>
+      <div style={{ padding: isMobile ? 12 : 24 }}>
 
         <div style={{ marginBottom: 20, display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -286,7 +355,7 @@ export default function IndexPage() {
           </div>
 
           <div style={{ display: 'flex', gap: 4 }}>
-            <input type="text" placeholder="ゲーム" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #ccc', borderRadius: 4 }} />
+            <input type="text" placeholder="ゲーム" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} style={inputStyle} />
             <button onClick={handleSearch} style={buttonStyle}>検索</button>
           </div>
         </div>
@@ -318,24 +387,12 @@ export default function IndexPage() {
         </div>
 
         {visibleCount < filteredGames.length && (
-          <div style={{ marginTop: 20 }}>
-            <button
-              onClick={() => setVisibleCount((prev) => prev + 10)}
-              style={{
-                width: '100%',
-                padding: '12px 0',
-                fontSize: '1.1rem',
-                borderRadius: 6,
-                backgroundColor: '#4caf50',
-                color: '#fff',
-                border: 'none',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-              }}
-            >
-              もっと見る
-            </button>
-          </div>
+          <button
+            onClick={() => setVisibleCount((prev) => prev + 10)}
+            style={moreButtonStyle}
+          >
+            もっと見る
+          </button>
         )}
       </div>
 
@@ -365,22 +422,6 @@ export default function IndexPage() {
   );
 }
 
-
-const buttonStyle: React.CSSProperties = {
-  background: '#f8f8f8',
-  border: '1px solid #ccc',
-  padding: '6px 12px',
-  borderRadius: 4,
-  cursor: 'pointer',
-  fontSize: '0.9rem',
-};
-
-const activeButtonStyle: React.CSSProperties = {
-  ...buttonStyle,
-  background: '#4caf50',
-  color: '#fff',
-  borderColor: '#4caf50',
-};
 
 const modalOverlayStyle: React.CSSProperties = {
   position: 'fixed',
@@ -472,4 +513,70 @@ const footerLinkStyle: React.CSSProperties = {
 const footerDividerStyle: React.CSSProperties = {
   margin: '0 4px',
   color: '#ccc',
+};
+
+const cardSectionStyle: React.CSSProperties = {
+  background: '#fff',
+  boxShadow: '0 2px 12px #b2ebf222',
+  padding: '32px 16px',
+  margin: '0 auto 32px auto',
+  border: '1.5px solid #e0f7fa',
+  borderRadius: '16px',
+  textAlign: 'center',
+  maxWidth: 700,
+};
+
+const adBoxStyle: React.CSSProperties = {
+  width: '100%',
+  maxWidth: 700,
+  margin: '0 auto 24px auto',
+  height: 100,
+  border: '2px dashed #b2ebf2',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: 12,
+  background: '#f7fafd',
+};
+
+const filterWrapStyle: React.CSSProperties = {
+  maxWidth: 700,
+  margin: '0 auto',
+  padding: '0 8px 24px 8px',
+};
+
+const filterRowStyle: React.CSSProperties = {
+  marginBottom: 20,
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 16,
+  alignItems: 'center',
+  justifyContent: 'center',
+};
+
+const cardListWrapStyle: React.CSSProperties = {
+  maxWidth: 900,
+  margin: '0 auto',
+  padding: '0 8px',
+};
+
+const adCardStyle: React.CSSProperties = {
+  height: 100,
+  border: '2px dashed #b2ebf2',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: 12,
+  background: '#f7fafd',
+  margin: '16px 0',
+};
+
+const footerStyle: React.CSSProperties = {
+  padding: '32px 16px',
+  marginTop: '48px',
+  borderTop: '1px solid #b2ebf2',
+  textAlign: 'center',
+  fontSize: '0.95rem',
+  backgroundColor: '#f7fafd',
+  color: '#666',
 };

@@ -90,16 +90,41 @@ export default function SignUpPage() {
   return (
     <>
       <Header />
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '70vh' }}>
-        <div style={{ width: '100%', maxWidth: 400, padding: 20, textAlign: 'center' }}>
-          <h1 style={{ marginBottom: 20 }}>新規登録</h1>
+      <div style={{ background: 'linear-gradient(120deg, #f8fafc 0%, #e6f7ff 100%)', minHeight: '100dvh', width: '100vw', padding: 0, margin: 0 }}>
+        <div style={{
+          width: '100%',
+          maxWidth: 400,
+          padding: '32px 24px',
+          background: '#fff',
+          borderRadius: 16,
+          boxShadow: '0 4px 24px #b2ebf222',
+          border: '1.5px solid #e0f7fa',
+          textAlign: 'center',
+          margin: '48px auto 0 auto',
+          position: 'relative',
+        }}>
+          <h1 style={{ marginBottom: 24, fontWeight: 700, fontSize: 28, letterSpacing: -1, color: '#4caf50', fontFamily: 'inherit' }}>新規登録</h1>
 
           <input
             type="text"
             placeholder="ニックネーム"
             value={nickname}
             onChange={(e) => setNickname(e.target.value)}
-            style={inputStyle}
+            style={{
+              width: '100%',
+              padding: '12px 14px',
+              marginBottom: 16,
+              fontSize: '1rem',
+              borderRadius: 10,
+              border: '1.5px solid #b2ebf2',
+              background: '#f7fafd',
+              color: '#222',
+              boxSizing: 'border-box',
+              outline: 'none',
+              fontFamily: 'inherit',
+              boxShadow: '0 1px 4px #b2ebf222',
+              display: 'block',
+            }}
           />
 
           <input
@@ -108,16 +133,44 @@ export default function SignUpPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onBlur={() => checkEmailDuplicate(email)}
-            style={inputStyle}
+            style={{
+              width: '100%',
+              padding: '12px 14px',
+              marginBottom: 16,
+              fontSize: '1rem',
+              borderRadius: 10,
+              border: '1.5px solid #b2ebf2',
+              background: '#f7fafd',
+              color: '#222',
+              boxSizing: 'border-box',
+              outline: 'none',
+              fontFamily: 'inherit',
+              boxShadow: '0 1px 4px #b2ebf222',
+              display: 'block',
+            }}
           />
-          {emailError && <div style={{ color: 'red', marginBottom: 12, fontSize: '0.8rem' }}>{emailError}</div>}
+          {emailError && <div style={{ color: '#d94350', marginBottom: 12, fontSize: '0.9rem', fontWeight: 600 }}>{emailError}</div>}
 
           <input
             type="password"
             placeholder="パスワード (6文字以上)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            style={inputStyle}
+            style={{
+              width: '100%',
+              padding: '12px 14px',
+              marginBottom: 16,
+              fontSize: '1rem',
+              borderRadius: 10,
+              border: '1.5px solid #b2ebf2',
+              background: '#f7fafd',
+              color: '#222',
+              boxSizing: 'border-box',
+              outline: 'none',
+              fontFamily: 'inherit',
+              boxShadow: '0 1px 4px #b2ebf222',
+              display: 'block',
+            }}
           />
 
           <input
@@ -125,32 +178,39 @@ export default function SignUpPage() {
             placeholder="パスワード確認"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            style={inputStyle}
+            style={{
+              width: '100%',
+              padding: '12px 14px',
+              marginBottom: 16,
+              fontSize: '1rem',
+              borderRadius: 10,
+              border: '1.5px solid #b2ebf2',
+              background: '#f7fafd',
+              color: '#222',
+              boxSizing: 'border-box',
+              outline: 'none',
+              fontFamily: 'inherit',
+              boxShadow: '0 1px 4px #b2ebf222',
+              display: 'block',
+            }}
           />
 
-          <button onClick={handleSignUp} style={signupButtonStyle}>新規登録</button>
+          <button onClick={handleSignUp} style={{
+            width: '100%',
+            padding: 14,
+            fontSize: '1.1rem',
+            backgroundColor: '#4caf50',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 10,
+            marginBottom: 8,
+            cursor: 'pointer',
+            fontWeight: 700,
+            boxShadow: '0 2px 8px #4caf5022',
+            transition: 'background 0.2s',
+          }}>新規登録</button>
         </div>
       </div>
     </>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: 12,
-  marginBottom: 12,
-  fontSize: '1rem',
-  borderRadius: 6,
-  border: '1px solid #ccc',
-};
-
-const signupButtonStyle: React.CSSProperties = {
-  width: '100%',
-  padding: 12,
-  fontSize: '1rem',
-  backgroundColor: '#00c471',
-  color: '#fff',
-  border: 'none',
-  borderRadius: 6,
-  cursor: 'pointer',
-};

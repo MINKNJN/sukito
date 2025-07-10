@@ -145,7 +145,7 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
     const pick =
       selectedRound === -1
         ? shuffled
-        : shuffled.slice(0, selectedRound); // 기존과 동일
+        : shuffled.slice(0, selectedRound); 
 
     const saveState = {
       gameId: game._id,

@@ -232,7 +232,7 @@ export default function AdminPage() {
   const handleEditComment = async (comment: Comment) => {
     const newContent = prompt('새로운 댓글 내용을 입력하세요.', comment.content);
     if (newContent === null) return; // 취소하면 종료
-  
+
     const newReportCountInput = prompt('새로운 신고 수를 입력하세요.', String(comment.reportCount || 0));
     if (newReportCountInput === null) return;
     const newReportCount = parseInt(newReportCountInput, 10);
@@ -240,12 +240,34 @@ export default function AdminPage() {
       alert('올바른 숫자를 입력하세요.');
       return;
     }
-  
+
+    // 작성일 입력 (YYYY-MM-DD HH:mm)
+    const currentDate = new Date(comment.createdAt);
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const defaultDateStr = `${currentDate.getFullYear()}-${pad(currentDate.getMonth()+1)}-${pad(currentDate.getDate())} ${pad(currentDate.getHours())}:${pad(currentDate.getMinutes())}`;
+    const newCreatedAtInput = prompt('새로운 작성일을 입력하세요. (YYYY-MM-DD HH:mm)', defaultDateStr);
+    let newCreatedAt: string | undefined = undefined;
+    if (newCreatedAtInput !== null && newCreatedAtInput.trim() !== '') {
+      // 입력값을 Date로 변환 시도
+      const dateStr = newCreatedAtInput.replace(' ', 'T');
+      const parsed = new Date(dateStr);
+      if (isNaN(parsed.getTime())) {
+        alert('날짜 형식이 올바르지 않습니다. (예: 2024-05-01 13:30)');
+        return;
+      }
+      newCreatedAt = parsed.toISOString();
+    }
+
     try {
       const res = await fetch('/api/admin/updateComment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify({ commentId: comment._id, newContent, newReportCount }),
+        body: JSON.stringify({
+          commentId: comment._id,
+          newContent,
+          newReportCount,
+          ...(newCreatedAt ? { newCreatedAt } : {})
+        }),
       });
       if (res.ok) {
         alert('댓글 수정 완료');

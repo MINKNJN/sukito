@@ -5,6 +5,7 @@ import Head from 'next/head';
 import Header from '@/components/Header';
 import { convertToThumbnail } from '@/lib/utils';
 import { getStorageWithExpire } from '@/lib/utils';
+import GoogleAd from '@/components/GoogleAd';
 
 
 export default function ResultPage() {
@@ -172,7 +173,7 @@ export default function ResultPage() {
       <Header />
       <div style={{ padding: 24 }}>
         <div style={{ width: '100%', height: 100, border: '2px dashed #ccc', margin: '20px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          광고 자리입니다
+          <GoogleAd />
         </div>
 
         {winner ? (
@@ -243,7 +244,7 @@ export default function ResultPage() {
         ) : <p>まだプレイ履歴がありません。</p>}
 
         <div style={{ width: '100%', height: 100, border: '2px dashed #ccc', margin: '20px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          광고 자리입니다
+          <GoogleAd />
         </div>
 
         <h1>💬 コメント</h1>

@@ -8,9 +8,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (requireAdmin(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ message: '허용되지 않는 메서드' });
 
-  const { commentId, newContent, newReportCount } = req.body; // ✅ newReportCount 추가
+  const { commentId, newContent, newReportCount, newCreatedAt } = req.body; 
 
-  if (!commentId || (!newContent && newReportCount === undefined)) {
+  if (!commentId || (!newContent && newReportCount === undefined && newCreatedAt === undefined)) {
     return res.status(400).json({ message: 'commentId와 수정할 데이터가 필요합니다.' });
   }
 
@@ -20,7 +20,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const updateData: any = {};
     if (newContent !== undefined) updateData.content = newContent;
-    if (newReportCount !== undefined) updateData.reportCount = newReportCount; // ✅ 추가
+    if (newReportCount !== undefined) updateData.reportCount = newReportCount; 
+    if (newCreatedAt !== undefined) updateData.createdAt = newCreatedAt; 
 
     const result = await db.collection('comments').updateOne(
       { _id: new ObjectId(commentId) },

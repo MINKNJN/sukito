@@ -1,6 +1,7 @@
 // components/GameCard.tsx
 import { useEffect, useState } from 'react';
 import { convertToThumbnail } from '@/lib/utils';
+import { useAlert } from '@/lib/alert';
 
 const YoutubeIcon = () => (
   <svg
@@ -32,6 +33,7 @@ export default function GameCard({ id, title, desc, thumbnailItems, adminButtons
   const [windowWidth, setWindowWidth] = useState(1200);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [validThumb, setValidThumb] = useState<boolean[]>([]);
+  const { showAlert } = useAlert();
 
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
@@ -85,104 +87,104 @@ export default function GameCard({ id, title, desc, thumbnailItems, adminButtons
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
-      alert('コピーOK');
+      showAlert('コピーOK', 'success');
     } catch {
-      alert('ERROR');
+      showAlert('ERROR', 'error');
     }
   };
 
   return (
-  <div className="game-card" style={cardWrapperStyle}>
-    <div className="game-card__thumbnails" style={previewWrapperStyle}>
-      {(thumbnailItems ?? []).slice(0, 2).map((item, index) => {
-        
-        const isYoutube = item.url.includes('youtube.com/embed');
-        const isGif = item.type === 'gif';
-        const isImage = item.type === 'image';
+    <div className="game-card" style={cardWrapperStyle}>
+      <div className="game-card__thumbnails" style={previewWrapperStyle}>
+        {(thumbnailItems ?? []).slice(0, 2).map((item, index) => {
+          
+          const isYoutube = item.url.includes('youtube.com/embed');
+          const isGif = item.type === 'gif';
+          const isImage = item.type === 'image';
 
-        const badge =
-          isYoutube
-            ? null
-            : isGif
-              ? { text: 'GIF', bg: '#00c49a' }
-              : isImage
-                ? { text: 'IMG', bg: '#0070f3' }
-                : null;
+          const badge =
+            isYoutube
+              ? null
+              : isGif
+                ? { text: 'GIF', bg: '#00c49a' }
+                : isImage
+                  ? { text: 'IMG', bg: '#0070f3' }
+                  : null;
 
-        return (
-          <div key={item.url} className="game-card__thumbnail" style={previewItemStyle}>
-            <div
-              className="game-card__thumbnail-image"
-              style={{
-                ...previewImageStyle,
-                backgroundImage: `url(${validThumb[index] ? convertToThumbnail(item.url) : '/placeholder-thumbnail.png'})`,
-                position: 'relative',
-              }}
-            >
-              {(index === 1 && isYoutube) && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 6,
-                    right: 6,
-                    backgroundColor: 'rgba(255, 255, 255, 0.75)',
-                    borderRadius: 4,
-                    padding: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <YoutubeIcon />
-                </div>
-              )}
+          return (
+            <div key={item.url} className="game-card__thumbnail" style={previewItemStyle}>
+              <div
+                className="game-card__thumbnail-image"
+                style={{
+                  ...previewImageStyle,
+                  backgroundImage: `url(${validThumb[index] ? convertToThumbnail(item.url) : '/placeholder-thumbnail.png'})`,
+                  position: 'relative',
+                }}
+              >
+                {(index === 1 && isYoutube) && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 6,
+                      right: 6,
+                      backgroundColor: 'rgba(255, 255, 255, 0.75)',
+                      borderRadius: 4,
+                      padding: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <YoutubeIcon />
+                  </div>
+                )}
 
-              {(index === 1 && badge) && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 6,
-                    right: 6,
-                    backgroundColor: badge.bg,
-                    color: '#fff',
-                    fontSize: '0.6rem',
-                    fontWeight: 'bold',
-                    padding: '6px 2px',
-                    borderRadius: 4,
-                    lineHeight: 1,
-                  }}
-                >
-                  {badge.text}
-                </div>
-              )}
+                {(index === 1 && badge) && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 6,
+                      right: 6,
+                      backgroundColor: badge.bg,
+                      color: '#fff',
+                      fontSize: '0.6rem',
+                      fontWeight: 'bold',
+                      padding: '6px 2px',
+                      borderRadius: 4,
+                      lineHeight: 1,
+                    }}
+                  >
+                    {badge.text}
+                  </div>
+                )}
+              </div>
+              <div className="game-card__thumbnail-name" style={previewNameStyle}>{item.name}</div>
             </div>
-            <div className="game-card__thumbnail-name" style={previewNameStyle}>{item.name}</div>
-          </div>
-        );
-      })}
-    </div>
-
-      <div style={{ marginTop: 8 }}>
-        <h3 className="game-card__title" style={titleStyle}>{title}</h3>
-        <p className="game-card__desc" style={descStyle}>{desc}</p>
+          );
+        })}
       </div>
 
-      <div className="game-card__buttons" style={buttonGroupStyle}>
-        <button onClick={() => window.open(`/play/${id}`, '_blank')} style={{ ...buttonStyle, ...startButtonStyle }}>スタート</button>
-        <button onClick={() => location.href = `/result?id=${id}`} style={{ ...buttonStyle, ...rankButtonStyle }}>ランキング</button>
-        <button onClick={handleShareToggle} style={{ ...buttonStyle, ...shareButtonStyle }}>シェア</button>
-        {adminButtons && adminButtons}
-      </div>
-
-      {isShareOpen && (
-        <div className="game-card__share-menu" style={shareMenuStyle}>
-          <button onClick={shareToTwitter} style={{ ...shareMenuButtonStyle, backgroundColor: '#1DA1F2' }}>X</button>
-          <button onClick={shareToFacebook} style={{ ...shareMenuButtonStyle, backgroundColor: '#1877F2' }}>FaceBook</button>
-          <button onClick={shareToLine} style={{ ...shareMenuButtonStyle, backgroundColor: '#00C300' }}>LINE</button>
-          <button onClick={copyLink} style={{ ...shareMenuButtonStyle, backgroundColor: '#999' }}>リンクコピー</button>
+        <div style={{ marginTop: 8 }}>
+          <h3 className="game-card__title" style={titleStyle}>{title}</h3>
+          <p className="game-card__desc" style={descStyle}>{desc}</p>
         </div>
-      )}
-    </div>
+
+        <div className="game-card__buttons" style={buttonGroupStyle}>
+          <button onClick={() => window.open(`/play/${id}`, '_blank')} style={{ ...buttonStyle, ...startButtonStyle }}>スタート</button>
+          <button onClick={() => location.href = `/result?id=${id}`} style={{ ...buttonStyle, ...rankButtonStyle }}>ランキング</button>
+          <button onClick={handleShareToggle} style={{ ...buttonStyle, ...shareButtonStyle }}>シェア</button>
+          {adminButtons && adminButtons}
+        </div>
+
+        {isShareOpen && (
+          <div className="game-card__share-menu" style={shareMenuStyle}>
+            <button onClick={shareToTwitter} style={{ ...shareMenuButtonStyle, backgroundColor: '#1DA1F2' }}>X</button>
+            <button onClick={shareToFacebook} style={{ ...shareMenuButtonStyle, backgroundColor: '#1877F2' }}>FaceBook</button>
+            <button onClick={shareToLine} style={{ ...shareMenuButtonStyle, backgroundColor: '#00C300' }}>LINE</button>
+            <button onClick={copyLink} style={{ ...shareMenuButtonStyle, backgroundColor: '#999' }}>リンクコピー</button>
+          </div>
+        )}
+      </div>
   );
 }
 

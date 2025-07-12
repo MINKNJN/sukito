@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Header from '@/components/Header';
+import { useAlert } from '@/lib/alert';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -12,11 +13,12 @@ export default function ProfilePage() {
   const [changePassword, setChangePassword] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const { showAlert } = useAlert();
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
-      alert('ログインしてください。');
+      showAlert('ログインしてください。', 'error');
       router.push('/login');
       return;
     }
@@ -29,7 +31,7 @@ export default function ProfilePage() {
       .then(res => res.json())
       .then(data => {
         if (!data.userId || !data.email || !data.nickname) {
-          alert('ログインしてください。');
+          showAlert('ログインしてください。', 'error');
           localStorage.clear();
           router.push('/login');
           return;
@@ -40,7 +42,7 @@ export default function ProfilePage() {
       })
       .catch((err) => {
         console.error('JWT エラー:', err);
-        alert('エラー');
+        showAlert('エラー', 'error');
         localStorage.clear();
         router.push('/login');
       });
@@ -49,12 +51,12 @@ export default function ProfilePage() {
 
   const handleUpdate = async () => {
     if (!currentPassword) {
-      alert('パスワードを入力してください。');
+      showAlert('パスワードを入力してください。', 'error');
       return;
     }
   
     if (changePassword && newPassword !== confirmPassword) {
-      alert('新しいパスワードが一致しません。');
+      showAlert('新しいパスワードが一致しません。', 'error');
       return;
     }
   
@@ -63,7 +65,7 @@ export default function ProfilePage() {
       : '';
   
     if (!userId) {
-      alert('ログインしてください。');
+      showAlert('ログインしてください。', 'error');
       router.push('/login');
       return;
     }
@@ -82,25 +84,23 @@ export default function ProfilePage() {
   
       const data = await res.json();
       if (res.ok) {
-        alert('情報が変更されました。');
+        showAlert('情報が変更されました。', 'success');
         localStorage.clear();
         router.push('/login');
       } else {
-        alert(data.message || 'リクエスト失敗');
+        showAlert(data.message || 'リクエスト失敗', 'error');
       }
     } catch (err) {
       console.error(err);
-      alert('ネットワークエラー');
+      showAlert('ネットワークエラー', 'error');
     }
   };
   
 
   const handleDelete = async () => {
-    if (!confirm('退会しますか？')) return;
-
     const userIdData = localStorage.getItem('userId');
     if (!userIdData) {
-      alert('ログインしてください。');
+      showAlert('ログインしてください。', 'error');
       router.push('/login');
       return;
     }
@@ -120,15 +120,15 @@ export default function ProfilePage() {
       const data = await res.json();
 
       if (res.ok) {
-        alert('退会完了');
+        showAlert('退会完了', 'success');
         localStorage.clear();
         router.push('/');
       } else {
-        alert(data.message || '退会失敗');
+        showAlert(data.message || '退会失敗', 'error');
       }
     } catch (error) {
       console.error('エラー:', error);
-      alert('エラー');
+      showAlert('エラー', 'error');
     }
   };
 

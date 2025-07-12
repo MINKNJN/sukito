@@ -4,7 +4,7 @@ import Head from 'next/head';
 import Header from '@/components/Header';
 import GameCard from '@/components/GameCard';
 import { getStorageWithExpire } from '@/lib/utils';
-import AlertModal from '@/components/AlertModal';
+import { useAlert } from '@/lib/alert';
 import UploadModal from '@/components/UploadModal';
 import GoogleAd from '@/components/GoogleAd';
 
@@ -51,16 +51,9 @@ export default function IndexPage() {
   const [resumeData, setResumeData] = useState<any>(null);
   const [showResumeModal, setShowResumeModal] = useState(false);
 
-  const [alertMessage, setAlertMessage] = useState('');
-  const [showAlert, setShowAlert] = useState(false);
-
   const [isLoading, setIsLoading] = useState(true);
+  const { showAlert } = useAlert();
   
-  const showAlertModal = (msg: string) => {
-    setAlertMessage(msg);
-    setShowAlert(true);
-  };
-
   useEffect(() => {
     setIsLoading(true); 
 
@@ -101,7 +94,7 @@ export default function IndexPage() {
     localStorage.removeItem('sukito_game');
     setResumeData(null);
     setShowResumeModal(false);
-    showAlertModal('削除しました。');
+    showAlert('削除しました。', 'success');
   };
 
   const handleDismissModal = () => {
@@ -121,7 +114,14 @@ export default function IndexPage() {
   const filteredGames = games
     .filter((game) => {
       if (dateRange !== 'all' && !isWithinRange(game.createdAt, dateRange)) return false;
-      if (typeFilter !== 'all') return true;
+      // 타입 필터링 로직 수정
+      if (typeFilter === 'image') {
+        // image, gif(webp) 타입이 하나라도 있으면 통과
+        if (!game.thumbnails || !game.thumbnails.some(item => item.type === 'image' || item.type === 'gif')) return false;
+      } else if (typeFilter === 'video') {
+        // youtube 타입이 하나라도 있으면 통과
+        if (!game.thumbnails || !game.thumbnails.some(item => item.type === 'youtube')) return false;
+      }
       if (searchKeyword && !(
         game.title.includes(searchKeyword) ||
         game.desc.includes(searchKeyword) 
@@ -218,13 +218,6 @@ export default function IndexPage() {
         <meta name="twitter:image" content="https://sukito.net/og-image.jpg" />
       </Head>
       <Header />
-      
-      {showAlert && (
-        <AlertModal
-          message={alertMessage}
-          onClose={() => setShowAlert(false)}
-        />
-      )}
 
       <UploadModal visible={isLoading} message="Loading..." />
 

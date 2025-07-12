@@ -6,6 +6,7 @@ import Header from '@/components/Header';
 import { convertToThumbnail } from '@/lib/utils';
 import { getStorageWithExpire } from '@/lib/utils';
 import GoogleAd from '@/components/GoogleAd';
+import { useAlert } from '@/lib/alert';
 
 
 export default function ResultPage() {
@@ -22,7 +23,7 @@ export default function ResultPage() {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const maxCommentLength = 200;
   const [isMyWinner, setIsMyWinner] = useState(false);
-
+  const { showAlert, showConfirm } = useAlert();
 
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/result?id=${id}` : '';
 
@@ -81,11 +82,11 @@ export default function ResultPage() {
 
   const handleCommentSubmit = async () => {
     if (!nickname.trim()) {
-      alert('ニックネームを入力してください。');
+      showAlert('ニックネームを入力してください。', 'error');
       return;
     }
     if (!commentContent.trim()) {
-      alert('コメントを入力してください。');
+      showAlert('コメントを入力してください。', 'error');
       return;
     }
 
@@ -105,44 +106,48 @@ export default function ResultPage() {
         setComments(updatedComments.comments);
         setCommentContent('');
       } else {
-        alert('コメントエラー');
+        showAlert('コメントエラー', 'error');
       }
     } catch (err) {
       console.error('エラー:', err);
-      alert('ネットワークエラー');
+      showAlert('ネットワークエラー', 'error');
     }
   };
 
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
-      alert('リンクコピー');
+      showAlert('リンクコピー', 'success');
     } catch {
-      alert('リンクコピーエラー');
+      showAlert('リンクコピーエラー', 'error');
     }
   };
 
   const handleReportComment = async (comment: { _id: string }) => {
-    if (!confirm('このコメントを通報しますか？')) return;
-
-    try {
-      const res = await fetch('/api/comments/report', {
+    showConfirm('このコメントを通報しますか？', () => {
+      fetch('/api/comments/report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ commentId: comment._id })
+      })
+      .then(res => {
+        if (res.ok) {
+          showAlert('通報が受け付けられました。', 'success');
+          return fetch(`/api/comments?id=${id}`);
+        } else {
+          showAlert('通報エラー', 'error');
+          throw new Error('通報エラー');
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        setComments(data.comments);
+      })
+      .catch(err => {
+        console.error('エラー:', err);
+        showAlert('ネットワークエラー', 'error');
       });
-
-      if (res.ok) {
-        alert('通報が受け付けられました。');
-        const updatedComments = await fetch(`/api/comments?id=${id}`).then(res => res.json());
-        setComments(updatedComments.comments);
-      } else {
-        alert('通報エラー');
-      }
-    } catch (err) {
-      console.error('エラー:', err);
-      alert('ネットワークエラー');
-    }
+    });
   };
 
   if (!id) return <div>お待ちください。</div>;
@@ -248,29 +253,30 @@ export default function ResultPage() {
         </div>
 
         <h1>💬 コメント</h1>
-        <input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="ニックネームを入力してください" maxLength={20} style={{ width: '100%', marginBottom: 8 }} />
-        <textarea value={commentContent} onChange={(e) => setCommentContent(e.target.value)} placeholder="コメントを入力してください" rows={4} maxLength={maxCommentLength} style={{ width: '100%', marginBottom: 8 }} />
-        <div style={{ textAlign: 'right', fontSize: 12, color: '#666' }}>{commentContent.length} / {maxCommentLength}</div>
-        <button onClick={handleCommentSubmit} style={{ marginTop: 8 }}>コメントする</button>
+        <div style={{ marginTop: 16 }}>
+          <textarea value={commentContent} onChange={(e) => setCommentContent(e.target.value)} placeholder="コメントを入力してください" rows={4} maxLength={maxCommentLength} style={{ width: '100%', marginBottom: 8 }} />
+          <div style={{ textAlign: 'right', fontSize: 12, color: '#666' }}>{commentContent.length} / {maxCommentLength}</div>
+          <button onClick={handleCommentSubmit} style={{ marginTop: 8 }}>コメントする</button>
 
-        <div style={{ marginTop: 24 }}>
-          {comments.length > 0 ? (
-            <ul>
-              {comments.map((c, idx) => (
-                <li key={idx} style={{ marginBottom: 10 }}>
-                  {c.reportCount >= 3 ? (
-                    <div style={{ color: '#999' }}>🚫 このコメントは通報により非表示となっています。</div>
-                  ) : (
-                    <>
-                      <strong>{c.nickname}</strong> : {c.content}<br />
-                      <span style={{ fontSize: 12, color: '#999' }}>{new Date(c.createdAt).toLocaleString()}</span>
-                      <button onClick={() => handleReportComment(c)} style={{ marginLeft: 10, fontSize: 12, color: 'red', background: 'none', border: 'none', cursor: 'pointer' }}>🚩 通報</button>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-          ) : <p>	まだコメントがありません。</p>}
+          <div style={{ marginTop: 24 }}>
+            {comments.length > 0 ? (
+              <ul>
+                {comments.map((c, idx) => (
+                  <li key={idx} style={{ marginBottom: 10 }}>
+                    {c.reportCount >= 3 ? (
+                      <div style={{ color: '#999' }}>🚫 このコメントは通報により非表示となっています。</div>
+                    ) : (
+                      <>
+                        <strong>{c.nickname}</strong> : {c.content}<br />
+                        <span style={{ fontSize: 12, color: '#999' }}>{new Date(c.createdAt).toLocaleString()}</span>
+                        <button onClick={() => handleReportComment(c)} style={{ marginLeft: 10, fontSize: 12, color: 'red', background: 'none', border: 'none', cursor: 'pointer' }}>🚩 通報</button>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : <p>	まだコメントがありません。</p>}
+          </div>
         </div>
       </div>
     </>

@@ -5,6 +5,7 @@ import GameCard from '@/components/GameCard';
 import { getStorageWithExpire } from '@/lib/utils';
 import UploadModal from '@/components/UploadModal';
 import GoogleAd from '@/components/GoogleAd';
+import { useAlert } from '@/lib/alert';
 
 type GameItem = {
   name: string;
@@ -29,9 +30,7 @@ export default function MyGamesPage() {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [visibleCount, setVisibleCount] = useState(10);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  
-
+  const { showAlert, showConfirm } = useAlert();
 
   useEffect(() => {
     fetchGames();
@@ -41,7 +40,7 @@ export default function MyGamesPage() {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        alert('ログインしてください。');
+        showAlert('ログインしてください。', 'error');
         location.href = '/login';
         return;
       }
@@ -56,7 +55,7 @@ export default function MyGamesPage() {
   
       const meData = await meRes.json();
       if (!meRes.ok || !meData.userId) {
-        alert('ログインしてください。');
+        showAlert('ログインしてください。', 'error');
         localStorage.clear();
         location.href = '/login';
         return;
@@ -86,24 +85,26 @@ export default function MyGamesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    const confirmDelete = confirm('ゲームを削除してもよろしいですか？');
-    if (!confirmDelete) return;
-    setIsDeleting(true);
-  
-    try {
-      const res = await fetch(`/api/games?id=${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        alert('削除完了!');
-        fetchGames();
-      } else {
-        alert('削除失敗');
-      }
-    } catch (err) {
-      console.error('エラー:', err);
-      alert('ネットワークエラー');
-    } finally {
-      setIsDeleting(false);
-    }
+    showConfirm('ゲームを削除してもよろしいですか？', () => {
+      setIsDeleting(true);
+      
+      fetch(`/api/games?id=${id}`, { method: 'DELETE' })
+        .then(res => {
+          if (res.ok) {
+            showAlert('削除完了!', 'success');
+            fetchGames();
+          } else {
+            showAlert('削除失敗', 'error');
+          }
+        })
+        .catch(err => {
+          console.error('エラー:', err);
+          showAlert('ネットワークエラー', 'error');
+        })
+        .finally(() => {
+          setIsDeleting(false);
+        });
+    });
   };
   
   const isWithinRange = (createdAt: string, range: 'month' | 'week' | 'day') => {
@@ -253,7 +254,6 @@ export default function MyGamesPage() {
                   </>
                 );
               }
-
               return (
                 <div key={game._id} className="col-6 col-md-3 col-xl-2" style={{ padding: '2px' }}>
                   <GameCard
@@ -263,8 +263,8 @@ export default function MyGamesPage() {
                     thumbnailItems={game.thumbnails}
                     adminButtons={
                       <div style={{ marginTop: 8, display: 'flex', gap: 4 }}>
-                        <button onClick={() => location.href = `/make?id=${game._id}`} style={{ flex: 1, backgroundColor: '#ddeeff', border: '1px solid #42a5f5', color: '#1565c0', borderRadius: 4, fontSize: '0.8rem', padding: '4px 0' }}>編集する</button>
-                        <button onClick={() => handleDelete(game._id)} style={{ flex: 1, backgroundColor: '#ffdddd', border: '1px solid #ff4d4d', color: '#cc0000', borderRadius: 4, fontSize: '0.8rem', padding: '4px 0' }}>削除する</button>
+                        <button onClick={() => location.href = `/make?id=${game._id}`} style={{ flex: 1, backgroundColor: '#ddeeff', border: '1px solid #42a5f5', color: '#1565c0', borderRadius: 4, fontSize: '0.8rem', padding: '2px' }}>編集する</button>
+                        <button onClick={() => handleDelete(game._id)} style={{ flex: 1, backgroundColor: '#ffdddd', border: '1px solid #ff4d4d', color: '#cc0000', borderRadius: 4, fontSize: '0.8rem', padding: '2px' }}>削除する</button>
                       </div>
                     }
                   />
@@ -272,8 +272,14 @@ export default function MyGamesPage() {
               );
             })}
           </div>
+
           {visibleCount < filteredGames.length && (
-            <button onClick={() => setVisibleCount((prev) => prev + 10)} style={moreButtonStyle}>もっと見る</button>
+            <button
+              onClick={() => setVisibleCount((prev) => prev + 10)}
+              style={moreButtonStyle}
+            >
+              もっと見る
+            </button>
           )}
         </div>
       </div>

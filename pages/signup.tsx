@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Header from '@/components/Header';
+import { useAlert } from '@/lib/alert';
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -11,6 +12,7 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [emailError, setEmailError] = useState('');
   const [isEmailValid, setIsEmailValid] = useState(false);
+  const { showAlert } = useAlert();
 
   const checkEmailDuplicate = async (emailToCheck: string) => {
     if (!/\S+@\S+\.\S+/.test(emailToCheck)) {
@@ -43,27 +45,27 @@ export default function SignUpPage() {
 
   const handleSignUp = async () => {
     if (!nickname.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
-      alert('すべての項目を入力してください。');
+      showAlert('すべての項目を入力してください。', 'error');
       return;
     }
 
     if (!/\S+@\S+\.\S+/.test(email)) {
-      alert('正しいメールアドレスの形式で入力してください。');
+      showAlert('正しいメールアドレスの形式で入力してください。', 'error');
       return;
     }
 
     if (!isEmailValid) {
-      alert('使用できないメールアドレスです。');
+      showAlert('使用できないメールアドレスです。', 'error');
       return;
     }
 
     if (password.length < 6) {
-      alert('パスワードは6文字以上で入力してください。');
+      showAlert('パスワードは6文字以上で入力してください。', 'error');
       return;
     }
 
     if (password !== confirmPassword) {
-      alert('パスワードが一致しません。');
+      showAlert('パスワードが一致しません。', 'error');
       return;
     }
 
@@ -75,15 +77,15 @@ export default function SignUpPage() {
       });
 
       if (res.ok) {
-        alert('登録が完了しました。');
+        showAlert('登録が完了しました。', 'success');
         router.push('/login');
       } else {
         const errorData = await res.json();
-        alert(`ERROR: ${errorData.message}`);
+        showAlert(`ERROR: ${errorData.message}`, 'error');
       }
     } catch (err) {
       console.error('ERROR', err);
-      alert('SERVER ERROR');
+      showAlert('SERVER ERROR', 'error');
     }
   };
 

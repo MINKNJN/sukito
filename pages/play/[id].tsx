@@ -233,31 +233,124 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
 
   if (!isPlaying) {
     return (
-      <div className="container">
-        <h1 className="title">{game.title}</h1>
-        <p>{game.desc}</p>
-        <div className="selector">
-          <label>ラウンドを選択してください！</label>
-          <select value={selectedRound} onChange={e => setSelectedRound(+e.target.value)}>
-            <option value={0}>-- 選択 --</option>
-            {availableRounds.map(r => (
-              <option key={r} value={r}>ベスト{r}</option>
-            ))}
-            <option value={-1}>すべての候補でトーナメントを始める</option>
-          </select>
+      <div className="round-card-bg">
+        <div className="round-card">
+          <h1 className="title">{game.title}</h1>
+          <p className="desc">{game.desc}</p>
+          <div className="selector">
+            <label>ラウンドを選択してください！</label>
+            <select value={selectedRound} onChange={e => setSelectedRound(+e.target.value)}>
+              <option value={0}>-- 選択 --</option>
+              {availableRounds.map(r => (
+                <option key={r} value={r}>ベスト{r}</option>
+              ))}
+              <option value={-1}>すべての候補でトーナメントを始める</option>
+            </select>
 
-          <p>
-            {selectedRound === -1
-              ? `全 ${game.items.length}人の候補がすべて対戦します。`
-              : `全 ${game.items.length}人の候補からランダムに ${selectedRound}人が対戦します。`}
-          </p>
+            <p>
+              {selectedRound === -1
+                ? `全 ${game.items.length}人の候補がすべて対戦します。`
+                : `全 ${game.items.length}人の候補からランダムに ${selectedRound}人が対戦します。`}
+            </p>
 
-          <button onClick={startTournament}>スタート</button>
+            <button onClick={startTournament} className="start-btn">スタート</button>
+          </div>
         </div>
         <style jsx>{`
-          .container { max-width: 600px; margin: auto; padding: 2rem; text-align: center; }
-          select { padding: 0.5rem; margin: 1rem; font-size: 1rem; }
-          button { padding: 0.75rem 1.5rem; font-size: 1rem; background: #00c471; color: white; border: none; border-radius: 6px; cursor: pointer; }
+          .round-card-bg {
+            min-height: 60vh;
+            background: linear-gradient(120deg, #f8fafc 0%, #e6f7ff 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+          }
+          .round-card {
+            background: #fff;
+            border-radius: 18px;
+            box-shadow: 0 4px 24px #b3e5fc44;
+            border: 1.5px solid #e0f7fa;
+            max-width: 600px;
+            width: 98vw;
+            margin: 32px auto;
+            padding: 32px 20px 28px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+          }
+          .title {
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: #222;
+            margin-bottom: 10px;
+          }
+          .desc {
+            color: #555;
+            font-size: 1.1rem;
+            margin-bottom: 18px;
+          }
+          .selector label {
+            font-size: 1.1rem;
+            color: #4caf50;
+            font-weight: 600;
+          }
+          select {
+            padding: 0.5rem;
+            margin: 1rem;
+            font-size: 1rem;
+            border: 1.5px solid #b2ebf2;
+            border-radius: 8px;
+            background: #f7fafd;
+            color: #222;
+            outline: none;
+            min-width: 120px;
+          }
+          .selector p {
+            color: #4caf50;
+            font-weight: 500;
+            margin: 10px 0 18px 0;
+          }
+          .start-btn {
+            padding: 0.75rem 1.5rem;
+            font-size: 1.1rem;
+            background: #00c471;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 2px 8px #4caf5022;
+            transition: background 0.2s;
+          }
+          .start-btn:hover {
+            background: #009e5c;
+          }
+          @media (max-width: 600px) {
+            .round-card {
+              max-width: 98vw;
+              padding: 14px 2vw 14px 2vw;
+              border-radius: 12px;
+            }
+            .title {
+              font-size: 1.3rem;
+            }
+            .desc {
+              font-size: 0.98rem;
+            }
+            .selector label {
+              font-size: 0.95rem;
+            }
+            select {
+              font-size: 0.95rem;
+              padding: 0.4rem;
+            }
+            .start-btn {
+              font-size: 1rem;
+              padding: 0.6rem 1.1rem;
+              border-radius: 6px;
+            }
+          }
         `}</style>
       </div>
     );

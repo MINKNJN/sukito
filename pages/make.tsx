@@ -296,25 +296,28 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   
 
   const handleSubmit = async () => {
-    if (selectedThumbnails.length < 2){
-      showConfirm(
-        '代表画像が2つ選択されていません。\n最初の2つを代表画像として設定してもよろしいですか？',
-        () => {
-          const defaultIndexes =
-            activeTab === 'video'
-              ? [0, 1].filter(i => i < videoRows.length)
-              : [0, 1].filter(i => i < fileNames.length);
-
-          const newSelection = [...selectedThumbnails];
-          for (const idx of defaultIndexes) {
-            if (!newSelection.includes(idx) && newSelection.length < 2) {
-              newSelection.push(idx);
-            }
-          }
-          setSelectedThumbnails(newSelection);
-        }
-      );
-      return; 
+    if (!title.trim()) {
+      showAlert('タイトルが空です。', 'error');
+      return;
+    }
+    if (!desc.trim()) {
+      showAlert('説明が空です。', 'error');
+      return;
+    }
+    // 업로드 자료 체크
+    if (activeTab === 'image' || activeTab === 'gif') {
+      if (fileNames.length < 2) {
+        showAlert('ファイルを2つ以上選択してください。', 'error');
+        return;
+      }
+    }
+    if (activeTab === 'video') {
+      // 유튜브 정보가 2개 이상 입력되어 있는지 체크
+      const validVideoCount = videoRows.filter(row => row.name.trim() && row.url.trim() && row.stime.trim() && row.etime.trim()).length;
+      if (validVideoCount < 2) {
+        showAlert('YouTube情報を2つ以上入力してください。', 'error');
+        return;
+      }
     }
       
     setIsUploading(true); 

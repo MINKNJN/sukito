@@ -56,13 +56,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.method === 'POST') {
       const gameData = req.body;
 
-      if (!Array.isArray(gameData.items) || gameData.items.length === 0) {
-        return res.status(400).json({ message: 'items配列が必要です。' });
-      }
-
-      const invalidItem = gameData.items.find((item: any) => !item.name || !item.url || !item.type);
-      if (invalidItem) {
-        return res.status(400).json({ message: '各itemは、name、url、typeをすべて含める必要があります。' });
+      // items가 비어 있어도 임시 생성 허용 (최종 저장은 PATCH에서 체크)
+      if (Array.isArray(gameData.items) && gameData.items.length > 0) {
+        const invalidItem = gameData.items.find((item: any) => !item.name || !item.url || !item.type);
+        if (invalidItem) {
+          return res.status(400).json({ message: '各itemは、name、url、typeをすべて含める必要があります。' });
+        }
       }
 
       if (!gameData.createdAt) {

@@ -44,8 +44,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const originalFilename = (file as any).originalFilename || 'upload.jpg';
         const mimetype = (file as any).mimetype || 'image/jpeg';
         let folder = '';
-        if (fields && fields.title) {
-          folder = String(fields.title).replace(/[^a-zA-Z0-9-_]/g, '_'); // slugify
+        if (fields && fields.folder) {
+          folder = String(fields.folder);
         }
         if (!filepath || !fs.existsSync(filepath)) {
           console.error('無効なファイルパス:', filepath);

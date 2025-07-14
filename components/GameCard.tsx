@@ -97,67 +97,113 @@ export default function GameCard({ id, title, desc, thumbnailItems, adminButtons
     <div className="game-card" style={cardWrapperStyle}>
       <div className="game-card__thumbnails" style={previewWrapperStyle}>
         {(thumbnailItems ?? []).slice(0, 2).map((item, index) => {
-          
           const isYoutube = item.url.includes('youtube.com/embed');
-          const isGif = item.type === 'gif';
+          const isVideo = item.type === 'video' || item.type === 'gif';
           const isImage = item.type === 'image';
 
           const badge =
             isYoutube
               ? null
-              : isGif
+              : item.type === 'gif'
                 ? { text: 'GIF', bg: '#00c49a' }
-                : isImage
-                  ? { text: 'IMG', bg: '#0070f3' }
-                  : null;
+                : item.type === 'video'
+                  ? { text: 'VIDEO', bg: '#0070f3' }
+                  : isImage
+                    ? { text: 'IMG', bg: '#0070f3' }
+                    : null;
 
           return (
             <div key={item.url} className="game-card__thumbnail" style={previewItemStyle}>
-              <div
-                className="game-card__thumbnail-image"
-                style={{
-                  ...previewImageStyle,
-                  backgroundImage: `url(${validThumb[index] ? convertToThumbnail(item.url) : '/placeholder-thumbnail.png'})`,
-                  position: 'relative',
-                }}
-              >
-                {(index === 1 && isYoutube) && (
-                  <div
+              {isVideo ? (
+                <div
+                  className="game-card__thumbnail-image"
+                  style={{
+                    ...previewImageStyle,
+                    position: 'relative',
+                    background: '#000',
+                    padding: 0,
+                  }}
+                >
+                  <video
+                    src={item.url}
                     style={{
-                      position: 'absolute',
-                      top: 6,
-                      right: 6,
-                      backgroundColor: 'rgba(255, 255, 255, 0.75)',
-                      borderRadius: 4,
-                      padding: 2,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      aspectRatio: '1/1.7',
+                      borderRadius: 6,
+                      display: 'block',
                     }}
-                  >
-                    <YoutubeIcon />
-                  </div>
-                )}
-
-                {(index === 1 && badge) && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 6,
-                      right: 6,
-                      backgroundColor: badge.bg,
-                      color: '#fff',
-                      fontSize: '0.6rem',
-                      fontWeight: 'bold',
-                      padding: '6px 2px',
-                      borderRadius: 4,
-                      lineHeight: 1,
-                    }}
-                  >
-                    {badge.text}
-                  </div>
-                )}
-              </div>
+                    muted
+                    autoPlay
+                    loop
+                    playsInline
+                  />
+                  {(index === 1 && badge) && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 6,
+                        right: 6,
+                        backgroundColor: badge.bg,
+                        color: '#fff',
+                        fontSize: '0.6rem',
+                        fontWeight: 'bold',
+                        padding: '6px 2px',
+                        borderRadius: 4,
+                        lineHeight: 1,
+                      }}
+                    >
+                      {badge.text}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div
+                  className="game-card__thumbnail-image"
+                  style={{
+                    ...previewImageStyle,
+                    backgroundImage: `url(${validThumb[index] ? convertToThumbnail(item.url) : '/placeholder-thumbnail.png'})`,
+                    position: 'relative',
+                  }}
+                >
+                  {(index === 1 && isYoutube) && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 6,
+                        right: 6,
+                        backgroundColor: 'rgba(255, 255, 255, 0.75)',
+                        borderRadius: 4,
+                        padding: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <YoutubeIcon />
+                    </div>
+                  )}
+                  {(index === 1 && badge) && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 6,
+                        right: 6,
+                        backgroundColor: badge.bg,
+                        color: '#fff',
+                        fontSize: '0.6rem',
+                        fontWeight: 'bold',
+                        padding: '6px 2px',
+                        borderRadius: 4,
+                        lineHeight: 1,
+                      }}
+                    >
+                      {badge.text}
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="game-card__thumbnail-name" style={previewNameStyle}>{item.name}</div>
             </div>
           );

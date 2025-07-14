@@ -2,15 +2,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import { v2 as cloudinary } from 'cloudinary';
+import { deleteFromS3 } from '@/lib/aws-s3';
 import { requireAdmin } from '@/utils/adminAuth';
-
-// Cloudinary 설정
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
-  api_key: process.env.CLOUDINARY_API_KEY!,
-  api_secret: process.env.CLOUDINARY_API_SECRET!,
-});
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (requireAdmin(req, res)) return;
@@ -36,19 +29,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ message: '게임을 찾을 수 없습니다.' });
     }
 
-    // ✅ itemsHistory 기반 Cloudinary 이미지 삭제
+    // ✅ itemsHistory 기반 S3 파일 삭제
     const itemsToDelete = Array.isArray(game.itemsHistory) ? game.itemsHistory : game.items || [];
 
     const deletionPromises = itemsToDelete
-      .filter((item: any) => item.type === 'image' || item.type === 'gif')
-      .map((item: any) => {
-        const match = item.url.match(/\/upload\/v\d+\/([^/.]+)\.(jpg|jpeg|png|gif)/i);
-        if (match && match[1]) {
-          const publicId = match[1];
-          return cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
-        }
-      })
-      .filter(Boolean); // undefined 제거
+      .filter((item: any) => item.url && (item.type === 'image' || item.type === 'gif' || item.type === 'video'))
+      .map((item: any) => deleteFromS3(item.url));
 
     await Promise.all(deletionPromises);
 

@@ -70,7 +70,7 @@ const Media: React.FC<{ url: string; type: GameItem['type'] }> = ({ url, type })
     case 'gif':
       return (
         <div style={wrapperStyle}>
-          <img src={url} alt="gif" style={mediaStyle} />
+          <video src={url} autoPlay muted loop playsInline style={mediaStyle} />
         </div>
       );
     case 'image':

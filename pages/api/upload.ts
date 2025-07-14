@@ -77,14 +77,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
           const mp4Path = filepath.replace(/\.(gif|webp)$/i, '.mp4');
           await convertGifToMp4(filepath, mp4Path);
-          const thumbPath = filepath.replace(/\.(gif|webp)$/i, '_thumb.jpg');
-          await extractFirstFrame(filepath, thumbPath);
           const mp4Url = await uploadToS3(mp4Path, originalFilename.replace(/\.(gif|webp)$/i, '.mp4'), 'video/mp4', folder);
-          const thumbUrl = await uploadToS3(thumbPath, originalFilename.replace(/\.(gif|webp)$/i, '_thumb.jpg'), 'image/jpeg', folder);
           fs.unlinkSync(filepath);
           fs.unlinkSync(mp4Path);
-          fs.unlinkSync(thumbPath);
-          uploadedResults.push({ mp4Url, thumbUrl });
+          uploadedResults.push({ mp4Url });
         } else {
           const url = await uploadToS3(filepath, originalFilename, mimetype, folder);
           uploadedResults.push({ url });

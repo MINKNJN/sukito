@@ -44,3 +44,22 @@ export async function uploadToS3(filepath: string, originalFilename: string, mim
     throw error;
   }
 }
+
+// S3에서 파일 삭제
+export async function deleteFromS3(urlOrKey: string): Promise<void> {
+  try {
+    // url이 들어오면 key만 추출
+    let key = urlOrKey;
+    if (key.startsWith('http')) {
+      const url = new URL(key);
+      key = url.pathname.replace(/^\//, '');
+    }
+    await s3.deleteObject({
+      Bucket: process.env.S3_BUCKET!,
+      Key: key,
+    }).promise();
+  } catch (error) {
+    console.error('🚨 S3 delete error:', error);
+    // 실패해도 throw하지 않음 (이미 삭제된 경우 등)
+  }
+}

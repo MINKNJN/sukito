@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { v2 as cloudinary } from 'cloudinary';
+import { deleteFromS3 } from '@/lib/aws-s3';
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
@@ -92,6 +93,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const existingHistory = Array.isArray(game.itemsHistory) ? game.itemsHistory : [];
       const newItems = Array.isArray(updateData.items) ? updateData.items : [];
 
+      // S3 삭제: 기존에 있었으나, 수정 후에는 없는 파일 삭제
+      const oldUrls = new Set(existingHistory.map((item: any) => item.url));
+      const newUrls = new Set(newItems.map((item: any) => item.url));
+      const deletedUrls = [...oldUrls].filter(url => !newUrls.has(url));
+      await Promise.all(deletedUrls.map(url => deleteFromS3(url)));
+
       const updatedHistory = mergeItemsHistory(existingHistory, newItems);
       updateData.itemsHistory = updatedHistory;
 
@@ -107,49 +114,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ message: '修正完了' });
     }
 
-    
     if (req.method === 'DELETE') {
       if (!id || typeof id !== 'string') {
         return res.status(400).json({ message: '削除するIDが必要です。' });
       }
 
-      
       const game = await collection.findOne({ _id: new ObjectId(id) });
       if (!game) {
         return res.status(404).json({ message: '削除するゲームが必要です。' });
       }
 
-      
       const history = Array.isArray(game.itemsHistory) ? game.itemsHistory : game.items || [];
+      await Promise.all(history.map((item: any) => item.url && deleteFromS3(item.url)));
 
-      for (const item of history) {
-        const isImage = item.type === 'image' || item.type === 'gif';
-        const isVideo = item.type === 'video';
-
-        if (isImage || isVideo) {
-          const match = item.url.match(/\/upload\/v\d+\/([^/.]+)\.(jpg|jpeg|png|gif|mp4)/i);
-          if (match && match[1]) {
-            const publicId = match[1];
-            try {
-              await cloudinary.uploader.destroy(publicId, {
-                resource_type: isVideo ? 'video' : 'image', 
-              });
-            } catch (err) {
-              console.warn('Cloudinary 削除 エラー:', publicId, err);
-            }
-          }
-        }
-      }
-
-
-      
       const result = await collection.deleteOne({ _id: new ObjectId(id) });
 
       if (result.deletedCount === 0) {
         return res.status(404).json({ message: '削除するゲームが必要です。' });
       }
 
-      
       const commentsCollection = db.collection('comments');
       await commentsCollection.deleteMany({ gameId: id });
 

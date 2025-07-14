@@ -32,7 +32,7 @@ function getPreviewImage(item: { type: string; url: string }) {
     return videoId ? `https://img.youtube.com/vi/${videoId}/0.jpg` : '';
   }
 
-  if (item.type === 'video') {
+  if (item.type === 'video' || item.type === 'gif') {
     return '/default-video-thumbnail.jpg'; 
   }
 
@@ -116,11 +116,11 @@ export default function IndexPage() {
       if (dateRange !== 'all' && !isWithinRange(game.createdAt, dateRange)) return false;
       // 타입 필터링 로직 수정
       if (typeFilter === 'image') {
-        // image, gif(webp) 타입이 하나라도 있으면 통과
-        if (!game.thumbnails || !game.thumbnails.some(item => item.type === 'image' || item.type === 'gif')) return false;
+        // image 타입만 통과
+        if (!game.thumbnails || !game.thumbnails.some(item => item.type === 'image')) return false;
       } else if (typeFilter === 'video') {
-        // youtube 타입이 하나라도 있으면 통과
-        if (!game.thumbnails || !game.thumbnails.some(item => item.type === 'youtube')) return false;
+        // video, gif, youtube 타입이 하나라도 있으면 통과
+        if (!game.thumbnails || !game.thumbnails.some(item => item.type === 'video' || item.type === 'gif' || item.type === 'youtube')) return false;
       }
       if (searchKeyword && !(
         game.title.includes(searchKeyword) ||

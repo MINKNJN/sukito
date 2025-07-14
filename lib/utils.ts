@@ -57,8 +57,8 @@ export function getThumbnailUrl(item: { type: string; url: string }): string {
   }
 
   if (item.type === 'video' || item.type === 'gif' || item.type === 'image') {
-    // Cloudinary 기반 썸네일 최적화
-    return item.url.replace('/upload/', '/upload/w_300,h_400,c_fill,f_auto,q_auto/');
+    // 모든 타입에서 url을 그대로 사용 (GIF도 mp4 URL 사용)
+    return item.url;
   }
 
   return item.url;

@@ -164,7 +164,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 
     const isValidType =
       (activeTab === 'image' && /\.(jpe?g|png)$/i.test(file.name)) ||
-      (activeTab === 'gif' && /\.(gif)$/i.test(file.name)); 
+      (activeTab === 'gif' && /\.(gif|webp)$/i.test(file.name)); 
 
     if (!isValidSize) {
       showAlert(`「${file.name}」は${MAX_FILE_SIZE_MB}MB以下のみアップロード可能です。`, 'error');
@@ -180,7 +180,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 
   setFileNames(prev => [
     ...prev,
-    ...filtered.map(f => f.name.replace(/\.(jpe?g|png|gif)$/i, '')), 
+    ...filtered.map(f => f.name.replace(/\.(jpe?g|png|gif|webp)$/i, '')), 
   ]);
 };
 
@@ -324,7 +324,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 
     let items: { name: string; url: string; type: 'image' | 'gif' | 'video' | 'youtube'; thumbUrl?: string }[] = [];
     let newUploadedUrls: string[] = [];
-    let newGifUploaded: { mp4Url: string; thumbUrl: string }[] = [];
+    let newGifUploaded: { mp4Url: string }[] = [];
   
     try {
       if (activeTab === 'image') {
@@ -384,29 +384,25 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           });
 
           const data = await res.json();
-          if (!res.ok || !data.results || !data.results[0]?.mp4Url || !data.results[0]?.thumbUrl) {
+          if (!res.ok || !data.results || !data.results[0]?.mp4Url) {
             showAlert(data.message || 'GIFまたはWEBPのアップロードに失敗しました。もう一度お試しください。', 'error');
             continue;
           }
 
-          // 플레이용(mp4)과 썸네일용(jpg) URL을 각각 저장
-          newGifUploaded.push({ mp4Url: data.results[0].mp4Url, thumbUrl: data.results[0].thumbUrl });
+          // mp4 URL만 저장 (썸네일도 동일한 mp4 사용)
+          newGifUploaded.push({ mp4Url: data.results[0].mp4Url });
         }
 
-        const allGifUrls = [...(uploadedUrls as any[]), ...newGifUploaded];
+        const allGifUrls = [...uploadedUrls, ...newGifUploaded.map(item => item.mp4Url)];
 
         items = fileNames.map((name, i) => ({
           name,
-          url: allGifUrls[i].mp4Url, // 플레이용(mp4)
-          thumbUrl: allGifUrls[i].thumbUrl, // 썸네일용(jpg)
+          url: allGifUrls[i], // mp4 파일
           type: 'video', // 변환되었으므로 mp4
         }));
       }
 
-      
-
       if (activeTab === 'video') {
-
         setUploadMessage('YouTubeリンクを確認中...');
         setUploadProgress(30);
 
@@ -439,8 +435,6 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         });
       }
 
-
-  
       const finalItemsHistory = mergeItemsHistory(itemsHistory, items);
 
       const allUrls =
@@ -450,12 +444,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 
       const thumbnailItems = selectedThumbnails.map(i => ({
         name: activeTab === 'video' ? videoRows[i]?.name : fileNames[i],
-        url:
-          activeTab === 'video'
-            ? items[i]?.url
-            : activeTab === 'gif'
-              ? items[i]?.thumbUrl 
-              : items[i]?.url,
+        url: items[i]?.url,
         type: activeTab === 'video' ? 'youtube' : activeTab,
       }));
   

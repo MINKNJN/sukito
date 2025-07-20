@@ -448,11 +448,18 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // 3. 게임 정보 최종 업데이트
     setUploadMessage('ゲームを保存中...');
     setUploadProgress(90);
-    const thumbnailItems = selectedThumbnails.map(i => ({
-      name: activeTab === 'video' ? videoRows[i]?.name : fileNames[i],
-      url: items[i]?.url,
-      type: activeTab === 'video' ? 'youtube' : activeTab,
-    }));
+    // 실제 자료가 없는 경우(placeholder) thumbnails에 넣지 않음
+    const thumbnailItems = selectedThumbnails
+      .map(i => {
+        const item = items[i];
+        if (!item || !item.url) return null;
+        return {
+          name: item.name,
+          url: item.url,
+          type: item.type,
+        };
+      })
+      .filter(Boolean);
     const payload = {
       title,
       desc,

@@ -96,7 +96,23 @@ export default function GameCard({ id, title, desc, thumbnailItems, adminButtons
   return (
     <div className="game-card" style={cardWrapperStyle}>
       <div className="game-card__thumbnails" style={previewWrapperStyle}>
-        {(thumbnailItems ?? []).slice(0, 2).map((item, index) => {
+        {((thumbnailItems && thumbnailItems.length > 0) ? thumbnailItems.slice(0, 2) : [null, null]).map((item, index) => {
+          if (!item) {
+            // 기본 썸네일
+            return (
+              <div key={index} className="game-card__thumbnail" style={previewItemStyle}>
+                <div
+                  className="game-card__thumbnail-image"
+                  style={{
+                    ...previewImageStyle,
+                    backgroundImage: `url(/placeholder-thumbnail.png)`,
+                    position: 'relative',
+                  }}
+                />
+                <div className="game-card__thumbnail-name" style={previewNameStyle}></div>
+              </div>
+            );
+          }
           const isYoutube = item.url.includes('youtube.com/embed');
           const isVideo = item.type === 'video' || item.type === 'gif';
           const isImage = item.type === 'image';

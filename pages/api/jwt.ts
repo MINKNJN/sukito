@@ -20,7 +20,12 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     };
 
     return res.status(200).json({
-      userId: decoded.userId,
+      user: {
+        userId: decoded.userId,
+        userName: decoded.nickname,
+        email: decoded.email,
+      },
+      userId: decoded.userId, // 하위 호환
       email: decoded.email,
       nickname: decoded.nickname,
     });

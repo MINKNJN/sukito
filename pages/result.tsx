@@ -73,6 +73,28 @@ export default function ResultPage() {
       if (localNickname) {
         setNickname(localNickname);
       }
+
+    // 로그인 체크 및 닉네임 기본값 설정
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (token) {
+      fetch('/api/jwt', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          // userName(닉네임)이 있으면 사용, 없으면 'ゲスト'
+          if (data?.user?.userName && data.user.userName.trim()) {
+            setNickname(data.user.userName);
+          } else if (data?.userName && data.userName.trim()) {
+            setNickname(data.userName);
+          } else {
+            setNickname('ゲスト');
+          }
+        })
+        .catch(() => setNickname('ゲスト'));
+    } else {
+      setNickname('ゲスト');
+    }
   }, [id]);
 
   const winnerRank = ranking.findIndex(r => r.name === winner?.name && r.url === winner?.url) + 1;
@@ -186,7 +208,23 @@ export default function ResultPage() {
             <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>
               🏆 {isMyWinner ? 'あなたが選んだ最終優勝者' : '多くの人が選んだ優勝者'}
             </h1>
-            <img src={convertToThumbnail(winner.url)} alt={winner.name} style={{maxWidth: '300px', objectFit: 'cover', borderRadius: '12px', border: '4px solid gold', boxShadow: '0 0 12px rgba(255,215,0,0.6)', margin: '0 auto', display: 'block' }} />
+            {/* GIF(WEBP, mp4) 타입이면 video, 아니면 img */}
+            {winner.url.endsWith('.mp4') ? (
+              <video
+                src={winner.url}
+                autoPlay
+                loop
+                muted
+                playsInline
+                style={{maxWidth: '300px', objectFit: 'cover', borderRadius: '12px', border: '4px solid gold', boxShadow: '0 0 12px rgba(255,215,0,0.6)', margin: '0 auto', display: 'block'}}
+              />
+            ) : (
+              <img
+                src={convertToThumbnail(winner.url)}
+                alt={winner.name}
+                style={{maxWidth: '300px', objectFit: 'cover', borderRadius: '12px', border: '4px solid gold', boxShadow: '0 0 12px rgba(255,215,0,0.6)', margin: '0 auto', display: 'block'}}
+              />
+            )}
             <h2 style={{ fontSize: '2rem', marginTop: '1rem' }}>{winner.name}</h2>
             {winnerRank > 0 && <p style={{ fontSize: '1rem', color: '#ccc' }}>総合ランキング {winnerRank}位</p>}
             <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
@@ -230,7 +268,28 @@ export default function ResultPage() {
                 return (
                   <tr key={idx} style={{ borderBottom: '1px solid #ddd' }}>
                     <td style={{ padding: 8 }}>{rankIndex + 1}</td>
-                    <td style={{ padding: 8 }}><img src={convertToThumbnail(item.url)} alt={item.name} width={100} height={150} style={{ objectFit: 'cover' }} /></td>
+                    <td style={{ padding: 8 }}>
+                      {item.url.endsWith('.mp4') ? (
+                        <video
+                          src={item.url}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          width={100}
+                          height={150}
+                          style={{ objectFit: 'cover', borderRadius: 8, background: '#000' }}
+                        />
+                      ) : (
+                        <img
+                          src={convertToThumbnail(item.url)}
+                          alt={item.name}
+                          width={100}
+                          height={150}
+                          style={{ objectFit: 'cover', borderRadius: 8, background: '#000' }}
+                        />
+                      )}
+                    </td>
                     <td style={{ padding: 8 }}>{item.name}</td>
                     <td style={{ padding: 8 }}>{item.count}回</td>
                     <td style={{ padding: 8 }}>
@@ -254,6 +313,14 @@ export default function ResultPage() {
 
         <h1>💬 コメント</h1>
         <div style={{ marginTop: 16 }}>
+          <input
+            type="text"
+            value={nickname}
+            onChange={e => setNickname(e.target.value)}
+            placeholder="ニックネーム"
+            maxLength={20}
+            style={{ width: '100%', marginBottom: 8, padding: 8, fontSize: 16, borderRadius: 6, border: '1px solid #ccc' }}
+          />
           <textarea value={commentContent} onChange={(e) => setCommentContent(e.target.value)} placeholder="コメントを入力してください" rows={4} maxLength={maxCommentLength} style={{ width: '100%', marginBottom: 8 }} />
           <div style={{ textAlign: 'right', fontSize: 12, color: '#666' }}>{commentContent.length} / {maxCommentLength}</div>
           <button onClick={handleCommentSubmit} style={{ marginTop: 8 }}>コメントする</button>

@@ -49,7 +49,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .limit(24)
       .toArray();
 
-      return res.status(200).json(games);
+      // 각 게임별 playCount(플레이 수) 집계
+      const client2 = await clientPromise;
+      const db2 = client2.db('sukito');
+      const recordsCollection = db2.collection('records');
+      const gamesWithPlayCount = await Promise.all(games.map(async (game) => {
+        const playCount = await recordsCollection.countDocuments({ gameId: game._id.toString() });
+        return { ...game, playCount };
+      }));
+
+      return res.status(200).json(gamesWithPlayCount);
 
     }
 

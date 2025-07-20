@@ -109,6 +109,7 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
   const [matchIndex, setMatchIndex] = useState(0);
   const [selectedSide, setSelectedSide] = useState<'left' | 'right' | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const stored = localStorage.getItem('sukito_game');
@@ -127,7 +128,10 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
         localStorage.removeItem('sukito_game');
       }
     }
+    setLoading(false);
   }, [game]);
+
+  if (loading) return null;
 
   if (!game) return <div style={{ padding: 40 }}>存在しないトーナメントです。</div>;
 

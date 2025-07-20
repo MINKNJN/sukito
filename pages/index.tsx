@@ -21,6 +21,7 @@ type Game = {
   desc: string;
   createdAt: string;
   thumbnails?: GameItem[];
+  playCount?: number;
 };
 
 function getPreviewImage(item: { type: string; url: string }) {
@@ -129,7 +130,7 @@ export default function IndexPage() {
       return true;
     })
     .sort((a, b) => {
-      if (sortOption === 'popular') return (b.thumbnails?.length ?? 0) - (a.thumbnails?.length ?? 0);
+      if (sortOption === 'popular') return (b.playCount ?? 0) - (a.playCount ?? 0);
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 

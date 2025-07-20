@@ -20,17 +20,15 @@ type Game = {
   createdAt: string;
   createdBy: string;
   thumbnails?: GameItem[];
+  playCount?: number;
+  commentCount?: number;
 };
 
 export default function MyGamesPage() {
   const [games, setGames] = useState<Game[]>([]);
-  const [sortOption, setSortOption] = useState<'popular' | 'latest'>('popular');
-  const [dateRange, setDateRange] = useState<'all' | 'month' | 'week' | 'day'>('all');
-  const [searchInput, setSearchInput] = useState('');
-  const [searchKeyword, setSearchKeyword] = useState('');
-  const [visibleCount, setVisibleCount] = useState(10);
   const [isDeleting, setIsDeleting] = useState(false);
   const { showAlert, showConfirm } = useAlert();
+  const [stats, setStats] = useState({ totalGames: 0, totalPlays: 0, totalComments: 0 });
 
   useEffect(() => {
     fetchGames();
@@ -44,7 +42,6 @@ export default function MyGamesPage() {
         location.href = '/login';
         return;
       }
-  
       const meRes = await fetch('/api/jwt', {
         method: 'POST',
         headers: {
@@ -52,7 +49,6 @@ export default function MyGamesPage() {
           Authorization: `Bearer ${token}`,
         },
       });
-  
       const meData = await meRes.json();
       if (!meRes.ok || !meData.userId) {
         showAlert('ログインしてください。', 'error');
@@ -60,34 +56,33 @@ export default function MyGamesPage() {
         location.href = '/login';
         return;
       }
-  
       const userId = meData.userId;
-
+      // 내 게임만 가져오기 + playCount, commentCount 포함
       const res = await fetch('/api/games');
       const data = await res.json();
-
-      
-
-  
-      const myGames = data.filter((game: Game) => {
-        return game.createdBy?.toString?.() === userId;
+      const myGames = data.filter((game: Game) => game.createdBy?.toString?.() === userId);
+      // 각 게임별 댓글 수 집계
+      const commentCounts = await Promise.all(myGames.map(async (game: Game) => {
+        const res = await fetch(`/api/comments?id=${game._id}`);
+        const data = await res.json();
+        return (data?.comments?.length ?? 0);
+      }));
+      const gamesWithCounts = myGames.map((game: Game, i: number) => ({ ...game, commentCount: commentCounts[i] }));
+      setGames(gamesWithCounts);
+      // 통계 계산
+      setStats({
+        totalGames: gamesWithCounts.length,
+        totalPlays: gamesWithCounts.reduce((sum: number, g: Game) => sum + (g.playCount ?? 0), 0),
+        totalComments: commentCounts.reduce((sum: number, c: number) => sum + c, 0),
       });
-
-      setGames(myGames);
     } catch (error) {
       console.error('エラー:', error);
     }
   };
 
-  const handleSearch = () => {
-    setSearchKeyword(searchInput);
-    setVisibleCount(10);
-  };
-
   const handleDelete = async (id: string) => {
     showConfirm('ゲームを削除してもよろしいですか？', () => {
       setIsDeleting(true);
-      
       fetch(`/api/games?id=${id}`, { method: 'DELETE' })
         .then(res => {
           if (res.ok) {
@@ -107,31 +102,7 @@ export default function MyGamesPage() {
     });
   };
   
-  const isWithinRange = (createdAt: string, range: 'month' | 'week' | 'day') => {
-    const now = new Date();
-    const created = new Date(createdAt);
-    const diff = now.getTime() - created.getTime();
-    if (range === 'month') return diff <= 30 * 24 * 60 * 60 * 1000;
-    if (range === 'week') return diff <= 7 * 24 * 60 * 60 * 1000;
-    if (range === 'day') return diff <= 24 * 60 * 60 * 1000;
-    return true;
-  };
-
-  const filteredGames = games
-    .filter((game) => {
-      if (dateRange !== 'all' && !isWithinRange(game.createdAt, dateRange)) return false;
-      if (searchKeyword && !(
-        game.title.includes(searchKeyword) ||
-        game.desc.includes(searchKeyword) 
-      )) return false;
-      return true;
-    })
-    .sort((a, b) => {
-      if (sortOption === 'popular') return (b.thumbnails?.length ?? 0) - (a.thumbnails?.length ?? 0);
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
-
-  // make.tsx/profile.tsx 스타일 기반 스타일 객체 정의 (반응형 포함)
+  // 스타일
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 600;
   const pageBgStyle: React.CSSProperties = {
     background: 'linear-gradient(120deg, #f8fafc 0%, #e6f7ff 100%)',
@@ -148,57 +119,129 @@ export default function MyGamesPage() {
     position: 'relative',
     border: '1.5px solid #e0f7fa',
   };
-  const buttonStyle: React.CSSProperties = {
-    background: '#f7fafd',
-    border: '1.5px solid #b2ebf2',
-    padding: isMobile ? '8px 10px' : '8px 18px',
-    borderRadius: 10,
-    cursor: 'pointer',
-    fontSize: isMobile ? '0.95rem' : '1rem',
-    color: '#4caf50',
-    fontWeight: 600,
-    boxShadow: '0 1px 4px #b2ebf222',
-    transition: 'all 0.2s',
-  };
-  const activeButtonStyle: React.CSSProperties = {
-    ...buttonStyle,
-    background: '#4caf50',
-    color: '#fff',
-    borderColor: '#4caf50',
-    boxShadow: '0 2px 8px #4caf5022',
-  };
-  const inputStyle: React.CSSProperties = {
-    padding: isMobile ? '8px 10px' : '8px 14px',
-    border: '1.5px solid #b2ebf2',
-    borderRadius: 8,
-    fontSize: isMobile ? '0.95rem' : '1rem',
-    background: '#f7fafd',
-    color: '#222',
-    outline: 'none',
-    minWidth: 120,
-  };
-  const moreButtonStyle: React.CSSProperties = {
-    width: '100%',
-    padding: isMobile ? '12px 0' : '14px 0',
-    fontSize: isMobile ? '1rem' : '1.1rem',
-    borderRadius: 10,
-    backgroundColor: '#4caf50',
-    color: '#fff',
-    border: 'none',
-    cursor: 'pointer',
-    fontWeight: 'bold',
-    boxShadow: '0 2px 8px #4caf5022',
-    marginTop: 0,
-  };
-  const adCardStyle: React.CSSProperties = {
-    height: 100,
-    border: '2px dashed #b2ebf2',
+  const statBoxStyle: React.CSSProperties = {
     display: 'flex',
-    alignItems: 'center',
+    gap: 24,
     justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+    background: '#e0f7fa',
     borderRadius: 12,
-    background: '#f7fafd',
-    margin: isMobile ? '16px 0' : '20px 0',
+    padding: '18px 0',
+    fontWeight: 700,
+    fontSize: isMobile ? 15 : 18,
+    color: '#00796b',
+  };
+  const statItemStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    minWidth: 80,
+  };
+  const statNumStyle: React.CSSProperties = {
+    fontSize: isMobile ? 20 : 28,
+    fontWeight: 900,
+    color: '#009688',
+    marginBottom: 2,
+  };
+  const gameListStyle: React.CSSProperties = {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 16,
+    justifyContent: 'flex-start',
+  };
+  const myCardStyle: React.CSSProperties = {
+    flex: '1 1 320px',
+    minWidth: 280,
+    maxWidth: 400,
+    background: '#fff',
+    borderRadius: 12,
+    boxShadow: '0 2px 8px #b2ebf222',
+    border: '1.5px solid #e0f7fa',
+    padding: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center', 
+    height: 260,
+    overflow: 'hidden',
+  };
+  const thumbRowStyle: React.CSSProperties = {
+    display: 'flex',
+    gap: 6,
+    width: '90%',
+    height: '45%',
+    marginBottom: 0,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    overflow: 'hidden',
+  };
+  const titleRowStyle: React.CSSProperties = {
+    width: '100%',
+    textAlign: 'center',
+    fontWeight: 700,
+    fontSize: isMobile ? 14 : 18,
+    color: '#4caf50',
+    margin: '12px 0 0 0',
+    padding: 0,
+    lineHeight: 1.2,
+  };
+  const badgeRowStyle: React.CSSProperties = {
+    width: '100%',
+    display: 'flex',
+    justifyContent: 'center',
+    gap: 8,
+    margin: '12px 0 0 0',
+  };
+  const buttonGroupStyle: React.CSSProperties = {
+    display: 'flex',
+    gap: 8,
+    margin: '12px 0 0 0',
+    width: '90%',
+  };
+  const buttonStyle: React.CSSProperties = {
+    flex: 1,
+    minWidth: 0,
+    padding: '8px 0',
+    fontSize: '1rem',
+    borderRadius: 8,
+    border: 'none',
+    fontWeight: 700,
+    cursor: 'pointer',
+    margin: 0,
+    background: '#e0f7fa',
+    color: '#00796b',
+    transition: 'background 0.2s',
+  };
+  const editButtonStyle: React.CSSProperties = {
+    background: '#fffde7',
+    color: '#fbc02d',
+    border: '1.5px solid #fbc02d',
+  };
+  const deleteButtonStyle: React.CSSProperties = {
+    background: '#ffebee',
+    color: '#d32f2f',
+    border: '1.5px solid #d32f2f',
+  };
+  const resultButtonStyle: React.CSSProperties = {
+    background: '#e3f2fd',
+    color: '#1976d2',
+    border: '1.5px solid #1976d2',
+  };
+  const playButtonStyle: React.CSSProperties = {
+    background: '#e8f5e9',
+    color: '#43a047',
+    border: '1.5px solid #43a047',
+  };
+  const badgeStyle: React.CSSProperties = {
+    display: 'inline-block',
+    background: '#e0f2f1',
+    color: '#00796b',
+    borderRadius: 8,
+    padding: '2px 10px',
+    fontSize: 13,
+    fontWeight: 700,
+    marginBottom: 4,
   };
 
   return (
@@ -208,79 +251,66 @@ export default function MyGamesPage() {
       <div style={pageBgStyle}>
         <div style={cardStyle}>
           <h1 style={{ marginBottom: 20, fontWeight: 900, fontSize: isMobile ? 22 : 32, letterSpacing: -1, color: '#4caf50', textAlign: 'center' }}>マイトーナメント</h1>
-          <div style={{ marginBottom: 20, display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => { setSortOption('popular'); setVisibleCount(10); }} style={sortOption === 'popular' ? activeButtonStyle : buttonStyle}>人気順</button>
-              <button onClick={() => { setSortOption('latest'); setVisibleCount(10); }} style={sortOption === 'latest' ? activeButtonStyle : buttonStyle}>新着順</button>
-            </div>
-
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => { setDateRange('all'); setVisibleCount(10); }} style={dateRange === 'all' ? activeButtonStyle : buttonStyle}>すべて</button>
-              <button onClick={() => { setDateRange('month'); setVisibleCount(10); }} style={dateRange === 'month' ? activeButtonStyle : buttonStyle}>月</button>
-              <button onClick={() => { setDateRange('week'); setVisibleCount(10); }} style={dateRange === 'week' ? activeButtonStyle : buttonStyle}>週</button>
-              <button onClick={() => { setDateRange('day'); setVisibleCount(10); }} style={dateRange === 'day' ? activeButtonStyle : buttonStyle}>日</button>
-            </div>
-
-            <div style={{ display: 'flex', gap: 4 }}>
-              <input type="text" placeholder="ゲーム" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} style={inputStyle} />
-              <button onClick={handleSearch} style={buttonStyle}>検索</button>
-            </div>
+          <div style={statBoxStyle}>
+            <div style={statItemStyle}><span style={statNumStyle}>{stats.totalGames}</span>ゲーム</div>
+            <div style={statItemStyle}><span style={statNumStyle}>{stats.totalPlays}</span>プレイ</div>
+            <div style={statItemStyle}><span style={statNumStyle}>{stats.totalComments}</span>コメント</div>
           </div>
-          <div className="row equal">
-            {filteredGames.slice(0, visibleCount).map((game, index) => {
-              if (index % 10 === 7) {
-                return (
-                  <>
-                    <div key={game._id} className="col-6 col-md-3 col-xl-2" style={{ padding: '2px' }}>
-                      <GameCard
-                        id={game._id}
-                        title={game.title}
-                        desc={game.desc}
-                        thumbnailItems={game.thumbnails}
-                        adminButtons={
-                          <div style={{ marginTop: 8, display: 'flex', gap: 4 }}>
-                            <button onClick={() => location.href = `/make?id=${game._id}`} style={{ flex: 1, backgroundColor: '#ddeeff', border: '1px solid #42a5f5', color: '#1565c0', borderRadius: 4, fontSize: '0.8rem', padding: '2px' }}>編集する</button>
-                            <button onClick={() => handleDelete(game._id)} style={{ flex: 1, backgroundColor: '#ffdddd', border: '1px solid #ff4d4d', color: '#cc0000', borderRadius: 4, fontSize: '0.8rem', padding: '2px' }}>削除する</button>
-                          </div>
-                        }
+          <div style={gameListStyle}>
+            {games.map((game) => (
+              <div key={game._id} style={myCardStyle}>
+                {/* 썸네일 2개 크게 */}
+                <div style={thumbRowStyle}>
+                  {(game.thumbnails && game.thumbnails.length > 0 ? game.thumbnails.slice(0, 2) : [null, null]).map((item, idx) => (
+                    item ? (
+                      item.type === 'image' ? (
+                        <img
+                          key={item.url}
+                          src={item.url}
+                          alt={item.name}
+                          style={{ width: '50%', height: '100%', objectFit: 'cover', borderRadius: 8, background: '#eee', border: '1px solid #e0f7fa' }}
+                        />
+                      ) : item.type === 'gif' || item.type === 'video' ? (
+                        <video
+                          key={item.url}
+                          src={item.url}
+                          style={{ width: '50%', height: '100%', objectFit: 'cover', borderRadius: 8, background: '#eee', border: '1px solid #e0f7fa' }}
+                          muted
+                          autoPlay
+                          loop
+                          playsInline
+                        />
+                      ) : item.type === 'youtube' ? (
+                        <img
+                          key={item.url}
+                          src={`https://img.youtube.com/vi/${(item.url.match(/embed\/([a-zA-Z0-9_-]{11})/) || [])[1] || ''}/mqdefault.jpg`}
+                          alt={item.name}
+                          style={{ width: '50%', height: '100%', objectFit: 'cover', borderRadius: 8, background: '#eee', border: '1px solid #e0f7fa' }}
+                        />
+                      ) : null
+                    ) : (
+                      <div
+                        key={idx}
+                        style={{ width: '50%', height: '100%', borderRadius: 8, background: '#f0f0f0', border: '1px solid #e0f7fa' }}
                       />
-                    </div>
-
-                    <div className="col-12 col-md-6 col-xl-4" style={{ padding: '2px' }}>
-                      <div style={{ height: '95%', border: '2px dashed #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <GoogleAd />
-                      </div>
-                    </div>
-                  </>
-                );
-              }
-              return (
-                <div key={game._id} className="col-6 col-md-3 col-xl-2" style={{ padding: '2px' }}>
-                  <GameCard
-                    id={game._id}
-                    title={game.title}
-                    desc={game.desc}
-                    thumbnailItems={game.thumbnails}
-                    adminButtons={
-                      <div style={{ marginTop: 8, display: 'flex', gap: 4 }}>
-                        <button onClick={() => location.href = `/make?id=${game._id}`} style={{ flex: 1, backgroundColor: '#ddeeff', border: '1px solid #42a5f5', color: '#1565c0', borderRadius: 4, fontSize: '0.8rem', padding: '2px' }}>編集する</button>
-                        <button onClick={() => handleDelete(game._id)} style={{ flex: 1, backgroundColor: '#ffdddd', border: '1px solid #ff4d4d', color: '#cc0000', borderRadius: 4, fontSize: '0.8rem', padding: '2px' }}>削除する</button>
-                      </div>
-                    }
-                  />
+                    )
+                  ))}
                 </div>
-              );
-            })}
+                {/* 타이틀, 뱃지 중앙 정렬 */}
+                <div style={titleRowStyle}>{game.title}</div>
+                <div style={badgeRowStyle}>
+                  <span style={badgeStyle}>プレイ {game.playCount ?? 0}</span>
+                  <span style={badgeStyle}>コメント {game.commentCount ?? 0}</span>
+                </div>
+                <div style={buttonGroupStyle}>
+                  <button style={{ ...buttonStyle, ...playButtonStyle }} onClick={() => location.href = `/play/${game._id}`}>プレイ</button>
+                  <button style={{ ...buttonStyle, ...editButtonStyle }} onClick={() => location.href = `/make?id=${game._id}`}>編集</button>
+                  <button style={{ ...buttonStyle, ...deleteButtonStyle }} onClick={() => handleDelete(game._id)}>削除</button>
+                  <button style={{ ...buttonStyle, ...resultButtonStyle }} onClick={() => location.href = `/result?id=${game._id}`}>結果</button>
+                </div>
+              </div>
+            ))}
           </div>
-
-          {visibleCount < filteredGames.length && (
-            <button
-              onClick={() => setVisibleCount((prev) => prev + 10)}
-              style={moreButtonStyle}
-            >
-              もっと見る
-            </button>
-          )}
         </div>
       </div>
     </>

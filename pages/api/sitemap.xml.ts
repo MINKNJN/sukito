@@ -18,10 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const client = await clientPromise;
     const db = client.db('sukito');
     const games = await db.collection('games').find({}, { projection: { _id: 1 } }).toArray();
-    dynamicUrls = games.flatMap((game: any) => [
-      `play/${game._id.toString()}`,
-      `result/${game._id.toString()}`,
-    ]);
+    dynamicUrls = games.map((game: any) => `result/${game._id.toString()}`);
   } catch (e) {
     // DB 오류 시 동적 URL은 생략
     dynamicUrls = [];

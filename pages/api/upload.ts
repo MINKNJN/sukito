@@ -51,11 +51,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           console.error('無効なファイルパス:', filepath);
           return res.status(400).json({ message: 'ファイルが見つかりません。' });
         }
-        // 용량 제한 (10MB)
-        const MAX_FILE_SIZE = 10 * 1024 * 1024;
+        // 용량 제한 (15MB)
+        const MAX_FILE_SIZE = 15 * 1024 * 1024;
         if (fs.statSync(filepath).size > MAX_FILE_SIZE) {
           fs.unlinkSync(filepath);
-          return res.status(400).json({ message: 'ファイルサイズが10MBを超えています。' });
+          return res.status(400).json({ message: 'ファイルサイズが15MBを超えています。' });
         }
         // 이미지/움짤 파일 실제 디코딩 검사 (sharp)
         if (/\.(jpg|jpeg|png|gif|webp)$/i.test(originalFilename)) {

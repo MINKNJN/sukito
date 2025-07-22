@@ -153,11 +153,11 @@ export default function MakePage() {
     setVideoRows([{ url: '', name: '', stime: '', etime: '', valid: true }]);
   };
 
-  const MAX_FILE_SIZE_MB = 10;
+  const MAX_FILE_SIZE_MB = 15;
 
 const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   const selectedFiles = Array.from(e.target.files || []);
-  const MAX_FILE_SIZE_MB = 10;
+  const MAX_FILE_SIZE_MB = 15;
 
   const filtered = selectedFiles.filter(file => {
     const isValidSize = file.size <= MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -414,7 +414,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       items = fileNames.map((name, i) => ({
         name,
         url: allGifUrls[i],
-        type: 'video',
+        type: 'gif',
       }));
     }
     if (activeTab === 'video') {

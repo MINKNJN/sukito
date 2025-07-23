@@ -61,7 +61,7 @@ export default function MyGamesPage() {
       const res = await fetch('/api/games');
       const data = await res.json();
       const myGames = data.filter((game: Game) => game.createdBy?.toString?.() === userId);
-      // 각 게임별 댓글 수 집계
+      // 各ゲーム別コメント数集計
       const commentCounts = await Promise.all(myGames.map(async (game: Game) => {
         const res = await fetch(`/api/comments?id=${game._id}`);
         const data = await res.json();

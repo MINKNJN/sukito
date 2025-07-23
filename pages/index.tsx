@@ -115,7 +115,7 @@ export default function IndexPage() {
   const filteredGames = games
     .filter((game) => {
       if (dateRange !== 'all' && !isWithinRange(game.createdAt, dateRange)) return false;
-      // 타입 필터링 로직 수정
+      // タイプフィルタリングロジック修正
       if (typeFilter === 'image') {
         // image 타입만 통과
         if (!game.thumbnails || !game.thumbnails.some(item => item.type === 'image')) return false;

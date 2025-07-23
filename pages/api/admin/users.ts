@@ -48,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(200).json({ users: usersList, total });
   } catch (err) {
-    console.error('회원 목록 조회 오류:', err);
+          console.error('会員リスト照会エラー:', err);
     return res.status(500).json({ message: '서버 오류' });
   }
 }

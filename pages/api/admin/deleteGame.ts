@@ -22,14 +22,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const db = client.db('sukito');
     const collection = db.collection('games');
 
-    // 🔍 삭제 대상 게임 가져오기
+    // 🔍 削除対象ゲーム取得
     const game = await collection.findOne({ _id: new ObjectId(gameId) });
 
     if (!game) {
       return res.status(404).json({ message: '게임을 찾을 수 없습니다.' });
     }
 
-    // ✅ itemsHistory 기반 S3 파일 삭제
+    // ✅ itemsHistoryベースS3ファイル削除
     const itemsToDelete = Array.isArray(game.itemsHistory) ? game.itemsHistory : game.items || [];
 
     const deletionPromises = itemsToDelete
@@ -38,20 +38,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await Promise.all(deletionPromises);
 
-    // 📦 MongoDB에서 게임 문서 삭제
+    // 📦 MongoDBからゲーム文書削除
     const result = await collection.deleteOne({ _id: new ObjectId(gameId) });
 
     if (result.deletedCount === 0) {
       return res.status(404).json({ message: '게임을 찾을 수 없습니다.' });
     }
 
-    // 🧹 관련 댓글도 함께 삭제 (🔧 추가된 부분)
+    // 🧹 関連コメントも一緒に削除 (🔧 追加された部分)
     const commentsCollection = db.collection('comments');
     await commentsCollection.deleteMany({ gameId });
 
-    return res.status(200).json({ message: '게임 삭제 성공' });
+          return res.status(200).json({ message: 'ゲーム削除成功' });
   } catch (error) {
-    console.error('게임 삭제 실패:', error);
+          console.error('ゲーム削除失敗:', error);
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 }

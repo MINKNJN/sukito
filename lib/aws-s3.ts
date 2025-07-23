@@ -60,6 +60,6 @@ export async function deleteFromS3(urlOrKey: string): Promise<void> {
     }).promise();
   } catch (error) {
     console.error('🚨 S3 delete error:', error);
-    // 실패해도 throw하지 않음 (이미 삭제된 경우 등)
+    // 失敗してもthrowしない (既に削除された場合など)
   }
 }

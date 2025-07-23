@@ -10,18 +10,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'POST') {
     try {
-      const { gameId, nickname, content } = req.body;
+      const { gameId, nickname, content, userId, sessionId } = req.body;
 
       if (!gameId || !nickname || !content) {
         return res.status(400).json({ message: 'ゲームID、ニックネーム、コメントの内容が必要です。' });
+      }
+
+      // 로그인 사용자와 비로그인 사용자 구분
+      let authorId = null;
+      let authorType = 'guest';
+
+      if (userId) {
+        // 로그인 사용자
+        authorId = userId;
+        authorType = 'user';
+      } else if (sessionId) {
+        // 비로그인 사용자 (세션 기반)
+        authorId = sessionId;
+        authorType = 'guest';
+      } else {
+        return res.status(400).json({ message: '認証情報が必要です。' });
       }
 
       const newComment = {
         gameId,
         nickname,
         content,
+        authorId,
+        authorType,
         createdAt: new Date().toISOString(),
-        reportCount: 0 
+        likes: 0,
+        dislikes: 0,
+        likeUsers: [],
+        dislikeUsers: []
       };
 
       await collection.insertOne(newComment);
@@ -35,23 +56,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'GET') {
     try {
-      const { id } = req.query;
+      const { id, page = '1', limit = '20' } = req.query;
 
       if (!id) {
         return res.status(400).json({ message: 'ゲームIDが必要です。' });
       }
 
+      const pageNum = parseInt(page as string, 10);
+      const limitNum = parseInt(limit as string, 10);
+      const skip = (pageNum - 1) * limitNum;
+
       const comments = await collection
         .find({ gameId: id })
-        .sort({ createdAt: -1 })
+        .sort({ likes: -1, createdAt: -1 }) // いいね順でソート、同じいいね数なら最新順
+        .skip(skip)
+        .limit(limitNum)
         .toArray();
 
-      const commentsWithReports = comments.map((c) => ({
-        ...c,
-        reportCount: typeof c.reportCount === 'number' ? c.reportCount : 0
-      }));
-
-      return res.status(200).json({ comments: commentsWithReports });
+      return res.status(200).json({ comments });
     } catch (err) {
       console.error('コメントエラー:', err);
       return res.status(500).json({ message: 'エラー' });

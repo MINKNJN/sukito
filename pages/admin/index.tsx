@@ -93,13 +93,13 @@ export default function AdminPage() {
       const res = await fetch(`/api/admin/users?page=${page}&limit=${PAGE_LIMIT}`, {
         headers: getAuthHeaders(),
       });
-      if (!res.ok) throw new Error('회원 목록 요청 실패');
+              if (!res.ok) throw new Error('회원 목록 요청 실패');
       const data = await res.json();
       setUsers(data.users || []);
       setUserTotal(data.total || 0);
     } catch (err) {
       console.error('エラー:', err);
-      alert('회원 목록 불러오기 실패');
+              alert('회원 목록 불러오기 실패');
     } finally {
       setLoading(false);
     }
@@ -125,13 +125,13 @@ export default function AdminPage() {
       const res = await fetch(`/api/admin/comments?page=${page}&limit=${PAGE_LIMIT}`, {
         headers: getAuthHeaders(),
       });
-      if (!res.ok) throw new Error('댓글 목록 요청 실패');
+      if (!res.ok) throw new Error('コメントリスト要求失敗');
       const data = await res.json();
       setComments(data.comments || []);
       setCommentTotal(data.total || 0);
     } catch (err) {
       console.error('エラー:', err);
-      alert('댓글 목록 불러오기 실패');
+      alert('コメントリスト読み込み失敗');
     }
   };
 
@@ -327,11 +327,11 @@ export default function AdminPage() {
       <Header />
       <div style={{ background: '#f7f8fa', minHeight: '100vh', padding: '40px 0' }}>
         <div style={cardStyle}>
-          <h1 style={{ fontWeight: 900, fontSize: 32, marginBottom: 32, letterSpacing: -1 }}>관리자 페이지</h1>
+                      <h1 style={{ fontWeight: 900, fontSize: 32, marginBottom: 32, letterSpacing: -1 }}>관리자 페이지</h1>
           <div style={{ marginBottom: 32, display: 'flex', gap: 12 }}>
-            <button onClick={() => setTab('users')} style={tabButtonStyle(tab === 'users')}>회원 관리</button>
-            <button onClick={() => setTab('games')} style={tabButtonStyle(tab === 'games')}>게임 관리</button>
-            <button onClick={() => setTab('comments')} style={tabButtonStyle(tab === 'comments')}>댓글 관리</button>
+                          <button onClick={() => setTab('users')} style={tabButtonStyle(tab === 'users')}>회원 관리</button>
+                          <button onClick={() => setTab('games')} style={tabButtonStyle(tab === 'games')}>게임 관리</button>
+                          <button onClick={() => setTab('comments')} style={tabButtonStyle(tab === 'comments')}>댓글 관리</button>
           </div>
 
           {tab === 'users' && (
@@ -368,7 +368,7 @@ export default function AdminPage() {
                         >
                           {user.role === 'admin' ? '일반회원으로' : '관리자로'}
                         </button>
-                        <button onClick={() => handleDeleteUser(user._id)} style={{ ...deleteButtonStyle, fontWeight: 700 }}>삭제</button>
+                        <button onClick={() => handleDeleteUser(user._id)} style={{ ...deleteButtonStyle, fontWeight: 700 }}>削除</button>
                       </td>
                     </tr>
                   ))}
@@ -379,7 +379,7 @@ export default function AdminPage() {
               <div style={{ marginTop: 24, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 }}>
                 <button onClick={() => setUserPage((p) => Math.max(1, p - 1))} disabled={userPage === 1} style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #ccc', background: userPage === 1 ? '#eee' : '#fff', cursor: userPage === 1 ? 'not-allowed' : 'pointer' }}>이전</button>
                 <span style={{ fontWeight: 700, fontSize: 16 }}>{userPage} / {Math.ceil(userTotal / PAGE_LIMIT) || 1}</span>
-                <button onClick={() => setUserPage((p) => (p < Math.ceil(userTotal / PAGE_LIMIT) ? p + 1 : p))} disabled={userPage >= Math.ceil(userTotal / PAGE_LIMIT)} style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #ccc', background: userPage >= Math.ceil(userTotal / PAGE_LIMIT) ? '#eee' : '#fff', cursor: userPage >= Math.ceil(userTotal / PAGE_LIMIT) ? 'not-allowed' : 'pointer' }}>다음</button>
+                                  <button onClick={() => setUserPage((p) => (p < Math.ceil(userTotal / PAGE_LIMIT) ? p + 1 : p))} disabled={userPage >= Math.ceil(userTotal / PAGE_LIMIT)} style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #ccc', background: userPage >= Math.ceil(userTotal / PAGE_LIMIT) ? '#eee' : '#fff', cursor: userPage >= Math.ceil(userTotal / PAGE_LIMIT) ? 'not-allowed' : 'pointer' }}>다음</button>
               </div>
             </>
           )}
@@ -403,12 +403,12 @@ export default function AdminPage() {
                       <td style={tdStyle}>{game.desc}</td>
                       <td style={tdStyle}>{game.itemsCount}</td>
                       <td style={tdStyle}>
-                        <button onClick={() => handleEditGame(game)} style={upgradeButtonStyle}>
-                          수정하기
-                        </button>
-                        <button onClick={() => handleDeleteGame(game._id)} style={deleteButtonStyle}>
-                          삭제하기
-                        </button>
+                                                  <button onClick={() => handleEditGame(game)} style={upgradeButtonStyle}>
+                            수정하기
+                          </button>
+                                                  <button onClick={() => handleDeleteGame(game._id)} style={deleteButtonStyle}>
+                            삭제하기
+                          </button>
                       </td>
                     </tr>
                   ))}
@@ -431,7 +431,7 @@ export default function AdminPage() {
                 <thead>
                   <tr>
                     <th style={thStyle}>게임명</th>
-                    <th style={thStyle}>댓글 내용</th>
+                                          <th style={thStyle}>댓글 내용</th>
                     <th style={thStyle}>작성일</th>
                     <th style={thStyle}>신고 수</th>
                     <th style={thStyle}>관리</th>
@@ -465,12 +465,12 @@ export default function AdminPage() {
                         <td style={tdStyle}>{new Date(comment.createdAt).toLocaleString()}</td>
                         <td style={tdStyle}>{comment.reportCount}</td>
                         <td style={tdStyle}>
-                          <button onClick={() => handleEditComment(comment)} style={upgradeButtonStyle}>
-                            수정
-                          </button>
-                          <button onClick={() => handleDeleteComment(comment._id)} style={deleteButtonStyle}>
-                            삭제
-                          </button>
+                                                        <button onClick={() => handleEditComment(comment)} style={upgradeButtonStyle}>
+                                수정
+                              </button>
+                                                        <button onClick={() => handleDeleteComment(comment._id)} style={deleteButtonStyle}>
+                                삭제
+                              </button>
                         </td>
                       </tr>
                     );

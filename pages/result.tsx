@@ -23,25 +23,32 @@ export default function ResultPage() {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const maxCommentLength = 200;
   const [isMyWinner, setIsMyWinner] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState('');
+  const [sessionId, setSessionId] = useState<string>('');
+  const [currentUserId, setCurrentUserId] = useState<string>('');
+  const [commentPage, setCommentPage] = useState(1);
+  const [hasMoreComments, setHasMoreComments] = useState(true);
   const { showAlert, showConfirm } = useAlert();
 
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/result?id=${id}` : '';
+  const COMMENTS_PER_PAGE = 20;
 
   useEffect(() => {
     if (!id) return;
 
     const local = localStorage.getItem(`sukito_winner_${id}`);
-  if (local) {
-    try {
-      const parsed = JSON.parse(local);
-      if (parsed?.name && parsed?.url) {
-        setWinner(parsed);
-        setIsMyWinner(true);
+    if (local) {
+      try {
+        const parsed = JSON.parse(local);
+        if (parsed?.name && parsed?.url) {
+          setWinner(parsed);
+          setIsMyWinner(true);
+        }
+      } catch (e) {
+        console.warn('ローカルwinner読込エラー:', e);
       }
-    } catch (e) {
-      console.warn('ローカルwinner読込エラー:', e);
     }
-  }
 
     fetch(`/api/winner?id=${id}`)
       .then(res => res.ok ? res.json() : null)
@@ -61,18 +68,12 @@ export default function ResultPage() {
         }
       });
 
-    fetch(`/api/comments?id=${id}`)
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        if (data && data.comments) {
-          setComments(data.comments);
-        }
-      });
+    fetchComments();
 
-      const localNickname = getStorageWithExpire('nickname');
-      if (localNickname) {
-        setNickname(localNickname);
-      }
+    const localNickname = getStorageWithExpire('nickname');
+    if (localNickname) {
+      setNickname(localNickname);
+    }
 
     // 로그인 체크 및 닉네임 기본값 설정
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -90,12 +91,46 @@ export default function ResultPage() {
           } else {
             setNickname('ゲスト');
           }
+          // 로그인 사용자의 userId 저장
+          if (data?.user?.userId) {
+            setCurrentUserId(data.user.userId);
+          }
         })
         .catch(() => setNickname('ゲスト'));
     } else {
       setNickname('ゲスト');
+      // 비로그인 사용자를 위한 세션 ID 생성
+      let guestSessionId = localStorage.getItem('guestSessionId');
+      if (!guestSessionId) {
+        guestSessionId = 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('guestSessionId', guestSessionId);
+      }
+      setSessionId(guestSessionId);
     }
   }, [id]);
+
+  const fetchComments = async (page = 1) => {
+    try {
+      const res = await fetch(`/api/comments?id=${id}&page=${page}&limit=${COMMENTS_PER_PAGE}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (page === 1) {
+          setComments(data.comments || []);
+        } else {
+          setComments(prev => [...prev, ...(data.comments || [])]);
+        }
+        setHasMoreComments((data.comments || []).length === COMMENTS_PER_PAGE);
+      }
+    } catch (err) {
+      console.error('コメント読み込みエラー:', err);
+    }
+  };
+
+  const loadMoreComments = () => {
+    const nextPage = commentPage + 1;
+    setCommentPage(nextPage);
+    fetchComments(nextPage);
+  };
 
   const winnerRank = ranking.findIndex(r => r.name === winner?.name && r.url === winner?.url) + 1;
   const top10 = ranking.slice(0, 10);
@@ -119,13 +154,15 @@ export default function ResultPage() {
         body: JSON.stringify({
           gameId: id,
           nickname: nickname.trim(),
-          content: commentContent.trim()
+          content: commentContent.trim(),
+          userId: currentUserId || undefined,
+          sessionId: sessionId || undefined
         })
       });
 
       if (res.ok) {
-        const updatedComments = await fetch(`/api/comments?id=${id}`).then(res => res.json());
-        setComments(updatedComments.comments);
+        setCommentPage(1);
+        fetchComments(1);
         setCommentContent('');
       } else {
         showAlert('コメントエラー', 'error');
@@ -145,31 +182,116 @@ export default function ResultPage() {
     }
   };
 
-  const handleReportComment = async (comment: { _id: string }) => {
-    showConfirm('このコメントを通報しますか？', () => {
-      fetch('/api/comments/report', {
+  const handleLikeComment = async (comment: { _id: string; likes: number; dislikes: number; likeUsers: string[]; dislikeUsers: string[] }, action: 'like' | 'dislike' | 'unlike' | 'undislike') => {
+    try {
+      const res = await fetch('/api/comments/like', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ commentId: comment._id })
-      })
-      .then(res => {
+        body: JSON.stringify({
+          commentId: comment._id,
+          action,
+          userId: currentUserId || undefined,
+          sessionId: sessionId || undefined
+        })
+      });
+
+      if (res.ok) {
+        // コメントリスト更新
+        setCommentPage(1);
+        fetchComments(1);
+      } else {
+        showAlert('アクションエラー', 'error');
+      }
+    } catch (err) {
+      console.error('エラー:', err);
+      showAlert('ネットワークエラー', 'error');
+    }
+  };
+
+  const handleDeleteComment = async (comment: { _id: string; nickname: string; authorId: string; authorType: string }) => {
+    showConfirm('このコメントを削除しますか？', async () => {
+      try {
+        const res = await fetch('/api/comments/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            commentId: comment._id,
+            userId: currentUserId || undefined,
+            sessionId: sessionId || undefined
+          })
+        });
+
         if (res.ok) {
-          showAlert('通報が受け付けられました。', 'success');
-          return fetch(`/api/comments?id=${id}`);
+          showAlert('コメント削除完了', 'success');
+          setCommentPage(1);
+          fetchComments(1);
         } else {
-          showAlert('通報エラー', 'error');
-          throw new Error('通報エラー');
+          const data = await res.json();
+          showAlert(data.message || '削除エラー', 'error');
         }
-      })
-      .then(res => res.json())
-      .then(data => {
-        setComments(data.comments);
-      })
-      .catch(err => {
+      } catch (err) {
         console.error('エラー:', err);
         showAlert('ネットワークエラー', 'error');
-      });
+      }
     });
+  };
+
+  const handleEditComment = (comment: { _id: string; content: string; nickname: string; authorId: string; authorType: string }) => {
+    // 投稿者確認
+    let isAuthor = false;
+    
+    if (currentUserId && comment.authorType === 'user') {
+      isAuthor = comment.authorId === currentUserId;
+    } else if (sessionId && comment.authorType === 'guest') {
+      isAuthor = comment.authorId === sessionId;
+    }
+
+    if (!isAuthor) {
+      showAlert('自分のコメントのみ編集できます。', 'error');
+      return;
+    }
+    
+    setEditingCommentId(comment._id);
+    setEditingContent(comment.content);
+  };
+
+  const handleUpdateComment = async () => {
+    if (!editingCommentId || !editingContent.trim()) {
+      showAlert('コメント内容を入力してください。', 'error');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/comments/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          commentId: editingCommentId,
+          content: editingContent.trim(),
+          userId: currentUserId || undefined,
+          sessionId: sessionId || undefined
+        })
+      });
+
+      if (res.ok) {
+        showAlert('コメント編集完了', 'success');
+        setCommentPage(1);
+        fetchComments(1);
+        setEditingCommentId(null);
+        setEditingContent('');
+      } else {
+        const data = await res.json();
+        showAlert(data.message || '編集エラー', 'error');
+      }
+    } catch (err) {
+      console.error('エラー:', err);
+      showAlert('ネットワークエラー', 'error');
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingCommentId(null);
+    setEditingContent('');
   };
 
   if (!id) return <div>お待ちください。</div>;
@@ -241,15 +363,38 @@ export default function ResultPage() {
             )}
           </div>
         ) : (
-            <div style={{ backgroundColor: '#000', color: '#fff', padding: '2rem', borderRadius: '12px', textAlign: 'center', marginBottom: '3rem' }}>
-              <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>🏆 最終優勝者</h1>
-              <p style={{ fontSize: '1.2rem', marginBottom: '1.5rem' }}>プレイ履歴がないか、まだ優勝者が決まっていません。</p>
-              <button onClick={() => router.push(`/play/${id}`)} style={{ padding: '10px 20px', fontSize: '1rem', borderRadius: '6px', backgroundColor: '#00c471', color: 'white', border: 'none', cursor: 'pointer' }}>👉 プレイする</button>
-            </div>
-          )}
+          <div style={{ backgroundColor: '#000', color: '#fff', padding: '2rem', borderRadius: '12px', textAlign: 'center', marginBottom: '3rem' }}>
+            <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>🏆 最終優勝者</h1>
+            <p style={{ fontSize: '1.2rem', marginBottom: '1.5rem' }}>プレイ履歴がないか、まだ優勝者が決まっていません。</p>
+            <button onClick={() => router.push(`/play/${id}`)} style={{ padding: '10px 20px', fontSize: '1rem', borderRadius: '6px', backgroundColor: '#00c471', color: 'white', border: 'none', cursor: 'pointer' }}>👉 プレイする</button>
+          </div>
+        )}
 
-        <h1>🔥 総合ランキング (Top 10)</h1>
-        <input type="text" placeholder="検索" value={searchKeyword} onChange={(e) => setSearchKeyword(e.target.value)} style={{ marginBottom: 16, padding: 8, width: '100%', maxWidth: 400 }} />
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          marginBottom: 16,
+          flexWrap: 'wrap',
+          gap: 16
+        }}>
+          <h1>🔥 総合ランキング (Top 10)</h1>
+          <input 
+            type="text" 
+            placeholder="検索" 
+            value={searchKeyword} 
+            onChange={(e) => setSearchKeyword(e.target.value)} 
+            style={{ 
+              padding: '12px 16px', 
+              width: '200px', 
+              borderRadius: '8px',
+              border: '1px solid #ddd',
+              fontSize: '14px',
+              backgroundColor: '#fff',
+              minWidth: '200px'
+            }} 
+          />
+        </div>
         {(searchKeyword ? filteredRanking : top10).length > 0 ? (
           <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 24 }}>
             <thead>
@@ -312,38 +457,310 @@ export default function ResultPage() {
         </div>
 
         <h1>💬 コメント</h1>
-        <div style={{ marginTop: 16 }}>
-          <input
-            type="text"
-            value={nickname}
-            onChange={e => setNickname(e.target.value)}
-            placeholder="ニックネーム"
-            maxLength={20}
-            style={{ width: '100%', marginBottom: 8, padding: 8, fontSize: 16, borderRadius: 6, border: '1px solid #ccc' }}
-          />
-          <textarea value={commentContent} onChange={(e) => setCommentContent(e.target.value)} placeholder="コメントを入力してください" rows={4} maxLength={maxCommentLength} style={{ width: '100%', marginBottom: 8 }} />
-          <div style={{ textAlign: 'right', fontSize: 12, color: '#666' }}>{commentContent.length} / {maxCommentLength}</div>
-          <button onClick={handleCommentSubmit} style={{ marginTop: 8 }}>コメントする</button>
-
-          <div style={{ marginTop: 24 }}>
-            {comments.length > 0 ? (
-              <ul>
-                {comments.map((c, idx) => (
-                  <li key={idx} style={{ marginBottom: 10 }}>
-                    {c.reportCount >= 3 ? (
-                      <div style={{ color: '#999' }}>🚫 このコメントは通報により非表示となっています。</div>
-                    ) : (
-                      <>
-                        <strong>{c.nickname}</strong> : {c.content}<br />
-                        <span style={{ fontSize: 12, color: '#999' }}>{new Date(c.createdAt).toLocaleString()}</span>
-                        <button onClick={() => handleReportComment(c)} style={{ marginLeft: 10, fontSize: 12, color: 'red', background: 'none', border: 'none', cursor: 'pointer' }}>🚩 通報</button>
-                      </>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            ) : <p>	まだコメントがありません。</p>}
+        <div style={{ 
+          marginTop: 16, 
+          padding: '16px', 
+          backgroundColor: '#f8f9fa', 
+          borderRadius: '8px',
+          border: '1px solid #e0e0e0'
+        }}>
+          <div style={{ marginBottom: '12px' }}>
+            <input
+              type="text"
+              value={nickname}
+              onChange={e => setNickname(e.target.value)}
+              placeholder="ニックネーム"
+              maxLength={20}
+              style={{ 
+                width: '100%', 
+                padding: '10px 12px', 
+                fontSize: 14, 
+                borderRadius: 6, 
+                border: '1px solid #ccc',
+                backgroundColor: '#fff'
+              }}
+            />
           </div>
+          <div style={{ marginBottom: '12px' }}>
+            <textarea 
+              value={commentContent} 
+              onChange={(e) => setCommentContent(e.target.value)} 
+              placeholder="コメントを入力してください" 
+              rows={4} 
+              maxLength={maxCommentLength} 
+              style={{ 
+                width: '100%', 
+                padding: '10px 12px',
+                fontSize: 14,
+                borderRadius: 6,
+                border: '1px solid #ccc',
+                backgroundColor: '#fff',
+                resize: 'vertical'
+              }} 
+            />
+          </div>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            marginBottom: '12px'
+          }}>
+            <div style={{ fontSize: 12, color: '#666' }}>
+              {commentContent.length} / {maxCommentLength}
+            </div>
+            <button 
+              onClick={handleCommentSubmit} 
+              style={{ 
+                padding: '8px 16px',
+                fontSize: 14,
+                backgroundColor: '#0070f3',
+                color: 'white',
+                border: 'none',
+                borderRadius: 6,
+                cursor: 'pointer',
+                fontWeight: 500,
+                transition: 'background-color 0.2s'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#0056b3'}
+              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#0070f3'}
+            >
+              コメントする
+            </button>
+          </div>
+        </div>
+
+        <div style={{ marginTop: 24 }}>
+          {comments.length > 0 ? (
+            <>
+              <ul style={{ listStyle: 'none', padding: 0 }}>
+                {comments.map((c, idx) => {
+                  const userIdentifier = currentUserId || sessionId;
+                  const hasLiked = c.likeUsers?.includes(userIdentifier) || false;
+                  const hasDisliked = c.dislikeUsers?.includes(userIdentifier) || false;
+                  const isAuthor = (currentUserId && c.authorType === 'user' && c.authorId === currentUserId) || 
+                                 (sessionId && c.authorType === 'guest' && c.authorId === sessionId);
+                  
+                  // 固定コメント条件: いいねが3個以上なら固定コメント
+                  const isPinned = (c.likes || 0) >= 3;
+
+                  return (
+                    <li key={idx} style={{ 
+                      marginBottom: 16, 
+                      padding: '16px', 
+                      border: isPinned ? '2px solid #ffd700' : '1px solid #e0e0e0', 
+                      borderRadius: '8px',
+                      backgroundColor: isPinned ? '#fffbf0' : '#fff',
+                      position: 'relative'
+                    }}>
+                      {isPinned && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '-8px',
+                          left: '12px',
+                          backgroundColor: '#ffd700',
+                          color: '#333',
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          fontSize: '10px',
+                          fontWeight: 'bold',
+                          zIndex: 1,
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                        }}>
+                          📌 固定コメント
+                        </div>
+                      )}
+                      {editingCommentId === c._id ? (
+                        <div style={{ border: '1px solid #ddd', padding: '12px', borderRadius: '6px', backgroundColor: '#f9f9f9' }}>
+                          <div style={{ marginBottom: '8px' }}>
+                            <strong style={{ fontSize: '14px', color: '#333' }}>{c.nickname}</strong>
+                          </div>
+                          <textarea
+                            value={editingContent}
+                            onChange={(e) => setEditingContent(e.target.value)}
+                            rows={3}
+                            maxLength={maxCommentLength}
+                            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', marginBottom: '8px' }}
+                          />
+                          <div style={{ textAlign: 'right', fontSize: 12, color: '#666', marginBottom: '8px' }}>
+                            {editingContent.length} / {maxCommentLength}
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button 
+                              onClick={handleUpdateComment}
+                              style={{ 
+                                padding: '6px 12px', 
+                                fontSize: 12, 
+                                backgroundColor: '#0070f3', 
+                                color: 'white', 
+                                border: 'none', 
+                                borderRadius: 4, 
+                                cursor: 'pointer' 
+                              }}
+                            >
+                              保存
+                            </button>
+                            <button 
+                              onClick={cancelEdit}
+                              style={{ 
+                                padding: '6px 12px', 
+                                fontSize: 12, 
+                                backgroundColor: '#999', 
+                                color: 'white', 
+                                border: 'none', 
+                                borderRadius: 4, 
+                                cursor: 'pointer' 
+                              }}
+                            >
+                              キャンセル
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {/* 작성자 정보와 좋아요/싫어요 버튼 */}
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center',
+                            marginBottom: '12px',
+                            paddingBottom: '8px',
+                            borderBottom: '1px solid #f0f0f0'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <strong style={{ fontSize: '14px', color: '#333' }}>{c.nickname}</strong>
+                              <span style={{ fontSize: '12px', color: '#999' }}>•</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <button 
+                                  onClick={() => handleLikeComment(c, hasLiked ? 'unlike' : 'like')}
+                                  style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '4px',
+                                    background: 'none', 
+                                    border: 'none', 
+                                    cursor: 'pointer',
+                                    color: hasLiked ? '#065fd4' : (isPinned ? '#ffd700' : '#666'),
+                                    fontSize: '12px',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    transition: 'background-color 0.2s',
+                                    fontWeight: isPinned ? 'bold' : 'normal'
+                                  }}
+                                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f0f0f0'}
+                                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                >
+                                  {isPinned ? '🏆' : '👍'} {c.likes || 0}
+                                </button>
+                                <button 
+                                  onClick={() => handleLikeComment(c, hasDisliked ? 'undislike' : 'dislike')}
+                                  style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '4px',
+                                    background: 'none', 
+                                    border: 'none', 
+                                    cursor: 'pointer',
+                                    color: hasDisliked ? '#d93025' : '#666',
+                                    fontSize: '12px',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    transition: 'background-color 0.2s'
+                                  }}
+                                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f0f0f0'}
+                                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                >
+                                  👎 {c.dislikes || 0}
+                                </button>
+                              </div>
+                            </div>
+                            
+                            {/* 編集/削除ボタン (投稿者のみ) */}
+                            {isAuthor && (
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <button 
+                                  onClick={() => handleEditComment(c)} 
+                                  style={{ 
+                                    fontSize: 12, 
+                                    color: '#0070f3', 
+                                    background: 'none', 
+                                    border: 'none', 
+                                    cursor: 'pointer',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    transition: 'background-color 0.2s'
+                                  }}
+                                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f0f0f0'}
+                                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                >
+                                  ✏️ 編集
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteComment(c)} 
+                                  style={{ 
+                                    fontSize: 12, 
+                                    color: '#d32f2f', 
+                                    background: 'none', 
+                                    border: 'none', 
+                                    cursor: 'pointer',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    transition: 'background-color 0.2s'
+                                  }}
+                                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f0f0f0'}
+                                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                >
+                                  🗑️ 削除
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* 댓글 내용 */}
+                          <div style={{ fontSize: '14px', color: '#333', lineHeight: '1.5' }}>
+                            {c.content}
+                          </div>
+                        </>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+              
+              {/* 더보기 버튼 */}
+              {hasMoreComments && (
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'center', 
+                  marginTop: '24px' 
+                }}>
+                  <button 
+                    onClick={loadMoreComments}
+                    style={{ 
+                      padding: '12px 24px',
+                      fontSize: '14px',
+                      backgroundColor: '#f8f9fa',
+                      color: '#333',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 500,
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.backgroundColor = '#e9ecef';
+                      e.currentTarget.style.borderColor = '#adb5bd';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f8f9fa';
+                      e.currentTarget.style.borderColor = '#ddd';
+                    }}
+                  >
+                    もっと見る ({COMMENTS_PER_PAGE}件)
+                  </button>
+                </div>
+              )}
+            </>
+          ) : <p>まだコメントがありません。</p>}
         </div>
       </div>
     </>

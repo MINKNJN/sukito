@@ -43,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(200).json({ comments: formattedComments, total });
   } catch (error) {
-    console.error('댓글 목록 불러오기 실패:', error);
+          console.error('コメントリスト読み込み失敗:', error);
     return res.status(500).json({ message: '서버 오류가 발생했습니다.' });
   }
 }

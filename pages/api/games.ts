@@ -101,7 +101,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const existingHistory = Array.isArray(game.itemsHistory) ? game.itemsHistory : [];
       const newItems = Array.isArray(updateData.items) ? updateData.items : [];
 
-      // S3 삭제: 기존에 있었으나, 수정 후에는 없는 파일 삭제
+      // S3削除: 既存にあったが、修正後にはないファイル削除
       const oldUrls = new Set(existingHistory.map((item: any) => item.url));
       const newUrls = new Set(newItems.map((item: any) => item.url));
       const deletedUrls = [...oldUrls].filter(url => !newUrls.has(url));

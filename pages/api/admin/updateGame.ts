@@ -24,12 +24,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
 
     if (result.matchedCount === 1) {
-      return res.status(200).json({ message: '게임 수정 성공' });
+      return res.status(200).json({ message: 'ゲーム修正成功' });
     } else {
       return res.status(404).json({ message: '게임을 찾을 수 없습니다.' });
     }
   } catch (error) {
-    console.error('게임 수정 실패:', error);
+    console.error('ゲーム修正失敗:', error);
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 }

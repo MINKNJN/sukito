@@ -23,12 +23,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const result = await db.collection('comments').deleteOne({ _id: new ObjectId(commentId) });
 
     if (result.deletedCount === 1) {
-      return res.status(200).json({ message: '댓글 삭제 성공' });
+      return res.status(200).json({ message: 'コメント削除成功' });
     } else {
-      return res.status(404).json({ message: '댓글을 찾을 수 없습니다.' });
+              return res.status(404).json({ message: 'コメントが見つかりません。' });
     }
   } catch (error) {
-    console.error('댓글 삭제 오류:', error);
+          console.error('コメント削除エラー:', error);
     return res.status(500).json({ message: '서버 오류가 발생했습니다.' });
   }
 }

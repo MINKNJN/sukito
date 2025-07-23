@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { commentId, newContent, newReportCount, newCreatedAt } = req.body; 
 
   if (!commentId || (!newContent && newReportCount === undefined && newCreatedAt === undefined)) {
-    return res.status(400).json({ message: 'commentId와 수정할 데이터가 필요합니다.' });
+    return res.status(400).json({ message: 'commentIdと修正するデータが必要です。' });
   }
 
   try {
@@ -29,12 +29,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     );
 
     if (result.matchedCount === 1) {
-      return res.status(200).json({ message: '댓글 수정 성공' });
+      return res.status(200).json({ message: 'コメント修正成功' });
     } else {
-      return res.status(404).json({ message: '댓글을 찾을 수 없습니다.' });
+      return res.status(404).json({ message: 'コメントが見つかりません。' });
     }
   } catch (err) {
-    console.error('댓글 수정 오류:', err);
+    console.error('コメント修正エラー:', err);
     return res.status(500).json({ message: '서버 오류' });
   }
 }

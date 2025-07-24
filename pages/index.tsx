@@ -47,7 +47,7 @@ export default function IndexPage() {
   const [typeFilter, setTypeFilter] = useState<'all' | 'image' | 'video'>('all');
   const [searchInput, setSearchInput] = useState('');
   const [searchKeyword, setSearchKeyword] = useState('');
-  const [visibleCount, setVisibleCount] = useState(10);
+  const [visibleCount, setVisibleCount] = useState(99);
 
   const [resumeData, setResumeData] = useState<any>(null);
   const [showResumeModal, setShowResumeModal] = useState(false);
@@ -207,16 +207,59 @@ export default function IndexPage() {
   return (
     <>
       <Head>
-        <title>スキト - 好きトーナメント</title>
-        <meta name="description" content="画像・GIF・動画から推しを選んでみてください" />
-        <meta property="og:title" content="スキト - 好きトーナメント" />
-        <meta property="og:description" content="画像・GIF・動画から推しを選んでみてください" />
+        <title>スキト - 好きトーナメント | 無料投票ゲーム作成・共有プラットフォーム</title>
+        <meta name="description" content="画像・GIF・動画・YouTubeを使ってトーナメント形式の投票ゲームを作成・共有できる無料のエンタメプラットフォーム。アニメ、アイドル、スポーツなど様々なジャンルの推し投票を楽しめます。" />
+        <meta name="keywords" content="投票,トーナメント,ゲーム,エンタメ,アニメ,アイドル,スポーツ,推し,人気投票,無料ゲーム,画像投票,動画投票,GIF投票,YouTube投票" />
+        <meta name="author" content="Sukito" />
+        <meta name="robots" content="index, follow" />
+        <meta name="language" content="ja" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="theme-color" content="#4caf50" />
+        
+        {/* Open Graph */}
+        <meta property="og:title" content="スキト - 好きトーナメント | 無料投票ゲーム作成・共有プラットフォーム" />
+        <meta property="og:description" content="画像・GIF・動画・YouTubeを使ってトーナメント形式の投票ゲームを作成・共有できる無料のエンタメプラットフォーム。アニメ、アイドル、スポーツなど様々なジャンルの推し投票を楽しめます。" />
         <meta property="og:url" content="https://sukito.net" />
         <meta property="og:image" content="https://sukito.net/og-image.jpg" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="スキト" />
+        <meta property="og:locale" content="ja_JP" />
+        
+        {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="スキト - 好きトーナメント" />
-        <meta name="twitter:description" content="画像・GIF・動画から推しを選んでみてください" />
+        <meta name="twitter:title" content="スキト - 好きトーナメント | 無料投票ゲーム作成・共有プラットフォーム" />
+        <meta name="twitter:description" content="画像・GIF・動画・YouTubeを使ってトーナメント形式の投票ゲームを作成・共有できる無料のエンタメプラットフォーム。" />
         <meta name="twitter:image" content="https://sukito.net/og-image.jpg" />
+        <meta name="twitter:site" content="@sukito_net" />
+        
+        {/* Canonical URL */}
+        <link rel="canonical" href="https://sukito.net" />
+        
+        {/* Favicon */}
+        <link rel="icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" href="/favicon.ico" />
+        
+        {/* Structured Data */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              "name": "スキト - 好きトーナメント",
+              "description": "画像・GIF・動画・YouTubeを使ってトーナメント形式の投票ゲームを作成・共有できる無料のエンタメプラットフォーム",
+              "url": "https://sukito.net",
+              "potentialAction": {
+                "@type": "SearchAction",
+                "target": "https://sukito.net?search={search_term_string}",
+                "query-input": "required name=search_term_string"
+              },
+              "sameAs": [
+                "https://twitter.com/sukito_net"
+              ]
+            })
+          }}
+        />
       </Head>
       <Header />
 
@@ -318,14 +361,47 @@ export default function IndexPage() {
             誰でも気軽に参加でき、自分の「推し」をみんなと共有して楽しめます。<br />
             ゲームは毎日追加され、アイドル・アニメ・スポーツ・食べ物などジャンルも多彩！ログインなしでも遊べます。
           </p>
+          <div style={{ marginTop: '16px' }}>
+            <a 
+              href="/guide" 
+              style={{
+                color: '#4caf50',
+                textDecoration: 'none',
+                fontWeight: 'bold',
+                fontSize: '0.95rem',
+                padding: '8px 16px',
+                border: '2px solid #4caf50',
+                borderRadius: '6px',
+                display: 'inline-block',
+                marginTop: '8px'
+              }}
+            >
+              📖 詳しい使い方を見る
+            </a>
+          </div>
       </section>
 
 
-      <div style={adCardStyle}>
-        
-        <GoogleAd />
-
-      </div>
+      {/* 광고를 콘텐츠 섹션으로 감싸기 */}
+      <section style={{
+        backgroundColor: '#f8f9fa',
+        padding: '20px 16px',
+        marginBottom: 24,
+        borderRadius: '8px',
+        border: '1px solid #e9ecef',
+      }}>
+        <h3 style={{ 
+          fontSize: '1.1rem', 
+          marginBottom: 16, 
+          textAlign: 'center',
+          color: '#495057'
+        }}>
+          📢 スポンサー広告
+        </h3>
+        <div style={adCardStyle}>
+          <GoogleAd />
+        </div>
+      </section>
 
       <div style={{ padding: isMobile ? 12 : 24 }}>
 
@@ -363,10 +439,19 @@ export default function IndexPage() {
                     <GameCard id={game._id} title={game.title} desc={game.desc} thumbnailItems={game.thumbnails} />
                   </div>
                   <div className="col-12 col-md-6 col-xl-4" style={{ padding: '2px' }}>
-                    <div style={{ height: '95%', border: '2px dashed #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      
-                      <GoogleAd />
-                        
+                    <div style={{ 
+                      height: '95%', 
+                      border: '2px dashed #ccc', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center',
+                      backgroundColor: '#f8f9fa',
+                      borderRadius: '8px'
+                    }}>
+                      <div style={{ textAlign: 'center', padding: '16px' }}>
+                        <p style={{ margin: '0 0 8px 0', fontSize: '0.9rem', color: '#666' }}>スポンサー広告</p>
+                        <GoogleAd />
+                      </div>
                     </div>
                   </div>
                 </>

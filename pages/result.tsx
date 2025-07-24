@@ -29,6 +29,7 @@ export default function ResultPage() {
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [commentPage, setCommentPage] = useState(1);
   const [hasMoreComments, setHasMoreComments] = useState(true);
+  const [gameInfo, setGameInfo] = useState<{ title: string; desc: string } | null>(null);
   const { showAlert, showConfirm } = useAlert();
 
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/result?id=${id}` : '';
@@ -69,6 +70,16 @@ export default function ResultPage() {
       });
 
     fetchComments();
+
+    // 게임 정보 가져오기
+    fetch(`/api/games/${id}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data) {
+          setGameInfo({ title: data.title, desc: data.desc });
+        }
+      })
+      .catch(err => console.error('게임 정보 로드 실패:', err));
 
     const localNickname = getStorageWithExpire('nickname');
     if (localNickname) {
@@ -321,9 +332,34 @@ export default function ResultPage() {
       </Head>
       <Header />
       <div style={{ padding: 24 }}>
-        <div style={{ width: '100%', height: 100, border: '2px dashed #ccc', margin: '20px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <GoogleAd />
-        </div>
+        {/* 광고를 콘텐츠 섹션으로 감싸기 */}
+        <section style={{
+          backgroundColor: '#f8f9fa',
+          padding: '20px 16px',
+          marginBottom: 24,
+          borderRadius: '8px',
+          border: '1px solid #e9ecef',
+        }}>
+          <h3 style={{ 
+            fontSize: '1.1rem', 
+            marginBottom: 16, 
+            textAlign: 'center',
+            color: '#495057'
+          }}>
+            📢 スポンサー広告
+          </h3>
+          <div style={{ 
+            height: 100, 
+            border: '2px dashed #ccc', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            backgroundColor: '#fff',
+            borderRadius: '6px'
+          }}>
+            <GoogleAd />
+          </div>
+        </section>
 
         {winner ? (
           <div style={{ backgroundColor: '#000', color: '#fff', padding: '2rem', borderRadius: '12px', textAlign: 'center', marginBottom: '3rem' }}>
@@ -367,6 +403,19 @@ export default function ResultPage() {
             <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>🏆 最終優勝者</h1>
             <p style={{ fontSize: '1.2rem', marginBottom: '1.5rem' }}>プレイ履歴がないか、まだ優勝者が決まっていません。</p>
             <button onClick={() => router.push(`/play/${id}`)} style={{ padding: '10px 20px', fontSize: '1rem', borderRadius: '6px', backgroundColor: '#00c471', color: 'white', border: 'none', cursor: 'pointer' }}>👉 プレイする</button>
+          </div>
+        )}
+
+        {gameInfo && (
+          <div style={{
+            backgroundColor: '#f8f9fa',
+            padding: '16px',
+            borderRadius: '8px',
+            border: '1px solid #e9ecef',
+            marginBottom: '24px'
+          }}>
+            <h2 style={{ fontSize: '1.2rem', marginBottom: '8px', color: '#495057' }}>{gameInfo.title}</h2>
+            <p style={{ fontSize: '0.9rem', color: '#666', margin: 0 }}>{gameInfo.desc}</p>
           </div>
         )}
 
@@ -428,7 +477,7 @@ export default function ResultPage() {
                       ) : (
                         <img
                           src={convertToThumbnail(item.url)}
-                          alt={item.name}
+                          alt={`${item.name} - 투표 결과`}
                           width={100}
                           height={150}
                           style={{ objectFit: 'cover', borderRadius: 8, background: '#000' }}

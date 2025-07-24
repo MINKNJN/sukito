@@ -103,6 +103,7 @@ export default function Header() {
         zIndex: 1000,
       }}>
         <Link href="/" style={linkStyle}>好きトーナメント</Link>
+        <Link href="/guide" style={linkStyle}>使い方</Link>
         <button onClick={handleMakeClick} style={buttonLinkStyle}>トーナメン作る</button>
         {isLoggedIn && (
           <>

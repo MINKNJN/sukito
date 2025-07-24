@@ -1,4 +1,11 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://www.sukito.net/api/sitemap.xml
+# Sitemap
+Sitemap: https://sukito.net/sitemap.xml
+
+# Disallow admin pages
+Disallow: /admin/
+
+# Allow all other pages
+Allow: /

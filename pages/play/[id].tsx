@@ -25,7 +25,7 @@ interface PlayPageProps {
   game: Game | null;
 }
 
-const ROUND_OPTIONS = [2, 4, 8, 16, 32, 64, 128, 256];
+const ROUND_OPTIONS = [4, 8, 16, 32, 64, 128, 256];
 const ANIMATION_DURATION = 800;
 
 const optimizeCloudinaryImage = (url: string): string => {
@@ -150,6 +150,9 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
       selectedRound === -1
         ? shuffled
         : shuffled.slice(0, selectedRound); 
+
+    // 디버깅: 선택된 항목들 확인
+    console.log('선택된 항목들:', pick.map(item => item.name));
 
     const saveState = {
       gameId: game._id,

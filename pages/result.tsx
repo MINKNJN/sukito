@@ -7,6 +7,7 @@ import { convertToThumbnail } from '@/lib/utils';
 import { getStorageWithExpire } from '@/lib/utils';
 import GoogleAd from '@/components/GoogleAd';
 import { useAlert } from '@/lib/alert';
+import { getRandomComment } from '@/lib/commentTemplates';
 
 
 export default function ResultPage() {
@@ -18,6 +19,8 @@ export default function ResultPage() {
   const [totalPlays, setTotalPlays] = useState<number>(0);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [nickname, setNickname] = useState('ゲスト');
+
+
   const [commentContent, setCommentContent] = useState('');
   const [comments, setComments] = useState<any[]>([]);
   const [isShareOpen, setIsShareOpen] = useState(false);
@@ -34,6 +37,12 @@ export default function ResultPage() {
 
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/result?id=${id}` : '';
   const COMMENTS_PER_PAGE = 20;
+
+  // 랜덤 기본 코멘트 설정 함수
+  const setRandomDefaultComment = () => {
+    const randomComment = getRandomComment();
+    setCommentContent(randomComment);
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -118,6 +127,9 @@ export default function ResultPage() {
       }
       setSessionId(guestSessionId);
     }
+
+    // 기본 코멘트 설정
+    setRandomDefaultComment();
   }, [id]);
 
   const fetchComments = async (page = 1) => {
@@ -534,7 +546,7 @@ export default function ResultPage() {
             <textarea 
               value={commentContent} 
               onChange={(e) => setCommentContent(e.target.value)} 
-              placeholder="コメントを入力してください" 
+              placeholder="コメントを入力してください（デフォルトコメントが設定されています）" 
               rows={4} 
               maxLength={maxCommentLength} 
               style={{ 
@@ -544,7 +556,8 @@ export default function ResultPage() {
                 borderRadius: 6,
                 border: '1px solid #ccc',
                 backgroundColor: '#fff',
-                resize: 'vertical'
+                resize: 'vertical',
+                color: commentContent ? '#333' : '#999'
               }} 
             />
           </div>
@@ -557,24 +570,45 @@ export default function ResultPage() {
             <div style={{ fontSize: 12, color: '#666' }}>
               {commentContent.length} / {maxCommentLength}
             </div>
-            <button 
-              onClick={handleCommentSubmit} 
-              style={{ 
-                padding: '8px 16px',
-                fontSize: 14,
-                backgroundColor: '#0070f3',
-                color: 'white',
-                border: 'none',
-                borderRadius: 6,
-                cursor: 'pointer',
-                fontWeight: 500,
-                transition: 'background-color 0.2s'
-              }}
-              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#0056b3'}
-              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#0070f3'}
-            >
-              コメントする
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                onClick={setRandomDefaultComment}
+                style={{ 
+                  padding: '8px 12px',
+                  fontSize: 12,
+                  backgroundColor: '#f0f0f0',
+                  color: '#666',
+                  border: '1px solid #ddd',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#e0e0e0'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f0f0f0'}
+                title="別のデフォルトコメントを設定"
+              >
+                別のコメント
+              </button>
+              <button 
+                onClick={handleCommentSubmit} 
+                style={{ 
+                  padding: '8px 16px',
+                  fontSize: 14,
+                  backgroundColor: '#0070f3',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#0056b3'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#0070f3'}
+              >
+                コメントする
+              </button>
+            </div>
           </div>
         </div>
 

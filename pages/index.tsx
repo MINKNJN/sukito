@@ -398,9 +398,9 @@ export default function IndexPage() {
         }}>
           📢 スポンサー広告
         </h3>
-        <div style={adCardStyle}>
-          <GoogleAd />
-        </div>
+      <div style={adCardStyle}>
+        <GoogleAd />
+      </div>
       </section>
 
       <div style={{ padding: isMobile ? 12 : 24 }}>
@@ -450,7 +450,7 @@ export default function IndexPage() {
                     }}>
                       <div style={{ textAlign: 'center', padding: '16px' }}>
                         <p style={{ margin: '0 0 8px 0', fontSize: '0.9rem', color: '#666' }}>スポンサー広告</p>
-                        <GoogleAd />
+                      <GoogleAd />
                       </div>
                     </div>
                   </div>

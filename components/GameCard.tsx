@@ -18,7 +18,7 @@ const YoutubeIcon = () => (
 interface GameItem {
   url: string;
   name: string;
-  type: 'image' | 'gif' | 'video' | 'youtube';
+  type: 'image' | 'gif' | 'youtube';
 }
 
 interface GameCardProps {
@@ -114,16 +114,14 @@ export default function GameCard({ id, title, desc, thumbnailItems, adminButtons
             );
           }
           const isYoutube = item.url.includes('youtube.com/embed');
-          const isVideo = item.type === 'video' || item.type === 'gif';
+          const isVideo = item.type === 'gif';
           const isImage = item.type === 'image';
 
           const badge =
             isYoutube
               ? null
-              : item.type === 'gif'
-                ? { text: 'GIF', bg: '#00c49a' }
-                : item.type === 'video'
-                  ? { text: 'VIDEO', bg: '#0070f3' }
+                              : item.type === 'gif'
+                  ? { text: 'GIF', bg: '#00c49a' }
                   : isImage
                     ? { text: 'IMG', bg: '#0070f3' }
                     : null;

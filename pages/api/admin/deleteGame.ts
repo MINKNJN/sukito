@@ -33,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const itemsToDelete = Array.isArray(game.itemsHistory) ? game.itemsHistory : game.items || [];
 
     const deletionPromises = itemsToDelete
-      .filter((item: any) => item.url && (item.type === 'image' || item.type === 'gif' || item.type === 'video'))
+      .filter((item: any) => item.url && (item.type === 'image' || item.type === 'gif'))
       .map((item: any) => deleteFromS3(item.url));
 
     await Promise.all(deletionPromises);

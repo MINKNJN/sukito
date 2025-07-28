@@ -10,7 +10,7 @@ import { useAlert } from '@/lib/alert';
 type GameItem = {
   name: string;
   url: string;
-  type: 'image' | 'gif' | 'video' | 'youtube';
+  type: 'image' | 'gif' | 'youtube';
 };
 
 type Game = {
@@ -270,7 +270,7 @@ export default function MyGamesPage() {
                           alt={item.name}
                           style={{ width: '50%', height: '100%', objectFit: 'cover', borderRadius: 8, background: '#eee', border: '1px solid #e0f7fa' }}
                         />
-                      ) : item.type === 'gif' || item.type === 'video' ? (
+                      ) : item.type === 'gif' ? (
                         <video
                           key={item.url}
                           src={item.url}

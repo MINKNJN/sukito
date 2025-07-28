@@ -11,7 +11,7 @@ import GoogleAd from '@/components/GoogleAd';
 interface GameItem {
   name: string;
   url: string;
-  type: 'image' | 'gif' | 'video' | 'youtube';
+  type: 'image' | 'gif' | 'youtube';
 }
 
 interface Game {
@@ -61,7 +61,7 @@ const Media: React.FC<{ url: string; type: GameItem['type'] }> = ({ url, type })
             style={{ width: '100%', height: '100%' }} />
         </div>
       );
-    case 'video':
+    case 'gif':
       return (
         <div style={wrapperStyle}>
           <video src={url} autoPlay muted loop playsInline style={mediaStyle} />

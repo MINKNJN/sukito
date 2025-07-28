@@ -12,7 +12,7 @@ import GoogleAd from '@/components/GoogleAd';
 type GameItem = {
   name: string;
   url: string;
-  type: 'image' | 'gif' | 'video' | 'youtube';
+  type: 'image' | 'gif' | 'youtube';
 };
 
 type Game = {
@@ -33,7 +33,7 @@ function getPreviewImage(item: { type: string; url: string }) {
     return videoId ? `https://img.youtube.com/vi/${videoId}/0.jpg` : '';
   }
 
-  if (item.type === 'video' || item.type === 'gif') {
+  if (item.type === 'gif') {
     return '/default-video-thumbnail.jpg'; 
   }
 
@@ -44,7 +44,7 @@ export default function IndexPage() {
   const [games, setGames] = useState<Game[]>([]);
   const [sortOption, setSortOption] = useState<'popular' | 'latest'>('popular');
   const [dateRange, setDateRange] = useState<'all' | 'month' | 'week' | 'day'>('all');
-  const [typeFilter, setTypeFilter] = useState<'all' | 'image' | 'video'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'image' | 'youtube'>('all');
   const [searchInput, setSearchInput] = useState('');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [visibleCount, setVisibleCount] = useState(99);
@@ -53,16 +53,40 @@ export default function IndexPage() {
   const [showResumeModal, setShowResumeModal] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(0);
   const { showAlert } = useAlert();
   
   useEffect(() => {
-    setIsLoading(true); 
+    setIsLoading(true);
+    setLoadingProgress(0);
+
+    // 로딩 진행률을 단계별로 증가
+    const progressInterval = setInterval(() => {
+      setLoadingProgress(prev => {
+        if (prev >= 90) return prev;
+        return prev + Math.random() * 15;
+      });
+    }, 200);
 
     fetch('/api/games')
-      .then((res) => res.json())
-      .then((data) => setGames(data))
+      .then((res) => {
+        setLoadingProgress(70);
+        return res.json();
+      })
+      .then((data) => {
+        setLoadingProgress(90);
+        setGames(data);
+      })
       .catch(console.error)
-      .finally(() => setIsLoading(false));
+      .finally(() => {
+        setLoadingProgress(100);
+        setTimeout(() => {
+          setIsLoading(false);
+          setLoadingProgress(0);
+        }, 300);
+      });
+
+    return () => clearInterval(progressInterval);
   
     const stored = localStorage.getItem('sukito_game');
     
@@ -119,9 +143,9 @@ export default function IndexPage() {
       if (typeFilter === 'image') {
         // image 타입만 통과
         if (!game.thumbnails || !game.thumbnails.some(item => item.type === 'image')) return false;
-      } else if (typeFilter === 'video') {
-        // video, gif, youtube 타입이 하나라도 있으면 통과
-        if (!game.thumbnails || !game.thumbnails.some(item => item.type === 'video' || item.type === 'gif' || item.type === 'youtube')) return false;
+      } else if (typeFilter === 'youtube') {
+        // youtube 타입이 하나라도 있으면 통과
+        if (!game.thumbnails || !game.thumbnails.some(item => item.type === 'youtube')) return false;
       }
       if (searchKeyword && !(
         game.title.includes(searchKeyword) ||
@@ -263,7 +287,7 @@ export default function IndexPage() {
       </Head>
       <Header />
 
-      <UploadModal visible={isLoading} message="Loading..." />
+      <UploadModal visible={isLoading} message="読み込み中..." progress={loadingProgress} />
 
       {showResumeModal && resumeData && (
         <div style={modalOverlayStyle}>
@@ -272,7 +296,7 @@ export default function IndexPage() {
 
             {resumeData.items?.[resumeData.matchIndex * 2] && (
             <div style={previewItemStyle}>
-              {resumeData.items[resumeData.matchIndex * 2].type === 'video' &&
+              {resumeData.items[resumeData.matchIndex * 2].type === 'gif' &&
               resumeData.items[resumeData.matchIndex * 2].url.endsWith('.mp4') ? (
                 <video
                   src={resumeData.items[resumeData.matchIndex * 2].url}
@@ -295,7 +319,7 @@ export default function IndexPage() {
             <div style={vsStyle}>VS</div>
             {resumeData.items?.[resumeData.matchIndex * 2 + 1] && (
             <div style={previewItemStyle}>
-              {resumeData.items[resumeData.matchIndex * 2 + 1].type === 'video' &&
+              {resumeData.items[resumeData.matchIndex * 2 + 1].type === 'gif' &&
               resumeData.items[resumeData.matchIndex * 2 + 1].url.endsWith('.mp4') ? (
                 <video
                   src={resumeData.items[resumeData.matchIndex * 2 + 1].url}
@@ -421,7 +445,7 @@ export default function IndexPage() {
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => { setTypeFilter('all'); setVisibleCount(10); }} style={typeFilter === 'all' ? activeButtonStyle : buttonStyle}>すべて</button>
             <button onClick={() => { setTypeFilter('image'); setVisibleCount(10); }} style={typeFilter === 'image' ? activeButtonStyle : buttonStyle}>画像</button>
-            <button onClick={() => { setTypeFilter('video'); setVisibleCount(10); }} style={typeFilter === 'video' ? activeButtonStyle : buttonStyle}>動画</button>
+            <button onClick={() => { setTypeFilter('youtube'); setVisibleCount(10); }} style={typeFilter === 'youtube' ? activeButtonStyle : buttonStyle}>動画</button>
           </div>
 
           <div style={{ display: 'flex', gap: 4 }}>

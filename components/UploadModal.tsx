@@ -25,7 +25,7 @@ const modalBoxStyle: React.CSSProperties = {
 
 const spinnerStyle: React.CSSProperties = {
   border: '6px solid #f3f3f3',
-  borderTop: '6px solid #0070f3',
+  borderTop: '6px solid #4caf50',
   borderRadius: '50%',
   width: '40px',
   height: '40px',
@@ -71,8 +71,9 @@ export default function UploadModal({ visible, message = "少々お待ちくだ�
               style={{
                 height: '100%',
                 width: `${progress}%`,
-                backgroundColor: '#0070f3',
+                backgroundColor: '#4caf50',
                 transition: 'width 0.3s ease',
+                borderRadius: '8px',
               }}
             />
           </div>

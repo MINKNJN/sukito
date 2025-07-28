@@ -56,7 +56,7 @@ export function getThumbnailUrl(item: { type: string; url: string }): string {
     return videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : '/placeholder-thumbnail.png';
   }
 
-  if (item.type === 'video' || item.type === 'gif' || item.type === 'image') {
+  if (item.type === 'gif' || item.type === 'image') {
     // 모든 타입에서 url을 그대로 사용 (GIF도 mp4 URL 사용)
     return item.url;
   }

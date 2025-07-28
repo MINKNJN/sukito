@@ -13,7 +13,7 @@ interface User {
 interface GameItem {
   name: string;
   url: string;
-  type: 'image' | 'gif' | 'video' | 'youtube';
+  type: 'image' | 'gif' | 'youtube';
 }
 
 interface Game {

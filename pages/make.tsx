@@ -10,7 +10,7 @@ import fs from 'fs';
 
 const visibilityOptions = ['public', 'private', 'password'] as const;
 type Visibility = typeof visibilityOptions[number];
-const tabOptions = ['image', 'gif', 'video'] as const;
+const tabOptions = ['image', 'gif', 'youtube'] as const;
 type TabType = typeof tabOptions[number];
 
 interface VideoRow {
@@ -106,7 +106,7 @@ export default function MakePage() {
             setSelectedThumbnails(selectedIndexes);
           }
 
-          if (data.type === 'video') {
+          if (data.type === 'youtube') {
             const videos = data.items.map((i: any) => {
               const match = i.url.match(/start=(\d+)&end=(\d+)/);
               return {
@@ -311,7 +311,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         return;
       }
     }
-    if (activeTab === 'video') {
+    if (activeTab === 'youtube') {
       // 유튜브 정보가 2개 이상 입력되어 있는지 체크
       const validVideoCount = videoRows.filter(row => row.name.trim() && row.url.trim() && row.stime.trim() && row.etime.trim()).length;
       if (validVideoCount < 2) {
@@ -357,7 +357,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // 2. 파일 업로드 (id 기반 폴더)
     setUploadMessage('ファイルをアップロード中...');
     setUploadProgress(20);
-    let items: { name: string; url: string; type: 'image' | 'gif' | 'video' | 'youtube'; thumbUrl?: string }[] = [];
+    let items: { name: string; url: string; type: 'image' | 'gif' | 'youtube'; thumbUrl?: string }[] = [];
     let newUploadedUrls: string[] = [];
     let newGifUploaded: { mp4Url: string }[] = [];
     if (activeTab === 'image') {
@@ -417,7 +417,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         type: 'gif',
       }));
     }
-    if (activeTab === 'video') {
+    if (activeTab === 'youtube') {
       setUploadMessage('YouTubeリンクを確認中...');
       setUploadProgress(60);
       const invalidRows = [];
@@ -553,7 +553,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             ))}
           </div>
 
-          {activeTab !== 'video' && (
+          {activeTab !== 'youtube' && (
             <div>
               <strong style={{ fontSize: '1.2rem'}}>トーナメントの作り方 :</strong><br />
               <p style={{
@@ -692,7 +692,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             </div>
           )}
 
-          {activeTab === 'video' && (
+          {activeTab === 'youtube' && (
             <div>
               <strong style={{ fontSize: '1.2rem', marginBottom: 8, display: 'block' }}>トーナメントの作り方 :</strong>
               <p style={{

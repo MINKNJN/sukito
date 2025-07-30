@@ -6,10 +6,53 @@ import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
 
+// EC2 서버 URL (환경변수로 설정 가능)
+const EC2_SERVER_URL = process.env.EC2_SERVER_URL || 'http://your-ec2-public-ip:3001';
+
 // Helper to check if webp is animated
 function isAnimatedWebp(filepath: string): boolean {
   const buffer = fs.readFileSync(filepath);
   return buffer.includes(Buffer.from('ANIM'));
+}
+
+// EC2 서버로 GIF 변환 요청
+async function convertGifOnEC2(filepath: string, originalFilename: string): Promise<string> {
+  try {
+    const FormData = require('form-data');
+    const form = new FormData();
+    form.append('gif', fs.createReadStream(filepath), originalFilename);
+
+    const response = await fetch(`${EC2_SERVER_URL}/convert`, {
+      method: 'POST',
+      body: form,
+    });
+
+    if (!response.ok) {
+      throw new Error(`EC2 서버 오류: ${response.status}`);
+    }
+
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.message || '변환 실패');
+    }
+
+    // 변환된 파일 다운로드
+    const downloadResponse = await fetch(`${EC2_SERVER_URL}${result.data.downloadUrl}`);
+    if (!downloadResponse.ok) {
+      throw new Error('변환된 파일 다운로드 실패');
+    }
+
+    // 임시 파일로 저장
+    const tempMp4Path = filepath.replace(/\.(gif|webp)$/i, '.mp4');
+    const buffer = await downloadResponse.arrayBuffer();
+    fs.writeFileSync(tempMp4Path, Buffer.from(buffer));
+
+    return tempMp4Path;
+  } catch (error) {
+    console.error('EC2 변환 오류:', error);
+    throw error;
+  }
 }
 
 export const config = {
@@ -75,12 +118,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               return res.status(400).json({ message: '静止画WEBPはアップロードできません。' });
             }
           }
-          const mp4Path = filepath.replace(/\.(gif|webp)$/i, '.mp4');
-          await convertGifToMp4(filepath, mp4Path);
-          const mp4Url = await uploadToS3(mp4Path, originalFilename.replace(/\.(gif|webp)$/i, '.mp4'), 'video/mp4', folder);
-          fs.unlinkSync(filepath);
-          fs.unlinkSync(mp4Path);
-          uploadedResults.push({ mp4Url });
+          
+          try {
+            // EC2 서버로 변환 요청
+            const mp4Path = await convertGifOnEC2(filepath, originalFilename);
+            const mp4Url = await uploadToS3(mp4Path, originalFilename.replace(/\.(gif|webp)$/i, '.mp4'), 'video/mp4', folder);
+            fs.unlinkSync(filepath);
+            fs.unlinkSync(mp4Path);
+            uploadedResults.push({ mp4Url });
+          } catch (error) {
+            console.error('EC2 변환 실패, 로컬 변환으로 폴백:', error);
+            // EC2 실패 시 로컬 변환으로 폴백 (기존 코드)
+            const mp4Path = filepath.replace(/\.(gif|webp)$/i, '.mp4');
+            await convertGifToMp4(filepath, mp4Path);
+            const mp4Url = await uploadToS3(mp4Path, originalFilename.replace(/\.(gif|webp)$/i, '.mp4'), 'video/mp4', folder);
+            fs.unlinkSync(filepath);
+            fs.unlinkSync(mp4Path);
+            uploadedResults.push({ mp4Url });
+          }
         } else {
           const url = await uploadToS3(filepath, originalFilename, mimetype, folder);
           uploadedResults.push({ url });

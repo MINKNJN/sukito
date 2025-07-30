@@ -92,7 +92,7 @@ export default function IndexPage() {
     
     if (stored && stored !== 'undefined') { 
       try {
-        const parsed = JSON.parse(stored);
+        const parsed = JSON.parse(stored || '{}');
         if (parsed && parsed.gameId) {
           setResumeData(parsed);
           setShowResumeModal(true);

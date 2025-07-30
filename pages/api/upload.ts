@@ -143,18 +143,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(400).json({ message: '画像ファイルが正しくありません。' });
           }
         }
-        // GIF 분기 (EC2 서버를 사용해서 MP4로 변환)
-        if (/\.(gif)$/i.test(originalFilename)) {
-          // EC2 서버로 변환 요청
-          const mp4Path = await convertGifOnEC2(filepath, originalFilename);
-          const mp4Url = await uploadToS3(mp4Path, originalFilename.replace(/\.(gif)$/i, '.mp4'), 'video/mp4', folder);
-          fs.unlinkSync(filepath);
-          fs.unlinkSync(mp4Path);
-          uploadedResults.push({ mp4Url });
+        // GIF/WEBP 분기 (EC2 서버를 사용해서 MP4로 변환)
+        if (/\.(gif|webp)$/i.test(originalFilename)) {
+          let mp4Path: string | null = null;
+          try {
+            // EC2 서버로 변환 요청
+            mp4Path = await convertGifOnEC2(filepath, originalFilename);
+            const mp4Url = await uploadToS3(mp4Path, originalFilename.replace(/\.(gif|webp)$/i, '.mp4'), 'video/mp4', folder);
+            uploadedResults.push({ mp4Url });
+          } finally {
+            // 에러가 발생해도 임시 파일 정리
+            try {
+              if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+              if (mp4Path && fs.existsSync(mp4Path)) fs.unlinkSync(mp4Path);
+            } catch (cleanupError) {
+              console.error('임시 파일 정리 실패:', cleanupError);
+            }
+          }
         } else {
-          const url = await uploadToS3(filepath, originalFilename, mimetype, folder);
-          uploadedResults.push({ url });
-          fs.unlinkSync(filepath);
+          try {
+            const url = await uploadToS3(filepath, originalFilename, mimetype, folder);
+            uploadedResults.push({ url });
+          } finally {
+            // 에러가 발생해도 임시 파일 정리
+            try {
+              if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+            } catch (cleanupError) {
+              console.error('임시 파일 정리 실패:', cleanupError);
+            }
+          }
         }
       }
       return res.status(200).json({ results: uploadedResults });

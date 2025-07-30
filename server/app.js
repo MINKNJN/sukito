@@ -39,11 +39,13 @@ const storage = multer.diskStorage({
 const upload = multer({ 
   storage: storage,
   fileFilter: (req, file, cb) => {
-    // GIF 파일 허용 (mimetype 체크 완화)
-    if (file.mimetype === 'image/gif' || file.originalname.toLowerCase().endsWith('.gif')) {
+    // GIF/WEBP 파일 허용 (mimetype 체크 완화)
+    const isGif = file.mimetype === 'image/gif' || file.originalname.toLowerCase().endsWith('.gif');
+    const isWebp = file.mimetype === 'image/webp' || file.originalname.toLowerCase().endsWith('.webp');
+    if (isGif || isWebp) {
       cb(null, true);
     } else {
-      cb(new Error('GIF 파일만 업로드 가능합니다.'), false);
+      cb(new Error('GIF/WEBP 파일만 업로드 가능합니다.'), false);
     }
   },
   limits: {
@@ -76,7 +78,7 @@ app.post('/convert', upload.single('gif'), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ 
         success: false, 
-        message: 'GIF 파일을 업로드해주세요.' 
+        message: 'GIF/WEBP 파일을 업로드해주세요.' 
       });
     }
 

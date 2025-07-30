@@ -2,14 +2,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import { v2 as cloudinary } from 'cloudinary';
 import { deleteFromS3 } from '@/lib/aws-s3';
-
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME!,
-  api_key: process.env.CLOUDINARY_API_KEY!,
-  api_secret: process.env.CLOUDINARY_API_SECRET!,
-});
 
 function mergeItemsHistory(original: any[], updates: any[]) {
   const key = (item: any) => `${item.url}-${item.type}`;

@@ -11,10 +11,10 @@
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "aws-sdk": "^2.1692.0",
+    "axios": "^1.11.0",
     "bcryptjs": "^3.0.2",
     "bootstrap": "^5.3.5",
     "browser-image-compression": "^2.0.2",
-    "cloudinary": "^2.6.1",
     "ffmpeg-static": "^5.2.0",
     "file-saver": "^2.0.5",
     "fluent-ffmpeg": "^2.1.3",

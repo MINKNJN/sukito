@@ -16,6 +16,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const db = client.db('sukito');
     const collection = db.collection('games');
 
+    if (req.method === 'GET') {
+      // 게임 존재 여부 확인
+      const game = await collection.findOne({ _id: new ObjectId(id) });
+      
+      if (!game) {
+        return res.status(404).json({ message: 'そのゲームが見つかりません。' });
+      }
+
+      return res.status(200).json({
+        _id: game._id.toString(),
+        title: game.title,
+        desc: game.desc,
+        items: game.items || []
+      });
+    }
+
     if (req.method === 'PATCH') {
       const updateData = req.body;
 

@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { gameId } = req.body;
 
   if (!gameId) {
-    return res.status(400).json({ message: 'gameId가 필요합니다.' });
+    return res.status(400).json({ message: '게임 ID가 필요합니다.' });
   }
 
   try {

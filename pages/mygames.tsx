@@ -27,6 +27,7 @@ type Game = {
 export default function MyGamesPage() {
   const [games, setGames] = useState<Game[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { showAlert, showConfirm } = useAlert();
   const [stats, setStats] = useState({ totalGames: 0, totalPlays: 0, totalComments: 0 });
 
@@ -77,6 +78,8 @@ export default function MyGamesPage() {
       });
     } catch (error) {
       console.error('エラー:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -248,16 +251,28 @@ export default function MyGamesPage() {
     <>
       <UploadModal visible={isDeleting} message="少々お待ちください。" />
       <Header />
-      <div style={pageBgStyle}>
-        <div style={cardStyle}>
-          <h1 style={{ marginBottom: 20, fontWeight: 900, fontSize: isMobile ? 22 : 32, letterSpacing: -1, color: '#4caf50', textAlign: 'center' }}>マイトーナメント</h1>
-          <div style={statBoxStyle}>
-            <div style={statItemStyle}><span style={statNumStyle}>{stats.totalGames}</span>ゲーム</div>
-            <div style={statItemStyle}><span style={statNumStyle}>{stats.totalPlays}</span>プレイ</div>
-            <div style={statItemStyle}><span style={statNumStyle}>{stats.totalComments}</span>コメント</div>
+      {isLoading ? (
+        <div style={pageBgStyle}>
+          <div style={cardStyle}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '24px', marginBottom: '16px', color: '#4caf50' }}>読み込み中...</div>
+                <div style={{ width: '40px', height: '40px', border: '4px solid #e0f7fa', borderTop: '4px solid #4caf50', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto' }}></div>
+              </div>
+            </div>
           </div>
-          <div style={gameListStyle}>
-            {games.map((game) => (
+        </div>
+      ) : (
+        <div style={pageBgStyle}>
+          <div style={cardStyle}>
+            <h1 style={{ marginBottom: 20, fontWeight: 900, fontSize: isMobile ? 22 : 32, letterSpacing: -1, color: '#4caf50', textAlign: 'center' }}>マイトーナメント</h1>
+            <div style={statBoxStyle}>
+              <div style={statItemStyle}><span style={statNumStyle}>{stats.totalGames}</span>ゲーム</div>
+              <div style={statItemStyle}><span style={statNumStyle}>{stats.totalPlays}</span>プレイ</div>
+              <div style={statItemStyle}><span style={statNumStyle}>{stats.totalComments}</span>コメント</div>
+            </div>
+            <div style={gameListStyle}>
+              {games.map((game) => (
               <div key={game._id} style={myCardStyle}>
                 {/* 썸네일 2개 크게 */}
                 <div style={thumbRowStyle}>
@@ -313,6 +328,7 @@ export default function MyGamesPage() {
           </div>
         </div>
       </div>
+      )}
     </>
   );
 }

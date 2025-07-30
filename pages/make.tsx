@@ -164,7 +164,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 
     const isValidType =
       (activeTab === 'image' && /\.(jpe?g|png)$/i.test(file.name)) ||
-      (activeTab === 'gif' && /\.(gif|webp)$/i.test(file.name)); 
+      (activeTab === 'gif' && /\.(gif)$/i.test(file.name)); 
 
     if (!isValidSize) {
       showAlert(`「${file.name}」は${MAX_FILE_SIZE_MB}MB以下のみアップロード可能です。`, 'error');
@@ -180,7 +180,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 
   setFileNames(prev => [
     ...prev,
-    ...filtered.map(f => f.name.replace(/\.(jpe?g|png|gif|webp)$/i, '')), 
+    ...filtered.map(f => f.name.replace(/\.(jpe?g|png|gif)$/i, '')), 
   ]);
 };
 
@@ -320,6 +320,12 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       }
     }
 
+    // 대표 썸네일 2개 선택 필수 검증
+    if (selectedThumbnails.length !== 2) {
+      showAlert('代表画像を2つ選択してください。', 'error');
+      return;
+    }
+
     setIsUploading(true); 
     setUploadMessage('ゲームIDを作成中...');
     setUploadProgress(5);
@@ -405,7 +411,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         });
         const data = await res.json();
         if (!res.ok || !data.results || !data.results[0]?.mp4Url) {
-          showAlert(data.message || 'GIFまたはWEBPのアップロードに失敗しました。もう一度お試しください。', 'error');
+          showAlert(data.message || 'GIFのアップロードに失敗しました。もう一度お試しください。', 'error');
           continue;
         }
         newGifUploaded.push({ mp4Url: data.results[0].mp4Url });
@@ -597,7 +603,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                 </button>
                 <span style={{ marginLeft: 8 }}>{fileNames.length} ファイル</span>
                 <div style={{ flex: 1 }} />
-                <input type="file" ref={fileInputRef} multiple accept={activeTab === 'image' ? '.jpg,.jpeg,.png' : '.gif,.webp'} onChange={handleFileChange} style={{ display: 'none' }} />
+                <input type="file" ref={fileInputRef} multiple accept={activeTab === 'image' ? '.jpg,.jpeg,.png' : '.gif'} onChange={handleFileChange} style={{ display: 'none' }} />
               </div>
               {fileNames.map((name, i) => {
                 const isNew = i >= uploadedUrls.length;

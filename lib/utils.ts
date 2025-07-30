@@ -1,15 +1,6 @@
 // /lib/utils.ts
 
 export function convertToThumbnail(url: string): string {
-  if (url.includes('res.cloudinary.com')) {
-    if (url.match(/\.(gif)$/i)) {
-      return url.replace('/upload/', '/upload/pg_1/').replace('.gif', '.jpg');
-    }
-    if (url.match(/\.(mp4)$/i)) {
-      return url.replace('/upload/', '/upload/pg_1/').replace('.mp4', '.jpg');
-    }
-    return url; 
-  }
 
   if (url.includes('youtube.com/embed')) {
     const match = url.match(/embed\/([a-zA-Z0-9_-]{11})/);

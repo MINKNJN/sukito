@@ -39,8 +39,8 @@ const storage = multer.diskStorage({
 const upload = multer({ 
   storage: storage,
   fileFilter: (req, file, cb) => {
-    // GIF 파일만 허용
-    if (file.mimetype === 'image/gif') {
+    // GIF 파일 허용 (mimetype 체크 완화)
+    if (file.mimetype === 'image/gif' || file.originalname.toLowerCase().endsWith('.gif')) {
       cb(null, true);
     } else {
       cb(new Error('GIF 파일만 업로드 가능합니다.'), false);

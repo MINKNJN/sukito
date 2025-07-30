@@ -35,7 +35,7 @@ export default function BulkDownloader() {
         const res = await fetch(`/api/proxy?url=${encodeURIComponent(item.src)}`);
         const blob = await res.blob();
         folder?.file(`${item.title}.jpg`, blob);
-        console.log(`✅ ${item.title} 추가됨`);
+        console.log(`✅ ${item.title} 追加されました`);
       } catch (err) {
         console.warn(`❌ ${item.title} 실패`, err);
       }

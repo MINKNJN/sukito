@@ -51,6 +51,7 @@ export default function IndexPage() {
 
   const [resumeData, setResumeData] = useState<any>(null);
   const [showResumeModal, setShowResumeModal] = useState(false);
+  const [isResumeLoading, setIsResumeLoading] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
@@ -87,21 +88,34 @@ export default function IndexPage() {
       });
 
     return () => clearInterval(progressInterval);
-  
-    const stored = localStorage.getItem('sukito_game');
-    
-    if (stored && stored !== 'undefined') { 
-      try {
-        const parsed = JSON.parse(stored || '{}');
-        if (parsed && parsed.gameId) {
-          setResumeData(parsed);
-          setShowResumeModal(true);
-        }
-      } catch (err) {
-        console.error('Error:', err);
-      }
-    }
   }, []);
+
+  // 이어하기 데이터 확인 (로딩 완료 후 실행)
+  useEffect(() => {
+    if (!isLoading) {
+              console.log('이어하기 데이터 확인 시작...');
+        const stored = localStorage.getItem('sukito_game');
+        console.log('localStorage에서 가져온 데이터:', stored);
+        
+        if (stored && stored !== 'undefined') { 
+          try {
+            const parsed = JSON.parse(stored || '{}');
+            console.log('파싱된 데이터:', parsed);
+            if (parsed && parsed.gameId) {
+              console.log('이어하기 데이터 발견:', parsed);
+              setResumeData(parsed);
+              setShowResumeModal(true);
+            } else {
+              console.log('gameIdが 없ないか無効です');
+            }
+          } catch (err) {
+            console.error('이어하기 데이터 파싱 오류:', err);
+          }
+        } else {
+          console.log('localStorageにsukito_gameデータがありません');
+        }
+    }
+  }, [isLoading]);
   
 
   const handleSearch = () => {
@@ -109,9 +123,32 @@ export default function IndexPage() {
     setVisibleCount(10);
   };
 
-  const handleResumeClick = () => {
+  const handleResumeClick = async () => {
     if (resumeData?.gameId) {
-      location.href = `/play/${resumeData.gameId}`;
+      setIsResumeLoading(true);
+      try {
+        // 게임 존재 여부 확인
+        const response = await fetch(`/api/games/${resumeData.gameId}`);
+        if (response.ok) {
+          // 게임이 존재하면 게임 페이지로 이동
+          location.href = `/play/${resumeData.gameId}`;
+        } else {
+          // 게임이 존재하지 않으면 저장된 데이터 삭제하고 에러 메시지 표시
+          localStorage.removeItem('sukito_game');
+          setResumeData(null);
+          setShowResumeModal(false);
+          showAlert('存在しないゲームです。', 'error');
+        }
+      } catch (error) {
+        console.error('게임 확인 오류:', error);
+        // 네트워크 오류 시에도 저장된 데이터 삭제
+        localStorage.removeItem('sukito_game');
+        setResumeData(null);
+        setShowResumeModal(false);
+        showAlert('存在しないゲームです。', 'error');
+      } finally {
+        setIsResumeLoading(false);
+      }
     }
   };
 
@@ -361,9 +398,27 @@ export default function IndexPage() {
             </h4>
 
             <div style={{ marginTop: 20, display: 'flex', gap: 10 }}>
-              <button style={resumeButtonStyle} onClick={handleResumeClick}>続きから</button>
-              <button style={deleteButtonStyle} onClick={handleDeleteResume}>削除</button>
-              <button style={closeButtonStyle} onClick={handleDismissModal}>閉じる</button>
+              <button 
+                style={isResumeLoading ? resumeButtonDisabledStyle : resumeButtonStyle} 
+                onClick={handleResumeClick}
+                disabled={isResumeLoading}
+              >
+                {isResumeLoading ? '確認中...' : '続きから'}
+              </button>
+              <button 
+                style={deleteButtonStyle} 
+                onClick={handleDeleteResume}
+                disabled={isResumeLoading}
+              >
+                削除
+              </button>
+              <button 
+                style={closeButtonStyle} 
+                onClick={handleDismissModal}
+                disabled={isResumeLoading}
+              >
+                閉じる
+              </button>
             </div>
           </div>
         </div>
@@ -585,6 +640,18 @@ const resumeButtonStyle: React.CSSProperties = {
   border: 'none',
   borderRadius: 6,
   cursor: 'pointer',
+  transition: 'all 0.2s',
+};
+
+const resumeButtonDisabledStyle: React.CSSProperties = {
+  flex: 1,
+  padding: '8px 0',
+  backgroundColor: '#ccc',
+  color: '#666',
+  border: 'none',
+  borderRadius: 6,
+  cursor: 'not-allowed',
+  transition: 'all 0.2s',
 };
 
 const deleteButtonStyle: React.CSSProperties = {

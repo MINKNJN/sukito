@@ -93,13 +93,13 @@ export default function AdminPage() {
       const res = await fetch(`/api/admin/users?page=${page}&limit=${PAGE_LIMIT}`, {
         headers: getAuthHeaders(),
       });
-              if (!res.ok) throw new Error('회원 목록 요청 실패');
+                    if (!res.ok) throw new Error('회원 목록 요청에 실패했습니다.');
       const data = await res.json();
       setUsers(data.users || []);
       setUserTotal(data.total || 0);
     } catch (err) {
-      console.error('エラー:', err);
-              alert('회원 목록 불러오기 실패');
+      console.error('에러:', err);
+      alert('회원 목록 불러오기 실패');
     } finally {
       setLoading(false);
     }
@@ -110,12 +110,12 @@ export default function AdminPage() {
       const res = await fetch(`/api/admin/games?page=${page}&limit=${PAGE_LIMIT}`, {
         headers: getAuthHeaders(),
       });
-      if (!res.ok) throw new Error('게임 목록 요청 실패');
+      if (!res.ok) throw new Error('게임 목록 요청에 실패했습니다.');
       const data = await res.json();
       setGames(data.games || []);
       setGameTotal(data.total || 0);
     } catch (err) {
-      console.error('エラー:', err);
+      console.error('에러:', err);
       alert('게임 목록 불러오기 실패');
     }
   };
@@ -125,13 +125,13 @@ export default function AdminPage() {
       const res = await fetch(`/api/admin/comments?page=${page}&limit=${PAGE_LIMIT}`, {
         headers: getAuthHeaders(),
       });
-      if (!res.ok) throw new Error('コメントリスト要求失敗');
+      if (!res.ok) throw new Error('댓글 목록 요청에 실패했습니다.');
       const data = await res.json();
       setComments(data.comments || []);
       setCommentTotal(data.total || 0);
     } catch (err) {
-      console.error('エラー:', err);
-      alert('コメントリスト読み込み失敗');
+      console.error('에러:', err);
+      alert('댓글 목록 불러오기 실패');
     }
   };
 

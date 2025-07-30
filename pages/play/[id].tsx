@@ -28,9 +28,8 @@ interface PlayPageProps {
 const ROUND_OPTIONS = [4, 8, 16, 32, 64, 128, 256];
 const ANIMATION_DURATION = 800;
 
-const optimizeCloudinaryImage = (url: string): string => {
-  if (!url.includes('/upload/')) return url;
-  return url.replace('/upload/', '/upload/w_640,f_auto,q_auto,dpr_auto/');
+const optimizeImage = (url: string): string => {
+  return url;
 };
 
 // Media.tsx 컴포넌트
@@ -75,7 +74,7 @@ const Media: React.FC<{ url: string; type: GameItem['type'] }> = ({ url, type })
       );
     case 'image':
     default:
-      const optimizedUrl = optimizeCloudinaryImage(url);
+      const optimizedUrl = optimizeImage(url);
       return (
         <div style={{
           ...wrapperStyle,
@@ -152,7 +151,7 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
         : shuffled.slice(0, selectedRound); 
 
     // 디버깅: 선택된 항목들 확인
-    console.log('선택된 항목들:', pick.map(item => item.name));
+            console.log('選択されたアイテム:', pick.map(item => item.name));
 
     const saveState = {
       gameId: game._id,

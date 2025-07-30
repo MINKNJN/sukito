@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { userId } = req.body;
 
     if (!userId) {
-      return res.status(400).json({ message: 'userId가 필요합니다.' });
+      return res.status(400).json({ message: '사용자 ID가 필요합니다.' });
     }
 
     const client = await clientPromise;
@@ -30,6 +30,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           return res.status(200).json({ message: '会員削除完了' });
   } catch (err) {
           console.error('会員削除APIエラー:', err);
-    return res.status(500).json({ message: '서버 오류' });
+    return res.status(500).json({ message: '서버 오류가 발생했습니다.' });
   }
 }

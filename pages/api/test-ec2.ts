@@ -26,18 +26,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const path = require('path');
     
     // 테스트용 작은 GIF 파일 생성 (1x1 픽셀)
-    const testGifPath = path.join(process.cwd(), 'tmp', 'test.gif');
     const testGifBuffer = Buffer.from([
       0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00, 0x80, 0x00, 0x00, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x21, 0xf9, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x2c, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x44, 0x01, 0x00, 0x3b
     ]);
-    
-    // tmp 폴더가 없으면 생성
-    const tmpDir = path.join(process.cwd(), 'tmp');
-    if (!fs.existsSync(tmpDir)) {
-      fs.mkdirSync(tmpDir, { recursive: true });
-    }
-    
-    fs.writeFileSync(testGifPath, testGifBuffer);
     
     const formData = new FormData();
     formData.append('gif', testGifBuffer, {
@@ -54,11 +45,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
     
     console.log('파일 업로드 테스트 성공:', uploadResponse.data);
-    
-    // 테스트 파일 정리
-    if (fs.existsSync(testGifPath)) {
-      fs.unlinkSync(testGifPath);
-    }
 
     return res.status(200).json({
       success: true,

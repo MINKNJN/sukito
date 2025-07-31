@@ -101,7 +101,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const form = new IncomingForm({
-    uploadDir: path.join(process.cwd(), 'tmp'),
+    uploadDir: '/tmp', // Vercel 환경에서는 /tmp 사용
     keepExtensions: true,
   });
 

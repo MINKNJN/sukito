@@ -189,13 +189,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           return res.status(400).json({ message: 'ファイルサイズが10MBを超えています。' });
         }
         
-        // 이미지/움짤 파일 실제 디코딩 검사 (sharp)
+        // 이미지/움짤 파일 실제 디코딩 검사 (sharp) - 에러 처리 개선
         if (/\.(jpg|jpeg|png|gif|webp)$/i.test(originalFilename)) {
           try {
             await sharp(filepath).metadata(); // 이미지 파일이 아니면 에러 발생
             console.log('이미지 파일 검증 성공:', originalFilename);
-          } catch (e) {
+          } catch (e: any) {
             console.error('이미지 파일 검증 실패:', e);
+            console.error('Sharp 에러 상세:', e.message);
             fs.unlinkSync(filepath);
             return res.status(400).json({ message: '画像ファイルが正しくありません。' });
           }
@@ -217,8 +218,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const mp4Url = await uploadToS3(mp4Path, originalFilename.replace(/\.(gif|webp)$/i, '.mp4'), 'video/mp4', folder);
             console.log('S3 업로드 완료:', mp4Url);
             uploadedResults.push({ mp4Url });
-          } catch (error) {
+          } catch (error: any) {
             console.error('GIF/WEBP 변환 실패:', error);
+            console.error('EC2 변환 에러 상세:', error.message);
+            if (error.response) {
+              console.error('EC2 응답 데이터:', error.response.data);
+              console.error('EC2 응답 상태:', error.response.status);
+            }
             throw error;
           } finally {
             // 에러가 발생해도 임시 파일 정리
@@ -251,9 +257,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       
       console.log('모든 파일 처리 완료:', uploadedResults);
       return res.status(200).json({ results: uploadedResults });
-    } catch (error) {
+    } catch (error: any) {
       console.error('[アップロードエラー]', error);
-      return res.status(500).json({ message: 'アップロード中にエラーが発生しました。' });
+      console.error('업로드 에러 상세:', error.message);
+      
+      // 구체적인 에러 메시지 제공
+      let errorMessage = 'アップロード中にエラーが発生しました。';
+      if (error.message.includes('Sharp')) {
+        errorMessage = '画像ファイルの処理中にエラーが発生しました。';
+      } else if (error.message.includes('S3')) {
+        errorMessage = 'ファイルの保存中にエラーが発生しました。';
+      } else if (error.message.includes('EC2')) {
+        errorMessage = 'ファイル変換中にエラーが発生しました。';
+      }
+      
+      return res.status(500).json({ message: errorMessage });
     }
   });
 }

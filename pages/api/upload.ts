@@ -84,7 +84,26 @@ async function convertGifOnEC2(filepath: string, originalFilename: string): Prom
     if (error.response) {
       console.error('EC2サーバー応答データ:', error.response.data);
       console.error('EC2サーバー応答状態:', error.response.status);
+      console.error('EC2サーバー応答ヘッダー:', error.response.headers);
     }
+    if (error.code) {
+      console.error('EC2エラーコード:', error.code);
+    }
+    if (error.message) {
+      console.error('EC2エラーメッセージ:', error.message);
+    }
+    
+    // 구체적인 에러 메시지 제공
+    if (error.code === 'ECONNREFUSED') {
+      throw new Error('EC2サーバーに接続できません。サーバーが停止している可能性があります。');
+    }
+    if (error.code === 'ENOTFOUND') {
+      throw new Error('EC2サーバーのアドレスが見つかりません。');
+    }
+    if (error.code === 'ETIMEDOUT') {
+      throw new Error('EC2サーバーへの接続がタイムアウトしました。');
+    }
+    
     throw error;
   }
 }
@@ -103,6 +122,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const form = new IncomingForm({
     uploadDir: '/tmp', // Vercel 환경에서는 /tmp 사용
     keepExtensions: true,
+    maxFileSize: 15 * 1024 * 1024, // 15MB 제한
   });
 
   form.parse(req, async (err, fields, files) => {

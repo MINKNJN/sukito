@@ -118,6 +118,12 @@ export const config = {
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  console.log('업로드 API 호출됨:', {
+    method: req.method,
+    url: req.url,
+    EC2_SERVER_URL: process.env.EC2_SERVER_URL
+  });
+  
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'メソッドが許可されていません。' });
   }
@@ -153,42 +159,67 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const fileArray = Array.isArray(files.file) ? files.file : [files.file];
       const uploadedResults: any[] = [];
 
+      console.log('파일 배열:', fileArray);
+
       for (const file of fileArray) {
-        if (!file) continue;
+        console.log('파일 처리 시작:', file);
+        if (!file) { 
+          console.log('파일이 없습니다, 건너뜁니다'); 
+          continue; 
+        }
+        
         const filepath = (file as any).filepath || (file as any).path;
         const originalFilename = (file as any).originalFilename || 'upload.jpg';
         const mimetype = (file as any).mimetype || 'image/jpeg';
-        let folder = '';
-        if (fields && fields.folder) {
-          folder = String(fields.folder);
-        }
+        
+        console.log('파일 정보:', { filepath, originalFilename, mimetype });
+        
         if (!filepath || !fs.existsSync(filepath)) {
           console.error('無効なファイルパス:', filepath);
           return res.status(400).json({ message: 'ファイルが見つかりません。' });
         }
-        // 용량 제한 (15MB)
-        const MAX_FILE_SIZE = 15 * 1024 * 1024;
-        if (fs.statSync(filepath).size > MAX_FILE_SIZE) {
+        
+        // 용량 제한 (10MB)
+        const MAX_FILE_SIZE = 10 * 1024 * 1024;
+        const fileSize = fs.statSync(filepath).size;
+        console.log('파일 크기:', { size: fileSize, sizeInMB: (fileSize / (1024 * 1024)).toFixed(2) });
+        
+        if (fileSize > MAX_FILE_SIZE) {
           fs.unlinkSync(filepath);
-          return res.status(400).json({ message: 'ファイルサイズが15MBを超えています。' });
+          return res.status(400).json({ message: 'ファイルサイズが10MBを超えています。' });
         }
+        
         // 이미지/움짤 파일 실제 디코딩 검사 (sharp)
         if (/\.(jpg|jpeg|png|gif|webp)$/i.test(originalFilename)) {
           try {
             await sharp(filepath).metadata(); // 이미지 파일이 아니면 에러 발생
+            console.log('이미지 파일 검증 성공:', originalFilename);
           } catch (e) {
+            console.error('이미지 파일 검증 실패:', e);
             fs.unlinkSync(filepath);
             return res.status(400).json({ message: '画像ファイルが正しくありません。' });
           }
         }
+        
+        let folder = '';
+        if (fields && fields.folder) {
+          folder = String(fields.folder);
+        }
+        
         // GIF/WEBP 분기 (EC2 서버를 사용해서 MP4로 변환)
         if (/\.(gif|webp)$/i.test(originalFilename)) {
+          console.log('GIF/WEBP 파일 변환 시작:', originalFilename);
           let mp4Path: string | null = null;
           try {
             // EC2 서버로 변환 요청
             mp4Path = await convertGifOnEC2(filepath, originalFilename);
+            console.log('EC2 변환 완료, S3 업로드 시작');
             const mp4Url = await uploadToS3(mp4Path, originalFilename.replace(/\.(gif|webp)$/i, '.mp4'), 'video/mp4', folder);
+            console.log('S3 업로드 완료:', mp4Url);
             uploadedResults.push({ mp4Url });
+          } catch (error) {
+            console.error('GIF/WEBP 변환 실패:', error);
+            throw error;
           } finally {
             // 에러가 발생해도 임시 파일 정리
             try {
@@ -199,9 +230,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
           }
         } else {
+          console.log('일반 이미지 파일 S3 업로드 시작:', originalFilename);
           try {
             const url = await uploadToS3(filepath, originalFilename, mimetype, folder);
+            console.log('S3 업로드 완료:', url);
             uploadedResults.push({ url });
+          } catch (error) {
+            console.error('S3 업로드 실패:', error);
+            throw error;
           } finally {
             // 에러가 발생해도 임시 파일 정리
             try {
@@ -212,6 +248,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         }
       }
+      
+      console.log('모든 파일 처리 완료:', uploadedResults);
       return res.status(200).json({ results: uploadedResults });
     } catch (error) {
       console.error('[アップロードエラー]', error);

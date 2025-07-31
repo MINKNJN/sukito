@@ -112,6 +112,8 @@ export const config = {
   api: {
     bodyParser: false,
     responseLimit: false,
+    // Vercel 함수 크기 제한 늘리기
+    maxDuration: 60,
   },
 };
 
@@ -123,9 +125,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const form = new IncomingForm({
     uploadDir: '/tmp', // Vercel 환경에서는 /tmp 사용
     keepExtensions: true,
-    maxFileSize: 15 * 1024 * 1024, // 15MB 제한
+    maxFileSize: 10 * 1024 * 1024, // 10MB 제한 (Vercel 제한 고려)
     maxFields: 10,
     allowEmptyFiles: false,
+    // 추가 설정
+    multiples: true,
+    maxFieldsSize: 10 * 1024 * 1024, // 필드 크기도 10MB
   });
 
   form.parse(req, async (err, fields, files) => {

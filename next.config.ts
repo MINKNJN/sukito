@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['sharp'],
   },
+  // Vercel 함수 크기 제한 늘리기
+  serverRuntimeConfig: {
+    maxRequestBodySize: '15mb',
+  },
 };
 
 export default nextConfig;

@@ -67,7 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         message: '테스트 업로드 성공',
         results 
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('테스트 업로드 에러:', error);
       return res.status(500).json({ 
         success: false, 

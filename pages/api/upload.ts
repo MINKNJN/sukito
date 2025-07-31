@@ -111,6 +111,7 @@ async function convertGifOnEC2(filepath: string, originalFilename: string): Prom
 export const config = {
   api: {
     bodyParser: false,
+    responseLimit: false,
   },
 };
 
@@ -123,9 +124,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     uploadDir: '/tmp', // Vercel 환경에서는 /tmp 사용
     keepExtensions: true,
     maxFileSize: 15 * 1024 * 1024, // 15MB 제한
+    maxFields: 10,
+    allowEmptyFiles: false,
   });
 
   form.parse(req, async (err, fields, files) => {
+    console.log('업로드 요청 시작:', { 
+      method: req.method, 
+      url: req.url, 
+      userAgent: req.headers['user-agent'],
+      origin: req.headers['origin'],
+      host: req.headers['host']
+    });
+    console.log('필드 정보:', fields);
+    console.log('파일 정보:', files);
+    
     if (err) {
       console.error('フォーム解析エラー:', err);
       return res.status(500).json({ message: 'アップロード中にエラーが発生しました。' });

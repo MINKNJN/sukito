@@ -49,7 +49,7 @@ const upload = multer({
     }
   },
   limits: {
-    fileSize: 50 * 1024 * 1024 // 50MB 제한
+    fileSize: 15 * 1024 * 1024 // 15MB 제한 (프론트엔드와 맞춤)
   }
 });
 

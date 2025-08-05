@@ -49,8 +49,8 @@ const upload = multer({
     }
   },
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB 제한 (Vercel 제한 고려)
-    fieldSize: 10 * 1024 * 1024, // 필드 크기도 10MB로 설정
+    fileSize: 15 * 1024 * 1024, // 15MB 제한 (원래대로 복원)
+    fieldSize: 15 * 1024 * 1024, // 필드 크기도 15MB로 설정
   }
 });
 

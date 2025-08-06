@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: 'sukito-nextjs',
-      script: 'npm',
+      script: 'node_modules/.bin/next',
       args: 'start',
       cwd: '/home/ubuntu/sukito',
       env: {
@@ -16,7 +16,8 @@ module.exports = {
     },
     {
       name: 'sukito-api',
-      script: 'server/app.js',
+      script: 'node',
+      args: 'server/app.js',
       cwd: '/home/ubuntu/sukito',
       env: {
         NODE_ENV: 'production',

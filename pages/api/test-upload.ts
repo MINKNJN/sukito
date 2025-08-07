@@ -3,7 +3,8 @@ import fs from 'fs';
 import path from 'path';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
+  // GET 요청도 허용 (테스트용)
+  if (req.method !== 'POST' && req.method !== 'GET') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
@@ -49,7 +50,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         message: '테스트 성공',
         tmpDir,
         tmpDirExists: fs.existsSync(tmpDir),
-        tmpDirWritable: true
+        tmpDirWritable: true,
+        method: req.method,
+        timestamp: new Date().toISOString()
       });
     } catch (error) {
       console.error('파일 작업 실패:', error);

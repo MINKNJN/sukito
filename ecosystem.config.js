@@ -2,12 +2,13 @@ module.exports = {
   apps: [
     {
       name: 'sukito-nextjs',
-      script: 'node_modules/.bin/next',
+      script: 'npm',
       args: 'start',
       cwd: '/home/ubuntu/sukito',
       env: {
         NODE_ENV: 'production',
-        PORT: 3000
+        PORT: 3000,
+        NODE_OPTIONS: '--max-old-space-size=2048'
       },
       instances: 1,
       autorestart: true,
@@ -21,7 +22,8 @@ module.exports = {
       cwd: '/home/ubuntu/sukito',
       env: {
         NODE_ENV: 'production',
-        PORT: 3001
+        PORT: 3001,
+        NODE_OPTIONS: '--max-old-space-size=1024'
       },
       instances: 1,
       autorestart: true,

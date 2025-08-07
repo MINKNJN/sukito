@@ -11,6 +11,19 @@ const EC2_SERVER_URL = process.env.NODE_ENV === 'production'
   ? 'http://localhost:3001' 
   : (process.env.EC2_SERVER_URL || 'http://localhost:3001');
 
+// EC2 환경에서 tmp 디렉토리 설정
+const getUploadDir = () => {
+  if (process.env.NODE_ENV === 'production') {
+    // EC2 환경에서는 프로젝트 내 tmp 디렉토리 사용
+    const tmpDir = path.join(process.cwd(), 'tmp');
+    if (!fs.existsSync(tmpDir)) {
+      fs.mkdirSync(tmpDir, { recursive: true });
+    }
+    return tmpDir;
+  }
+  return '/tmp'; // 개발 환경에서는 /tmp 사용
+};
+
 // Helper to check if webp is animated
 function isAnimatedWebp(filepath: string): boolean {
   const buffer = fs.readFileSync(filepath);
@@ -96,8 +109,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ message: 'メソッドが許可されていません。' });
   }
 
+  console.log('=== 업로드 API 시작 ===');
+  console.log('NODE_ENV:', process.env.NODE_ENV);
+  console.log('EC2_SERVER_URL:', EC2_SERVER_URL);
+  console.log('uploadDir:', getUploadDir());
+
   const form = new IncomingForm({
-    uploadDir: '/tmp', // Vercel 환경에서는 /tmp 사용
+    uploadDir: getUploadDir(), // EC2 환경에 맞는 디렉토리 사용
     keepExtensions: true,
     maxFileSize: 15 * 1024 * 1024, // 15MB 제한 (Vercel 제한은 개별 파일)
     maxFields: 10,
@@ -108,6 +126,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   });
 
   form.parse(req, async (err, fields, files) => {
+    console.log('=== 폼 파싱 결과 ===');
+    console.log('err:', err);
+    console.log('fields:', fields);
+    console.log('files:', files);
+    
     if (err) {
       console.error('フォーム解析エラー:', err);
       return res.status(500).json({ message: 'アップロード中にエラーが発生しました。' });
@@ -115,6 +138,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
       const fileArray = Array.isArray(files.file) ? files.file : [files.file];
+      console.log('fileArray:', fileArray);
       const uploadedResults: any[] = [];
 
       for (const file of fileArray) {
@@ -124,6 +148,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const originalFilename = (file as any).originalFilename || 'upload.jpg';
         const mimetype = (file as any).mimetype || 'image/jpeg';
         
+        console.log('=== 파일 처리 ===');
+        console.log('filepath:', filepath);
+        console.log('originalFilename:', originalFilename);
+        console.log('mimetype:', mimetype);
+        console.log('file exists:', fs.existsSync(filepath));
+        
         if (!filepath || !fs.existsSync(filepath)) {
           console.error('無効なファイルパス:', filepath);
           return res.status(400).json({ message: 'ファイルが見つかりません。' });
@@ -132,6 +162,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // 용량 제한 (15MB)
         const MAX_FILE_SIZE = 15 * 1024 * 1024;
         const fileSize = fs.statSync(filepath).size;
+        console.log('fileSize:', fileSize, 'bytes');
         
         if (fileSize > MAX_FILE_SIZE) {
           fs.unlinkSync(filepath);
@@ -141,7 +172,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // 이미지/움짤 파일 실제 디코딩 검사 (sharp)
         if (/\.(jpg|jpeg|png|gif|webp)$/i.test(originalFilename)) {
           try {
+            console.log('Sharp 검증 시작...');
             await sharp(filepath).metadata();
+            console.log('Sharp 검증 성공');
           } catch (e: any) {
             console.error('이미지 파일 검증 실패:', e);
             fs.unlinkSync(filepath);
@@ -153,14 +186,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (fields && fields.folder) {
           folder = String(fields.folder);
         }
+        console.log('folder:', folder);
         
         // GIF/WEBP 분기 (EC2 서버를 사용해서 MP4로 변환)
         if (/\.(gif|webp)$/i.test(originalFilename)) {
+          console.log('GIF/WEBP 변환 시작...');
           let mp4Path: string | null = null;
           try {
             // EC2 서버로 변환 요청
             mp4Path = await convertGifOnEC2(filepath, originalFilename);
+            console.log('변환된 MP4 경로:', mp4Path);
             const mp4Url = await uploadToS3(mp4Path, originalFilename.replace(/\.(gif|webp)$/i, '.mp4'), 'video/mp4', folder);
+            console.log('S3 업로드 완료:', mp4Url);
             uploadedResults.push({ mp4Url });
           } catch (error: any) {
             console.error('GIF/WEBP 변환 실패:', error);
@@ -175,8 +212,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
           }
         } else {
+          console.log('일반 파일 업로드 시작...');
           try {
             const url = await uploadToS3(filepath, originalFilename, mimetype, folder);
+            console.log('S3 업로드 완료:', url);
             uploadedResults.push({ url });
           } catch (error) {
             console.error('S3 업로드 실패:', error);
@@ -192,10 +231,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       }
       
+      console.log('=== 업로드 완료 ===');
+      console.log('uploadedResults:', uploadedResults);
       return res.status(200).json({ results: uploadedResults });
     } catch (error: any) {
       console.error('[アップロードエラー]', error);
       console.error('업로드 에러 상세:', error.message);
+      console.error('에러 스택:', error.stack);
       
       // 구체적인 에러 메시지 제공
       let errorMessage = 'アップロード中にエラーが発生しました。';

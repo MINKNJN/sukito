@@ -93,26 +93,18 @@ export default function IndexPage() {
   // 이어하기 데이터 확인 (로딩 완료 후 실행)
   useEffect(() => {
     if (!isLoading) {
-              console.log('이어하기 데이터 확인 시작...');
         const stored = localStorage.getItem('sukito_game');
-        console.log('localStorage에서 가져온 데이터:', stored);
         
         if (stored && stored !== 'undefined') { 
           try {
             const parsed = JSON.parse(stored || '{}');
-            console.log('파싱된 데이터:', parsed);
             if (parsed && parsed.gameId) {
-              console.log('이어하기 데이터 발견:', parsed);
               setResumeData(parsed);
               setShowResumeModal(true);
-            } else {
-              console.log('gameIdが 없ないか無効です');
             }
           } catch (err) {
             console.error('이어하기 데이터 파싱 오류:', err);
           }
-        } else {
-          console.log('localStorageにsukito_gameデータがありません');
         }
     }
   }, [isLoading]);

@@ -16,7 +16,7 @@ npm install
 
 # Next.js 빌드
 echo "🔨 Next.js 빌드..."
-npm run build
+NODE_OPTIONS="--max-old-space-size=2048" npm run build
 
 # PM2 재시작
 echo "🔄 PM2 재시작..."

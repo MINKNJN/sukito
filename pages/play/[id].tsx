@@ -150,8 +150,7 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
         ? shuffled
         : shuffled.slice(0, selectedRound); 
 
-    // 디버깅: 선택된 항목들 확인
-            console.log('選択されたアイテム:', pick.map(item => item.name));
+    // 선택된 항목들 처리
 
     const saveState = {
       gameId: game._id,

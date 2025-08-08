@@ -40,7 +40,6 @@ export async function uploadToS3(filepath: string, originalFilename: string, mim
     const url = `${process.env.CLOUDFRONT_URL}/${key}`;
     return url;
   } catch (error) {
-    console.error('🚨 S3 upload error:', error);
     throw error;
   }
 }

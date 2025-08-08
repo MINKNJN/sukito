@@ -202,7 +202,7 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
             });
             localStorage.setItem(`sukito_winner_${game._id}`, JSON.stringify(winner));
           } catch (e) {
-            console.error('エラー:', e);
+            // 오류 무시
           }
           localStorage.removeItem('sukito_game');
           router.push(`/result?id=${game._id}`);

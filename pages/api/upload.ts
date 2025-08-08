@@ -78,7 +78,7 @@ async function convertGifOnEC2(filepath: string, originalFilename: string): Prom
 
     return tempMp4Path;
   } catch (error: any) {
-    console.error('EC2変換エラー:', error);
+    // EC2 변환 에러
     
     // 구체적인 에러 메시지 제공
     if (error.code === 'ECONNREFUSED') {
@@ -126,19 +126,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   });
 
   form.parse(req, async (err, fields, files) => {
-    console.log('=== 폼 파싱 결과 ===');
-    console.log('err:', err);
-    console.log('fields:', fields);
-    console.log('files:', files);
+    // 폼 파싱 결과 처리
     
     if (err) {
-      console.error('フォーム解析エラー:', err);
+      // 폼 파싱 오류
       return res.status(500).json({ message: 'アップロード中にエラーが発生しました。' });
     }
 
     try {
       const fileArray = Array.isArray(files.file) ? files.file : [files.file];
-      console.log('fileArray:', fileArray);
+      // 파일 배열 처리
       const uploadedResults: any[] = [];
 
       for (const file of fileArray) {
@@ -148,21 +145,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const originalFilename = (file as any).originalFilename || 'upload.jpg';
         const mimetype = (file as any).mimetype || 'image/jpeg';
         
-        console.log('=== 파일 처리 ===');
-        console.log('filepath:', filepath);
-        console.log('originalFilename:', originalFilename);
-        console.log('mimetype:', mimetype);
-        console.log('file exists:', fs.existsSync(filepath));
+        // 파일 처리
         
         if (!filepath || !fs.existsSync(filepath)) {
-          console.error('無効なファイルパス:', filepath);
           return res.status(400).json({ message: 'ファイルが見つかりません。' });
         }
         
         // 용량 제한 (15MB)
         const MAX_FILE_SIZE = 15 * 1024 * 1024;
         const fileSize = fs.statSync(filepath).size;
-        console.log('fileSize:', fileSize, 'bytes');
+        // 파일 크기 확인
         
         if (fileSize > MAX_FILE_SIZE) {
           fs.unlinkSync(filepath);
@@ -172,11 +164,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // 이미지/움짤 파일 실제 디코딩 검사 (sharp)
         if (/\.(jpg|jpeg|png|gif|webp)$/i.test(originalFilename)) {
           try {
-            console.log('Sharp 검증 시작...');
             await sharp(filepath).metadata();
-            console.log('Sharp 검증 성공');
           } catch (e: any) {
-            console.error('이미지 파일 검증 실패:', e);
             fs.unlinkSync(filepath);
             return res.status(400).json({ message: '画像ファイルが正しくありません。' });
           }
@@ -186,21 +175,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (fields && fields.folder) {
           folder = String(fields.folder);
         }
-        console.log('folder:', folder);
+        // 폴더 설정
         
         // GIF/WEBP 분기 (EC2 서버를 사용해서 MP4로 변환)
         if (/\.(gif|webp)$/i.test(originalFilename)) {
-          console.log('GIF/WEBP 변환 시작...');
           let mp4Path: string | null = null;
           try {
             // EC2 서버로 변환 요청
             mp4Path = await convertGifOnEC2(filepath, originalFilename);
-            console.log('변환된 MP4 경로:', mp4Path);
             const mp4Url = await uploadToS3(mp4Path, originalFilename.replace(/\.(gif|webp)$/i, '.mp4'), 'video/mp4', folder);
-            console.log('S3 업로드 완료:', mp4Url);
             uploadedResults.push({ mp4Url });
           } catch (error: any) {
-            console.error('GIF/WEBP 변환 실패:', error);
             throw error;
           } finally {
             // 에러가 발생해도 임시 파일 정리
@@ -208,36 +193,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
               if (mp4Path && fs.existsSync(mp4Path)) fs.unlinkSync(mp4Path);
             } catch (cleanupError) {
-              console.error('임시 파일 정리 실패:', cleanupError);
+              // 임시 파일 정리 실패 무시
             }
           }
         } else {
-          console.log('일반 파일 업로드 시작...');
           try {
             const url = await uploadToS3(filepath, originalFilename, mimetype, folder);
-            console.log('S3 업로드 완료:', url);
             uploadedResults.push({ url });
           } catch (error) {
-            console.error('S3 업로드 실패:', error);
             throw error;
           } finally {
             // 에러가 발생해도 임시 파일 정리
             try {
               if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
             } catch (cleanupError) {
-              console.error('임시 파일 정리 실패:', cleanupError);
+              // 임시 파일 정리 실패 무시
             }
           }
         }
       }
       
-      console.log('=== 업로드 완료 ===');
-      console.log('uploadedResults:', uploadedResults);
+      // 업로드 완료
       return res.status(200).json({ results: uploadedResults });
     } catch (error: any) {
-      console.error('[アップロードエラー]', error);
-      console.error('업로드 에러 상세:', error.message);
-      console.error('에러 스택:', error.stack);
+      // 업로드 에러 처리
       
       // 구체적인 에러 메시지 제공
       let errorMessage = 'アップロード中にエラーが発生しました。';

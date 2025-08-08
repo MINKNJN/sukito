@@ -61,7 +61,6 @@ async function convertGifToMp4(inputPath, outputPath) {
     await execAsync(command);
     return true;
   } catch (error) {
-    console.error('FFmpeg 변환 오류:', error);
     return false;
   }
 }
@@ -169,7 +168,6 @@ app.get('/health', (req, res) => {
 
 // 오류 처리 미들웨어
 app.use((error, req, res, next) => {
-  console.error('미들웨어 오류:', error);
   res.status(500).json({ 
     success: false, 
     message: error.message || '서버 오류가 발생했습니다.' 

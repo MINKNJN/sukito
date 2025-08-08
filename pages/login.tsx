@@ -52,7 +52,6 @@ export default function LoginPage() {
         setErrorMessage(data.message || 'ログインに失敗しました。');
       }
     } catch (err) {
-      console.error('ログイン エラー:', err);
       setErrorMessage('エラー');
     } finally {
       setLoading(false);

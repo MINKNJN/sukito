@@ -50,7 +50,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       token,
     });
   } catch (err) {
-    console.error('ログイン API エラー:', err);
     return res.status(500).json({ message: 'エラー' });
   }
 }

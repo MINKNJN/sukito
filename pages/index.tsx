@@ -103,7 +103,7 @@ export default function IndexPage() {
               setShowResumeModal(true);
             }
           } catch (err) {
-            console.error('이어하기 데이터 파싱 오류:', err);
+            // 파싱 오류 무시
           }
         }
     }
@@ -132,7 +132,6 @@ export default function IndexPage() {
           showAlert('存在しないゲームです。', 'error');
         }
       } catch (error) {
-        console.error('게임 확인 오류:', error);
         // 네트워크 오류 시에도 저장된 데이터 삭제
         localStorage.removeItem('sukito_game');
         setResumeData(null);

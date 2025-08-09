@@ -39,15 +39,20 @@ sudo lsof -ti:3000 | xargs sudo kill -9 2>/dev/null || true
 sudo lsof -ti:3001 | xargs sudo kill -9 2>/dev/null || true
 sleep 3
 
-# 2단계: Git 최신 코드 가져오기
+# 2단계: Git 최신 코드 가져오기 (충돌 방지)
 log "📥 Git에서 최신 코드 가져오는 중..."
 git status
-if git pull origin main; then
-    log "✅ Git pull 완료"
-else
-    log "❌ Git pull 실패"
-    exit 1
-fi
+
+# 로컬 변경사항 임시 저장
+log "💾 로컬 변경사항 임시 저장 중..."
+git stash
+
+# 강제로 최신 코드 가져오기
+log "🔄 원격 저장소 버전으로 강제 업데이트..."
+git fetch origin
+git reset --hard origin/main
+
+log "✅ Git 업데이트 완료"
 
 # 3단계: 이전 빌드 파일 정리
 log "🗑️ 이전 빌드 파일 삭제 중..."

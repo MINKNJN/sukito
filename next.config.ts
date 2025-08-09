@@ -5,9 +5,6 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   serverExternalPackages: ['sharp'],
   
-  // 정적 파일 최적화
-  assetPrefix: process.env.NODE_ENV === 'production' ? 'https://sukito.net' : '',
-  
   // 이미지 최적화
   images: {
     domains: ['d2ojyvx5ines08.cloudfront.net'],

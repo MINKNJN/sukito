@@ -1,12 +1,11 @@
 User-agent: *
 Allow: /
 
-# Sitemap
-Sitemap: https://sukito.net/sitemap.xml
+# Sitemap - API 엔드포인트 직접 사용
+Sitemap: https://sukito.net/api/sitemap.xml
 
 # Disallow admin pages and API endpoints
 Disallow: /admin/
-Disallow: /api/
 Disallow: /_next/
 Disallow: /tmp/
 

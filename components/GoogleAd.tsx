@@ -15,7 +15,7 @@ export default function GoogleAd({
   adFormat = 'auto',
   fullWidthResponsive = true 
 }: GoogleAdProps) {
-  const adRef = useRef<HTMLElement>(null);
+  const adRef = useRef<HTMLModElement>(null);
 
   useEffect(() => {
     try {

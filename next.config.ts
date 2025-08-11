@@ -11,8 +11,8 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 60 * 60 * 24 * 30, // 30일 캐시
   },
 
-  // EC2 빌드 안정화 설정
-  swcMinify: true,
+  // EC2 빌드 안정화 설정 (Next.js 15.3.0 호환)
+  // swcMinify: true, // Next.js 15.3.0에서 제거됨
   
   // 빌드 최적화 - 프로덕션만
   ...(process.env.NODE_ENV === 'production' && {

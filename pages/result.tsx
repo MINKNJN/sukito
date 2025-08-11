@@ -330,17 +330,51 @@ export default function ResultPage() {
       <Head>
         <title>{title}</title>
         <meta name="description" content={description} />
+        <meta name="keywords" content={`${winner?.name || ''}, トーナメント, 結果, 投票, ゲーム, スキト`} />
+        <meta name="robots" content="index, follow" />
+        
+        {/* Open Graph */}
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
         <meta property="og:image" content={image} />
         <meta property="og:url" content={`https://sukito.net/result?id=${id}`} />
         <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="スキト" />
+        <meta property="og:locale" content="ja_JP" />
 
+        {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={title} />
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={image} />
-        <link rel="canonical" href={`https://sukito.jp/result?id=${id}`} />
+        <meta name="twitter:site" content="@sukito_net" />
+        
+        {/* Canonical URL */}
+        <link rel="canonical" href={`https://sukito.net/result?id=${id}`} />
+        
+        {/* Structured Data */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "GameResult",
+              "name": title,
+              "description": description,
+              "url": `https://sukito.net/result?id=${id}`,
+              "winner": winner ? {
+                "@type": "Person",
+                "name": winner.name,
+                "image": image
+              } : null,
+              "provider": {
+                "@type": "Organization",
+                "name": "スキト",
+                "url": "https://sukito.net"
+              }
+            })
+          }}
+        />
       </Head>
       <Header />
       <div style={{ padding: 24 }}>
@@ -369,7 +403,12 @@ export default function ResultPage() {
             backgroundColor: '#fff',
             borderRadius: '6px'
           }}>
-            <GoogleAd />
+            <GoogleAd 
+              adSlot="4782225618"
+              adFormat="auto"
+              fullWidthResponsive={true}
+              style={{ minHeight: 100 }}
+            />
           </div>
         </section>
 

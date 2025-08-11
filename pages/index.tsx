@@ -261,12 +261,15 @@ export default function IndexPage() {
       <Head>
         <title>スキト - 好きトーナメント | 無料投票ゲーム作成・共有プラットフォーム</title>
         <meta name="description" content="画像・GIF・動画・YouTubeを使ってトーナメント形式の投票ゲームを作成・共有できる無料のエンタメプラットフォーム。アニメ、アイドル、スポーツなど様々なジャンルの推し投票を楽しめます。" />
-        <meta name="keywords" content="投票,トーナメント,ゲーム,エンタメ,アニメ,アイドル,スポーツ,推し,人気投票,無料ゲーム,画像投票,動画投票,GIF投票,YouTube投票" />
+        <meta name="keywords" content="投票,トーナメント,ゲーム,エンタメ,アニメ,アイドル,スポーツ,推し,人気投票,無料ゲーム,画像投票,動画投票,GIF投票,YouTube投票,スキト,好きトーナメント" />
         <meta name="author" content="Sukito" />
-        <meta name="robots" content="index, follow" />
+        <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
         <meta name="language" content="ja" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="theme-color" content="#4caf50" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         
         {/* Open Graph */}
         <meta property="og:title" content="スキト - 好きトーナメント | 無料投票ゲーム作成・共有プラットフォーム" />
@@ -276,6 +279,8 @@ export default function IndexPage() {
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="スキト" />
         <meta property="og:locale" content="ja_JP" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
         
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
@@ -283,6 +288,7 @@ export default function IndexPage() {
         <meta name="twitter:description" content="画像・GIF・動画・YouTubeを使ってトーナメント形式の投票ゲームを作成・共有できる無料のエンタメプラットフォーム。" />
         <meta name="twitter:image" content="https://sukito.net/og-image.jpg" />
         <meta name="twitter:site" content="@sukito_net" />
+        <meta name="twitter:creator" content="@sukito_net" />
         
         {/* Canonical URL */}
         <link rel="canonical" href="https://sukito.net" />
@@ -290,6 +296,12 @@ export default function IndexPage() {
         {/* Favicon */}
         <link rel="icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" href="/favicon.ico" />
+        <link rel="icon" type="image/svg+xml" href="/trophy.svg" />
+        
+        {/* Preconnect for performance */}
+        <link rel="preconnect" href="https://www.google-analytics.com" />
+        <link rel="preconnect" href="https://pagead2.googlesyndication.com" />
+        <link rel="preconnect" href="https://www.googletagmanager.com" />
         
         {/* Structured Data */}
         <script
@@ -299,6 +311,7 @@ export default function IndexPage() {
               "@context": "https://schema.org",
               "@type": "WebSite",
               "name": "スキト - 好きトーナメント",
+              "alternateName": "Sukito",
               "description": "画像・GIF・動画・YouTubeを使ってトーナメント形式の投票ゲームを作成・共有できる無料のエンタメプラットフォーム",
               "url": "https://sukito.net",
               "potentialAction": {
@@ -308,7 +321,14 @@ export default function IndexPage() {
               },
               "sameAs": [
                 "https://twitter.com/sukito_net"
-              ]
+              ],
+              "publisher": {
+                "@type": "Organization",
+                "name": "スキト",
+                "url": "https://sukito.net"
+              },
+              "inLanguage": "ja-JP",
+              "isAccessibleForFree": true
             })
           }}
         />
@@ -468,9 +488,14 @@ export default function IndexPage() {
         }}>
           📢 スポンサー広告
         </h3>
-      <div style={adCardStyle}>
-        <GoogleAd />
-      </div>
+        <div style={adCardStyle}>
+          <GoogleAd 
+            adSlot="4782225618"
+            adFormat="auto"
+            fullWidthResponsive={true}
+            style={{ minHeight: 100 }}
+          />
+        </div>
       </section>
 
       <div style={{ padding: isMobile ? 12 : 24 }}>
@@ -520,7 +545,12 @@ export default function IndexPage() {
                     }}>
                       <div style={{ textAlign: 'center', padding: '16px' }}>
                         <p style={{ margin: '0 0 8px 0', fontSize: '0.9rem', color: '#666' }}>スポンサー広告</p>
-                      <GoogleAd />
+                        <GoogleAd 
+                          adSlot="4782225618"
+                          adFormat="auto"
+                          fullWidthResponsive={true}
+                          style={{ minHeight: 90 }}
+                        />
                       </div>
                     </div>
                   </div>

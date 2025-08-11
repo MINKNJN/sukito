@@ -33,7 +33,6 @@ const optimizeImage = (url: string): string => {
 };
 
 // Media.tsx 컴포넌트
-
 const Media: React.FC<{ url: string; type: GameItem['type'] }> = ({ url, type }) => {
   const mediaStyle: React.CSSProperties = {
     maxWidth: '100%',
@@ -66,12 +65,6 @@ const Media: React.FC<{ url: string; type: GameItem['type'] }> = ({ url, type })
           <video src={url} autoPlay muted loop playsInline style={mediaStyle} />
         </div>
       );
-    case 'gif':
-      return (
-        <div style={wrapperStyle}>
-          <video src={url} autoPlay muted loop playsInline style={mediaStyle} />
-        </div>
-      );
     case 'image':
     default:
       const optimizedUrl = optimizeImage(url);
@@ -86,7 +79,6 @@ const Media: React.FC<{ url: string; type: GameItem['type'] }> = ({ url, type })
       );
   }
 };
-
 
 const pickRandomItems = <T,>(arr: T[], count: number): T[] => {
   const copy = [...arr];
@@ -150,8 +142,6 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
         ? shuffled
         : shuffled.slice(0, selectedRound); 
 
-    // 선택된 항목들 처리
-
     const saveState = {
       gameId: game._id,
       gameTitle: game.title,
@@ -169,7 +159,6 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
     setSelectedSide(null);
     setIsPlaying(true);
   };
-
 
   const handleSelect = (side: 'left' | 'right') => {
     if (isAnimating) return;
@@ -238,126 +227,163 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
 
   if (!isPlaying) {
     return (
-      <div className="round-card-bg">
-        <div className="round-card">
-          <h1 className="title">{game.title}</h1>
-          <p className="desc">{game.desc}</p>
-          <div className="selector">
-            <label>ラウンドを選択してください！</label>
-            <select value={selectedRound} onChange={e => setSelectedRound(+e.target.value)}>
-              <option value={0}>-- 選択 --</option>
-              {availableRounds.map(r => (
-                <option key={r} value={r}>ベスト{r}</option>
-              ))}
-              <option value={-1}>すべての候補でトーナメントを始める</option>
-            </select>
+      <>
+        <Head>
+          <title>{game.title} - トーナメント開始 | スキト</title>
+          <meta name="description" content={`${game.desc} - トーナメント形式の投票ゲームを開始します。`} />
+          <meta name="keywords" content={`${game.title}, トーナメント, 投票, ゲーム, スキト`} />
+          <meta name="robots" content="index, follow" />
+          
+          {/* Open Graph */}
+          <meta property="og:title" content={`${game.title} - トーナメント開始 | スキト`} />
+          <meta property="og:description" content={`${game.desc} - トーナメント形式の投票ゲームを開始します。`} />
+          <meta property="og:url" content={`https://sukito.net/play/${game._id}`} />
+          <meta property="og:type" content="website" />
+          <meta property="og:site_name" content="スキト" />
+          
+          {/* Twitter Card */}
+          <meta name="twitter:card" content="summary" />
+          <meta name="twitter:title" content={`${game.title} - トーナメント開始`} />
+          <meta name="twitter:description" content={`${game.desc} - トーナメント形式の投票ゲーム`} />
+          
+          {/* Canonical URL */}
+          <link rel="canonical" href={`https://sukito.net/play/${game._id}`} />
+          
+          {/* Structured Data */}
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify({
+                "@context": "https://schema.org",
+                "@type": "Game",
+                "name": game.title,
+                "description": game.desc,
+                "url": `https://sukito.net/play/${game._id}`,
+                "gameType": "Tournament",
+                "numberOfPlayers": game.items.length,
+                "provider": {
+                  "@type": "Organization",
+                  "name": "スキト",
+                  "url": "https://sukito.net"
+                }
+              })
+            }}
+          />
+        </Head>
+        <div className="round-card-bg">
+          <div className="round-card">
+            <h1 className="title">{game.title}</h1>
+            <p className="desc">{game.desc}</p>
+            <div className="selector">
+              <label>ラウンドを選択してください！</label>
+              <select value={selectedRound} onChange={e => setSelectedRound(+e.target.value)}>
+                <option value={0}>-- 選択 --</option>
+                {availableRounds.map(r => (
+                  <option key={r} value={r}>ベスト{r}</option>
+                ))}
+                <option value={-1}>すべての候補でトーナメントを始める</option>
+              </select>
 
-            <p>
-              {selectedRound === -1
-                ? `全 ${game.items.length}人の候補がすべて対戦します。`
-                : `全 ${game.items.length}人の候補からランダムに ${selectedRound}人が対戦します。`}
-            </p>
+              <p>
+                {selectedRound === -1
+                  ? `全 ${game.items.length}人の候補がすべて対戦します。`
+                  : `全 ${game.items.length}人の候補からランダムに ${selectedRound}人が対戦します。`}
+              </p>
 
-            <button onClick={startTournament} className="start-btn">スタート</button>
+              <button onClick={startTournament} className="start-btn">スタート</button>
+            </div>
           </div>
-        </div>
-        <style jsx>{`
-          .round-card-bg {
-            min-height: 60vh;
-            background: linear-gradient(120deg, #f8fafc 0%, #e6f7ff 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0;
-          }
-          .round-card {
-            background: #fff;
-            border-radius: 18px;
-            box-shadow: 0 4px 24px #b3e5fc44;
-            border: 1.5px solid #e0f7fa;
-            max-width: 600px;
-            width: 98vw;
-            margin: 32px auto;
-            padding: 32px 20px 28px 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-          }
-          .title {
-            font-size: 2.2rem;
-            font-weight: bold;
-            color: #222;
-            margin-bottom: 10px;
-          }
-          .desc {
-            color: #555;
-            font-size: 1.1rem;
-            margin-bottom: 18px;
-          }
-          .selector label {
-            font-size: 1.1rem;
-            color: #4caf50;
-            font-weight: 600;
-          }
-          select {
-            padding: 0.5rem;
-            margin: 1rem;
-            font-size: 1rem;
-            border: 1.5px solid #b2ebf2;
-            border-radius: 8px;
-            background: #f7fafd;
-            color: #222;
-            outline: none;
-            min-width: 120px;
-          }
-          .selector p {
-            color: #4caf50;
-            font-weight: 500;
-            margin: 10px 0 18px 0;
-          }
-          .start-btn {
-            padding: 0.75rem 1.5rem;
-            font-size: 1.1rem;
-            background: #00c471;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            box-shadow: 0 2px 8px #4caf5022;
-            transition: background 0.2s;
-          }
-          .start-btn:hover {
-            background: #009e5c;
-          }
-          @media (max-width: 600px) {
+          <style jsx>{`
+            .round-card-bg {
+              min-height: 60vh;
+              background: linear-gradient(120deg, #f8fafc 0%, #e6f7ff 100%);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              padding: 0;
+            }
             .round-card {
-              max-width: 98vw;
-              padding: 14px 2vw 14px 2vw;
-              border-radius: 12px;
+              background: #fff;
+              border-radius: 18px;
+              box-shadow: 0 4px 24px #b3e5fc44;
+              border: 1.5px solid #e0f7fa;
+              max-width: 600px;
+              width: 98vw;
+              margin: 32px auto;
+              padding: 32px 20px 28px 20px;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              text-align: center;
             }
             .title {
-              font-size: 1.3rem;
+              font-size: 2.2rem;
+              font-weight: bold;
+              color: #222;
+              margin-bottom: 10px;
             }
             .desc {
-              font-size: 0.98rem;
+              color: #555;
+              font-size: 1.1rem;
+              margin-bottom: 18px;
             }
             .selector label {
-              font-size: 0.95rem;
+              font-size: 1.1rem;
+              color: #4caf50;
+              margin-bottom: 8px;
+              display: block;
             }
-            select {
-              font-size: 0.95rem;
-              padding: 0.4rem;
+            .selector select {
+              width: 100%;
+              padding: 12px;
+              border: 2px solid #b2ebf2;
+              border-radius: 8px;
+              font-size: 1rem;
+              margin-bottom: 16px;
+              background: #f7fafd;
             }
             .start-btn {
-              font-size: 1rem;
-              padding: 0.6rem 1.1rem;
-              border-radius: 6px;
+              background: #4caf50;
+              color: white;
+              border: none;
+              padding: 12px 24px;
+              border-radius: 8px;
+              font-size: 1.1rem;
+              cursor: pointer;
+              font-weight: bold;
+              transition: all 0.2s;
             }
-          }
-        `}</style>
-      </div>
+            .start-btn:hover {
+              background: #45a049;
+              transform: translateY(-2px);
+            }
+            @media (max-width: 768px) {
+              .round-card {
+                margin: 16px auto;
+                padding: 24px 16px 20px 16px;
+              }
+              .title {
+                font-size: 1.8rem;
+              }
+              .desc {
+                font-size: 1rem;
+              }
+              .selector label {
+                font-size: 0.95rem;
+              }
+              select {
+                font-size: 0.95rem;
+                padding: 0.4rem;
+              }
+              .start-btn {
+                font-size: 1rem;
+                padding: 0.6rem 1.1rem;
+                border-radius: 6px;
+              }
+            }
+          `}</style>
+        </div>
+      </>
     );
   }
 
@@ -371,8 +397,10 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
   return (
     <>
       <Head>
-        <title>{`${game.title} - ${left?.name || ''} vs ${right?.name || ''} | sukito | スキト - 好きトーナメント`}</title>
+        <title>{`${game.title} - ${left?.name || ''} vs ${right?.name || ''} | スキト`}</title>
         <meta name="description" content={`${left?.name} vs ${right?.name} ベスト·オブ·ベスト`} />
+        <meta name="keywords" content={`${game.title}, ${left?.name}, ${right?.name}, トーナメント, 投票, ゲーム, スキト`} />
+        <meta name="robots" content="index, follow" />
   
         {/* Open Graph */}
         <meta property="og:title" content={`${game.title} - ${left?.name} vs ${right?.name}`} />
@@ -380,14 +408,40 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
         <meta property="og:type" content="website" />
         <meta property="og:url" content={`https://sukito.net/play/${game._id}`} />
         <meta property="og:image" content={left?.url || '/og-image.jpg'} />
+        <meta property="og:site_name" content="スキト" />
+        <meta property="og:locale" content="ja_JP" />
   
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={`${game.title} - ${left?.name} vs ${right?.name}`} />
         <meta name="twitter:description" content={`スキト - 好きトーナメント ${left?.name} vs ${right?.name}`} />
         <meta name="twitter:image" content={left?.url || '/og-image.jpg'} />
+        <meta name="twitter:site" content="@sukito_net" />
+        
+        {/* Canonical URL */}
+        <link rel="canonical" href={`https://sukito.net/play/${game._id}`} />
+        
+        {/* Structured Data */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Game",
+              "name": `${game.title} - ${left?.name} vs ${right?.name}`,
+              "description": `${left?.name} vs ${right?.name} ベスト·オブ·ベスト`,
+              "url": `https://sukito.net/play/${game._id}`,
+              "gameType": "Tournament",
+              "numberOfPlayers": 2,
+              "provider": {
+                "@type": "Organization",
+                "name": "スキト",
+                "url": "https://sukito.net"
+              }
+            })
+          }}
+        />
       </Head>
-
 
       <div className="battle" style={{ backgroundColor: 'black', flexDirection: 'column' }}>
         <div style={{ width: '100%', height: 100, border: '2px dashed #ccc', margin: '20px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

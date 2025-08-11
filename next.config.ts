@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
   images: {
     domains: ['d2ojyvx5ines08.cloudfront.net'],
     formats: ['image/webp', 'image/avif'],
+    minimumCacheTTL: 60 * 60 * 24 * 30, // 30일 캐시
   },
 
   // EC2 빌드 안정화 설정
@@ -36,6 +37,53 @@ const nextConfig: NextConfig = {
     }
 
     return config;
+  },
+
+  // SEO 최적화
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+        ],
+      },
+      {
+        source: '/sitemap.xml',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=3600, s-maxage=3600',
+          },
+        ],
+      },
+    ];
+  },
+
+  // 리다이렉트 설정
+  async redirects() {
+    return [
+      {
+        source: '/sitemap.xml',
+        destination: '/api/sitemap.xml',
+        permanent: true,
+      },
+    ];
   },
 };
 

@@ -67,6 +67,10 @@ const nextConfig: NextConfig = {
         source: '/sitemap.xml',
         headers: [
           {
+            key: 'Content-Type',
+            value: 'application/xml; charset=utf-8',
+          },
+          {
             key: 'Cache-Control',
             value: 'public, max-age=3600, s-maxage=3600',
           },
@@ -75,16 +79,16 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  // 리다이렉트 설정
-  async redirects() {
-    return [
-      {
-        source: '/sitemap.xml',
-        destination: '/api/sitemap.xml',
-        permanent: true,
-      },
-    ];
-  },
+  // 리다이렉트 설정 제거 (정적 파일 사용)
+  // async redirects() {
+  //   return [
+  //     {
+  //       source: '/sitemap.xml',
+  //       destination: '/api/sitemap.xml',
+  //       permanent: true,
+  //     },
+  //   ];
+  // },
 };
 
 export default nextConfig;

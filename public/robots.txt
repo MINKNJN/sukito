@@ -1,8 +1,8 @@
 User-agent: *
 Allow: /
 
-# Sitemap - API 엔드포인트 직접 사용
-Sitemap: https://sukito.net/api/sitemap.xml
+# Sitemap - 정적 파일 사용
+Sitemap: https://sukito.net/sitemap.xml
 
 # Disallow admin pages and API endpoints
 Disallow: /admin/

@@ -1,10 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
+import fs from 'fs';
+import path from 'path';
 
 const BASE_URL = 'https://sukito.net';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  res.setHeader('Content-Type', 'application/xml');
+  // Google 크롤러를 위한 특별한 헤더 설정
+  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
 
   const staticUrls = [
     { path: '', priority: '1.0', changefreq: 'daily' },
@@ -56,6 +61,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls.join('\n')}
 </urlset>`;
+
+  // 정적 사이트맵 파일도 생성 (빌드 시)
+  if (process.env.NODE_ENV === 'production') {
+    try {
+      const publicDir = path.join(process.cwd(), 'public');
+      const sitemapPath = path.join(publicDir, 'sitemap.xml');
+      fs.writeFileSync(sitemapPath, xml, 'utf8');
+      console.log('정적 사이트맵 파일 생성 완료:', sitemapPath);
+    } catch (error) {
+      console.error('정적 사이트맵 파일 생성 실패:', error);
+    }
+  }
 
   res.status(200).send(xml);
 } 

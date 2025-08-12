@@ -11,9 +11,6 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 60 * 60 * 24 * 30, // 30일 캐시
   },
 
-  // EC2 빌드 안정화 설정 (Next.js 15.3.0 호환)
-  // swcMinify: true, // Next.js 15.3.0에서 제거됨
-  
   // 빌드 최적화 - 프로덕션만
   ...(process.env.NODE_ENV === 'production' && {
     compiler: {
@@ -63,32 +60,8 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      {
-        source: '/sitemap.xml',
-        headers: [
-          {
-            key: 'Content-Type',
-            value: 'application/xml; charset=utf-8',
-          },
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=3600, s-maxage=3600',
-          },
-        ],
-      },
     ];
   },
-
-  // 리다이렉트 설정 제거 (정적 파일 사용)
-  // async redirects() {
-  //   return [
-  //     {
-  //       source: '/sitemap.xml',
-  //       destination: '/api/sitemap.xml',
-  //       permanent: true,
-  //     },
-  //   ];
-  // },
 };
 
 export default nextConfig;

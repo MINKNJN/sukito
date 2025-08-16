@@ -157,7 +157,7 @@ export default function MakePage() {
 
 const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   const selectedFiles = Array.from(e.target.files || []);
-  const MAX_FILE_SIZE_MB = 15; // 15MB로 복원 (Vercel 제한은 개별 파일)
+  const MAX_FILE_SIZE_MB = 20; // 20MB로 증가
 
   const filtered = selectedFiles.filter(file => {
     const isValidSize = file.size <= MAX_FILE_SIZE_MB * 1024 * 1024;

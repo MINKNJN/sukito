@@ -49,8 +49,8 @@ const upload = multer({
     }
   },
   limits: {
-    fileSize: 15 * 1024 * 1024, // 15MB 제한 (원래대로 복원)
-    fieldSize: 15 * 1024 * 1024, // 필드 크기도 15MB로 설정
+    fileSize: 20 * 1024 * 1024, // 20MB 제한으로 증가
+    fieldSize: 20 * 1024 * 1024, // 필드 크기도 20MB로 증가
   }
 });
 

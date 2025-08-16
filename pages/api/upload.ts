@@ -51,8 +51,8 @@ async function convertGifOnEC2(filepath: string, originalFilename: string): Prom
         'Accept': 'application/json'
       },
       timeout: 60000, // 60초 타임아웃
-      maxContentLength: 50 * 1024 * 1024, // 50MB
-      maxBodyLength: 50 * 1024 * 1024
+      maxContentLength: 25 * 1024 * 1024, // 25MB (20MB + 여유분)
+      maxBodyLength: 25 * 1024 * 1024
     });
     
     const result = response.data;
@@ -117,12 +117,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const form = new IncomingForm({
     uploadDir: getUploadDir(), // EC2 환경에 맞는 디렉토리 사용
     keepExtensions: true,
-    maxFileSize: 15 * 1024 * 1024, // 15MB 제한 (Vercel 제한은 개별 파일)
+    maxFileSize: 20 * 1024 * 1024, // 20MB 제한으로 증가
     maxFields: 10,
     allowEmptyFiles: false,
     // 추가 설정
     multiples: true,
-    maxFieldsSize: 15 * 1024 * 1024, // 필드 크기도 15MB
+    maxFieldsSize: 20 * 1024 * 1024, // 필드 크기도 20MB로 증가
   });
 
   form.parse(req, async (err, fields, files) => {
@@ -151,14 +151,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           return res.status(400).json({ message: 'ファイルが見つかりません。' });
         }
         
-        // 용량 제한 (15MB)
-        const MAX_FILE_SIZE = 15 * 1024 * 1024;
+        // 용량 제한 (20MB)
+        const MAX_FILE_SIZE = 20 * 1024 * 1024;
         const fileSize = fs.statSync(filepath).size;
         // 파일 크기 확인
         
         if (fileSize > MAX_FILE_SIZE) {
           fs.unlinkSync(filepath);
-          return res.status(400).json({ message: 'ファイルサイズが15MBを超えています。' });
+          return res.status(400).json({ message: 'ファイルサイズが20MBを超えています。' });
         }
         
         // 이미지/움짤 파일 실제 디코딩 검사 (sharp)

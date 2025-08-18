@@ -54,7 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       )
       .sort({ createdAt: -1 })
-      .limit(24)
+      // .limit(24) ← 제거: 모든 게임을 표시하도록 수정
       .toArray();
 
       // 각 게임별 playCount(플레이 수) 집계

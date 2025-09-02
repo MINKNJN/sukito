@@ -445,7 +445,7 @@ export default function IndexPage() {
           textAlign: 'center',
         }}
       >
-        <h2 style={{ fontSize: '1.3rem', marginBottom: 12 }}>スキトとは？</h2>
+        <h1 style={{ fontSize: '1.3rem', marginBottom: 12 }}>スキト - 好きトーナメント</h1>
           <p style={{ fontSize: '1rem', color: '#333' }}>
             好きな画像・動画・GIFを使ってトーナメント形式の人気投票を作成・プレイできる無料のエンタメプラットフォームです。<br />
             誰でも気軽に参加でき、自分の「推し」をみんなと共有して楽しめます。<br />

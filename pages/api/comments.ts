@@ -66,14 +66,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const limitNum = parseInt(limit as string, 10);
       const skip = (pageNum - 1) * limitNum;
 
-      const comments = await collection
-        .find({ gameId: id })
-        .sort({ likes: -1, createdAt: -1 }) // いいね順でソート、同じいいね数なら最新順
+      // 좋아요 상위 3개 고정 댓글 (좋아요순 정렬)
+      const pinnedComments = await collection
+        .find({ gameId: id, likes: { $gte: 1 } }) // 최소 1개 이상 좋아요
+        .sort({ likes: -1, createdAt: -1 }) // 좋아요순, 동일시 최신순
+        .limit(3) // 상위 3개만
+        .toArray();
+
+      // 일반 댓글 (날짜순 정렬, 고정 댓글 제외)
+      const pinnedIds = pinnedComments.map(c => c._id);
+      const regularComments = await collection
+        .find({ 
+          gameId: id,
+          _id: { $nin: pinnedIds } // 고정 댓글 제외
+        })
+        .sort({ createdAt: -1 }) // 최신순
         .skip(skip)
         .limit(limitNum)
         .toArray();
 
-      return res.status(200).json({ comments });
+      // 첫 페이지에만 고정 댓글 포함
+      const comments = pageNum === 1 
+        ? [...pinnedComments, ...regularComments]
+        : regularComments;
+
+      return res.status(200).json({ comments, pinnedCount: pinnedComments.length });
     } catch (err) {
       console.error('コメントエラー:', err);
       return res.status(500).json({ message: 'エラー' });

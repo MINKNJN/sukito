@@ -273,7 +273,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       return;
     }
     if (newRows.length === 0) {
-      setVideoPasteError('붙여넣기에서 유효한 데이터가 없습니다.');
+      setVideoPasteError('ペーストから有効なデータがありません。');
       return;
     }
     const updatedRows = [...videoRows];

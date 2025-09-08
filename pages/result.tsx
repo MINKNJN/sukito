@@ -23,6 +23,7 @@ export default function ResultPage() {
 
   const [commentContent, setCommentContent] = useState('');
   const [comments, setComments] = useState<any[]>([]);
+  const [pinnedCount, setPinnedCount] = useState(0);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const maxCommentLength = 200;
   const [isMyWinner, setIsMyWinner] = useState(false);
@@ -139,6 +140,7 @@ export default function ResultPage() {
         const data = await res.json();
         if (page === 1) {
           setComments(data.comments || []);
+          setPinnedCount(data.pinnedCount || 0); // 고정 댓글 개수 저장
         } else {
           setComments(prev => [...prev, ...(data.comments || [])]);
         }
@@ -415,8 +417,11 @@ export default function ResultPage() {
         {winner ? (
           <div style={{ backgroundColor: '#000', color: '#fff', padding: '2rem', borderRadius: '12px', textAlign: 'center', marginBottom: '3rem' }}>
             <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>
-              🏆 {isMyWinner ? 'あなたが選んだ最終優勝者' : '多くの人が選んだ優勝者'}
+              🏆 {isMyWinner ? 'あなたの最終選択' : 'みんなが選んだ最多選択'}
             </h1>
+            <p style={{ fontSize: '1.1rem', marginBottom: '1.5rem', color: '#ccc' }}>
+              {isMyWinner ? 'あなたが最後に選んだ作品です' : '全体統計で最も人気の作品です'}
+            </p>
             {/* GIF(WEBP, mp4) 타입이면 video, 아니면 img */}
             {winner.url.endsWith('.mp4') ? (
               <video
@@ -451,9 +456,9 @@ export default function ResultPage() {
           </div>
         ) : (
           <div style={{ backgroundColor: '#000', color: '#fff', padding: '2rem', borderRadius: '12px', textAlign: 'center', marginBottom: '3rem' }}>
-            <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>🏆 最終優勝者</h1>
-            <p style={{ fontSize: '1.2rem', marginBottom: '1.5rem' }}>プレイ履歴がないか、まだ優勝者が決まっていません。</p>
-            <button onClick={() => router.push(`/play/${id}`)} style={{ padding: '10px 20px', fontSize: '1rem', borderRadius: '6px', backgroundColor: '#00c471', color: 'white', border: 'none', cursor: 'pointer' }}>👉 プレイする</button>
+            <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>🎮 まだプレイしていません</h1>
+            <p style={{ fontSize: '1.2rem', marginBottom: '1.5rem' }}>ゲームをプレイしてあなたの選択を確認してみましょう！</p>
+            <button onClick={() => router.push(`/play/${id}`)} style={{ padding: '12px 24px', fontSize: '1.1rem', borderRadius: '8px', backgroundColor: '#00c471', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>🏁 ゲームをプレイする</button>
           </div>
         )}
 
@@ -662,8 +667,8 @@ export default function ResultPage() {
                   const isAuthor = (currentUserId && c.authorType === 'user' && c.authorId === currentUserId) || 
                                  (sessionId && c.authorType === 'guest' && c.authorId === sessionId);
                   
-                  // 固定コメント条件: いいねが3個以上なら固定コメント
-                  const isPinned = (c.likes || 0) >= 3;
+                  // 고정 댓글 조건: 상위 3개 내에 있고 좋아요가 1개 이상
+                  const isPinned = idx < pinnedCount && (c.likes || 0) >= 1;
 
                   return (
                     <li key={idx} style={{ 

@@ -50,10 +50,10 @@ export default function BulkDownloader() {
 
   return (
     <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
-      <h1 style={{ marginBottom: '1rem' }}>🥣 ZIP 이미지 다운로드</h1>
+      <h1 style={{ marginBottom: '1rem' }}>🥣 ZIP画像ダウンロード</h1>
 
       <textarea
-        placeholder="콘솔에서 복사한 JSON 배열을 여기에 붙여넣으세요"
+        placeholder="コンソールからコピーしたJSON配列をここに貼り付けてください"
         value={input}
         onChange={(e) => setInput(e.target.value)}
         rows={10}

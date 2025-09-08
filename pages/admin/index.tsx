@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Header from '@/components/Header';
+import { useAlert } from '@/lib/alert';
 
 interface User {
   _id: string;
@@ -54,28 +55,85 @@ export default function AdminPage() {
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const PAGE_LIMIT = 20;
 
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const { showAlert } = useAlert();
+
   const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 3000);
   };
 
   useEffect(() => {
-    const userRoleData = localStorage.getItem('role');
-    if (!userRoleData) {
-      showNotification('ログインが必要です。', 'error');
-      setTimeout(() => router.push('/login'), 2000);
-      return;
-    }
-    const role = JSON.parse(userRoleData).value;
-    if (role !== 'admin') {
-      showNotification('管理者 権限が必要です。', 'error');
-      setTimeout(() => router.push('/'), 2000);
-      return;
-    }
-    fetchUsers(userPage);
-    fetchGames(gamePage);
-    fetchAllGames(); // 댓글 매칭용 전체 게임 로드
-    fetchComments(commentPage);
+    const checkAuthorization = async () => {
+      try {
+        // 1. 로그인 상태 확인
+        const token = localStorage.getItem('token');
+        const userId = localStorage.getItem('userId');
+        
+        if (!token || !userId) {
+          showAlert('ログインしてください。', 'error');
+          setTimeout(() => router.push('/login'), 1500);
+          return;
+        }
+
+        // 2. 서버에서 권한 검증
+        const response = await fetch('/api/admin/users?page=1&limit=1', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.status === 401) {
+          showAlert('ログインが無効です。再ログインしてください。', 'error');
+          localStorage.clear();
+          setTimeout(() => router.push('/login'), 1500);
+          return;
+        }
+
+        if (response.status === 403) {
+          showAlert('管理者のみアクセスできます。', 'error');
+          setTimeout(() => router.push('/'), 1500);
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error('権限確認に失敗しました。');
+        }
+
+        // 3. 클라이언트 사이드 권한 재확인
+        const userRoleData = localStorage.getItem('role');
+        if (!userRoleData) {
+          showAlert('権限情報がありません。再ログインしてください。', 'error');
+          setTimeout(() => router.push('/login'), 1500);
+          return;
+        }
+
+        const role = JSON.parse(userRoleData).value;
+        if (role !== 'admin') {
+          showAlert('管理者のみアクセスできます。', 'error');
+          setTimeout(() => router.push('/'), 1500);
+          return;
+        }
+
+        // 4. 모든 검증 통과 시 페이지 로드
+        setIsAuthorized(true);
+        setAuthChecked(true);
+        
+        // 데이터 로드
+        fetchUsers(userPage);
+        fetchGames(gamePage);
+        fetchAllGames();
+        fetchComments(commentPage);
+        
+      } catch (error) {
+        console.error('Authorization check failed:', error);
+        showAlert('サーバーエラーが発生しました。', 'error');
+        setTimeout(() => router.push('/'), 1500);
+      }
+    };
+
+    checkAuthorization();
     // eslint-disable-next-line
   }, [router]);
 
@@ -310,14 +368,34 @@ export default function AdminPage() {
   };
   
 
-  // 필터링된 사용자 목록 (검색어, 역할 필터 적용)
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.nickname.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = filterRole === 'all' || user.role === filterRole;
-    return matchesSearch && matchesRole;
-  });
+  // 권한 확인이 완료되지 않았거나 권한이 없으면 로딩 화면만 표시
+  if (!authChecked || !isAuthorized) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        flexDirection: 'column',
+        gap: 16,
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+      }}>
+        <div style={{ 
+          width: 50, 
+          height: 50, 
+          border: '4px solid rgba(255, 255, 255, 0.3)', 
+          borderTop: '4px solid white',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite' 
+        }} />
+        <div style={{ color: 'white', fontSize: 18, fontWeight: 600 }}>
+          アクセス権限を確認中...
+        </div>
+      </div>
+    );
+  }
 
+  // 로딩 상태 (데이터 로드 중)
   if (loading) {
     return (
       <div style={{ 
@@ -340,6 +418,14 @@ export default function AdminPage() {
       </div>
     );
   }
+
+  // 필터링된 사용자 목록 (검색어, 역할 필터 적용)
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         user.nickname.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesRole = filterRole === 'all' || user.role === filterRole;
+    return matchesSearch && matchesRole;
+  });
 
   const badgeStyle = (role: 'user' | 'admin') => ({
     display: 'inline-block',

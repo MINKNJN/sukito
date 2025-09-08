@@ -32,7 +32,17 @@ export default function Header() {
     const checkSession = () => {
       const userId = getStorageWithExpire('userId');
       const nickname = getStorageWithExpire('nickname');
-      const token = localStorage.getItem('token'); 
+      const token = localStorage.getItem('token');
+      const roleData = localStorage.getItem('role');
+      
+      let userRole = 'user';
+      if (roleData) {
+        try {
+          userRole = JSON.parse(roleData).value;
+        } catch {
+          // 파싱 실패시 기본값 유지
+        }
+      }
   
       if (userId && nickname && token) {
         setIsLoggedIn(true);
@@ -43,6 +53,7 @@ export default function Header() {
         localStorage.removeItem('token');
         localStorage.removeItem('userId');
         localStorage.removeItem('nickname');
+        localStorage.removeItem('role');
       }
     };
   

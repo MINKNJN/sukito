@@ -44,7 +44,7 @@ export default function AboutPage() {
               誰でも簡単にゲームを作成し、自分の理想や推しを他の人と楽しく比べ合うことができます。
             </p>
             <p style={{ marginTop: '12px', padding: '12px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
-              <strong>🎯 主な特徴：</strong><br />
+              <strong>主な特徴：</strong><br />
               • 無料で利用可能<br />
               • 会員登録不要でゲームプレイ可能<br />
               • 画像・動画・GIF・YouTube対応<br />
@@ -77,7 +77,7 @@ export default function AboutPage() {
               borderRadius: '8px',
               border: '1px solid #4caf50'
             }}>
-              <h4 style={{ marginBottom: '8px', color: '#2e7d32' }}>🎮 こんな方におすすめ：</h4>
+              <h4 style={{ marginBottom: '8px', color: '#2e7d32' }}>こんな方におすすめ：</h4>
               <ul style={{ margin: 0, paddingLeft: '20px' }}>
                 <li>アニメやアイドルのファン</li>
                 <li>スポーツ選手のファン</li>
@@ -97,7 +97,7 @@ export default function AboutPage() {
               borderRadius: '8px',
               border: '1px solid #b0c4de'
             }}>
-              <h4 style={{ marginBottom: '12px', color: '#2c5aa0' }}>📱 簡単3ステップ：</h4>
+              <h4 style={{ marginBottom: '12px', color: '#2c5aa0' }}>簡単3ステップ：</h4>
               <ol style={{ margin: 0, paddingLeft: '20px' }}>
                 <li><strong>ゲーム作成：</strong>画像・動画・GIFをアップロードしてトーナメントを作成</li>
                 <li><strong>共有：</strong>生成されたURLを友達やSNSで共有</li>
@@ -122,7 +122,7 @@ export default function AboutPage() {
             <h2 style={sectionTitleStyle}>6. お問い合わせ</h2>
             <p>
               ご意見・ご要望・ご質問などがありましたら、以下のメールアドレスまでお気軽にご連絡ください。<br />
-              📧 <strong>rankingood5@gmail.com</strong>
+              <strong>rankingood5@gmail.com</strong>
             </p>
             <div style={{ 
               marginTop: '16px', 
@@ -132,7 +132,7 @@ export default function AboutPage() {
               border: '1px solid #ffeaa7'
             }}>
               <p style={{ margin: 0, fontSize: '0.9rem', color: '#856404' }}>
-                💡 改善提案やバグ報告も歓迎しています。より良いサービスにするためにご協力をお願いします。
+                改善提案やバグ報告も歓迎しています。より良いサービスにするためにご協力をお願いします。
               </p>
             </div>
           </section>

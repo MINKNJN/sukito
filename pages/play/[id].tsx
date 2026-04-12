@@ -19,6 +19,7 @@ interface Game {
   title: string;
   desc: string;
   items: GameItem[];
+  thumbnails?: GameItem[];
 }
 
 interface PlayPageProps {
@@ -26,6 +27,17 @@ interface PlayPageProps {
 }
 
 const ROUND_OPTIONS = [4, 8, 16, 32, 64, 128, 256];
+
+function getOgImage(item?: GameItem): string {
+  if (!item) return 'https://sukito.net/og-image.jpg';
+  if (item.type === 'youtube') {
+    const match = item.url.match(/embed\/([a-zA-Z0-9_-]{11})/);
+    const videoId = match?.[1];
+    return videoId ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` : 'https://sukito.net/og-image.jpg';
+  }
+  if (item.type === 'gif') return 'https://sukito.net/og-image.jpg';
+  return item.url;
+}
 const ANIMATION_DURATION = 800;
 
 const optimizeImage = (url: string): string => {
@@ -240,11 +252,16 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
           <meta property="og:url" content={`https://sukito.net/play/${game._id}`} />
           <meta property="og:type" content="website" />
           <meta property="og:site_name" content="スキト" />
-          
+          <meta property="og:locale" content="ja_JP" />
+          <meta property="og:image" content={getOgImage(game.thumbnails?.[0])} />
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
+
           {/* Twitter Card */}
-          <meta name="twitter:card" content="summary" />
+          <meta name="twitter:card" content="summary_large_image" />
           <meta name="twitter:title" content={`${game.title} - トーナメント開始`} />
           <meta name="twitter:description" content={`${game.desc} - トーナメント形式の投票ゲーム`} />
+          <meta name="twitter:image" content={getOgImage(game.thumbnails?.[0])} />
           
           {/* Canonical URL */}
           <link rel="canonical" href={`https://sukito.net/play/${game._id}`} />
@@ -498,9 +515,15 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
     return {
       props: {
         game: {
-          ...game,
           _id: game._id.toString(),
-          items: game.items.map((item: any) => ({
+          title: game.title ?? '',
+          desc: game.desc ?? '',
+          items: (game.items ?? []).map((item: any) => ({
+            name: item.name,
+            url: item.url,
+            type: item.type || 'image',
+          })),
+          thumbnails: (game.thumbnails ?? []).map((item: any) => ({
             name: item.name,
             url: item.url,
             type: item.type || 'image',

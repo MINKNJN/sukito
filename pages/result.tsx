@@ -56,8 +56,8 @@ export default function ResultPage() {
           setWinner(parsed);
           setIsMyWinner(true);
         }
-      } catch (e) {
-        console.warn('ローカルwinner読込エラー:', e);
+      } catch {
+        // 로컬 winner 읽기 오류 무시
       }
     }
 
@@ -388,15 +388,7 @@ export default function ResultPage() {
           borderRadius: '8px',
           border: '1px solid #e9ecef',
         }}>
-          <h3 style={{ 
-            fontSize: '1.1rem', 
-            marginBottom: 16, 
-            textAlign: 'center',
-            color: '#495057'
-          }}>
-            📢 スポンサー広告
-          </h3>
-          <div style={{ 
+          <div style={{
             height: 100, 
             border: '2px dashed #ccc', 
             display: 'flex', 
@@ -417,7 +409,7 @@ export default function ResultPage() {
         {winner ? (
           <div style={{ backgroundColor: '#000', color: '#fff', padding: '2rem', borderRadius: '12px', textAlign: 'center', marginBottom: '3rem' }}>
             <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>
-              🏆 {isMyWinner ? 'あなたの最終選択' : 'みんなが選んだ最多選択'}
+              {isMyWinner ? 'あなたの最終選択' : 'みんなが選んだ最多選択'}
             </h1>
             <p style={{ fontSize: '1.1rem', marginBottom: '1.5rem', color: '#ccc' }}>
               {isMyWinner ? 'あなたが最後に選んだ作品です' : '全体統計で最も人気の作品です'}
@@ -442,8 +434,8 @@ export default function ResultPage() {
             <h2 style={{ fontSize: '2rem', marginTop: '1rem' }}>{winner.name}</h2>
             {winnerRank > 0 && <p style={{ fontSize: '1rem', color: '#ccc' }}>総合ランキング {winnerRank}位</p>}
             <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-              <button onClick={() => setIsShareOpen(!isShareOpen)} style={{ padding: '10px 20px', fontSize: '1rem', borderRadius: '6px', backgroundColor: '#0070f3', color: 'white', border: 'none', cursor: 'pointer' }}>📤 シェア</button>
-              <button onClick={() => router.push(`/play/${id}`)} style={{ padding: '10px 20px', fontSize: '1rem', borderRadius: '6px', backgroundColor: '#00c471', color: 'white', border: 'none', cursor: 'pointer' }}>🔁 再プレイ</button>
+              <button onClick={() => setIsShareOpen(!isShareOpen)} style={{ padding: '10px 20px', fontSize: '1rem', borderRadius: '6px', backgroundColor: '#0070f3', color: 'white', border: 'none', cursor: 'pointer' }}>シェア</button>
+              <button onClick={() => router.push(`/play/${id}`)} style={{ padding: '10px 20px', fontSize: '1rem', borderRadius: '6px', backgroundColor: '#00c471', color: 'white', border: 'none', cursor: 'pointer' }}>再プレイ</button>
             </div>
             {isShareOpen && (
               <div style={{ marginTop: 12, display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -456,9 +448,9 @@ export default function ResultPage() {
           </div>
         ) : (
           <div style={{ backgroundColor: '#000', color: '#fff', padding: '2rem', borderRadius: '12px', textAlign: 'center', marginBottom: '3rem' }}>
-            <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>🎮 まだプレイしていません</h1>
+            <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>まだプレイしていません</h1>
             <p style={{ fontSize: '1.2rem', marginBottom: '1.5rem' }}>ゲームをプレイしてあなたの選択を確認してみましょう！</p>
-            <button onClick={() => router.push(`/play/${id}`)} style={{ padding: '12px 24px', fontSize: '1.1rem', borderRadius: '8px', backgroundColor: '#00c471', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>🏁 ゲームをプレイする</button>
+            <button onClick={() => router.push(`/play/${id}`)} style={{ padding: '12px 24px', fontSize: '1.1rem', borderRadius: '8px', backgroundColor: '#00c471', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>ゲームをプレイする</button>
           </div>
         )}
 

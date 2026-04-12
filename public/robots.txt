@@ -1,24 +1,9 @@
 User-agent: *
 Allow: /
 
-# Sitemap - 정적 파일 사용
 Sitemap: https://sukito.net/sitemap.xml
 
-# Disallow admin pages and API endpoints
 Disallow: /admin/
+Disallow: /api/
 Disallow: /_next/
 Disallow: /tmp/
-
-# Allow important pages
-Allow: /play/
-Allow: /result/
-Allow: /make/
-Allow: /mygames/
-Allow: /ranking/
-Allow: /about/
-Allow: /guide/
-Allow: /terms/
-Allow: /privacy/
-
-# Crawl delay for better server performance
-Crawl-delay: 1

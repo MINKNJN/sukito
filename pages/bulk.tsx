@@ -35,9 +35,7 @@ export default function BulkDownloader() {
         const res = await fetch(`/api/proxy?url=${encodeURIComponent(item.src)}`);
         const blob = await res.blob();
         folder?.file(`${item.title}.jpg`, blob);
-        console.log(`✅ ${item.title} 追加されました`);
       } catch (err) {
-        console.warn(`❌ ${item.title} 실패`, err);
       }
       setProgress(Math.round(((i + 1) / list.length) * 100));
       await new Promise(r => setTimeout(r, 300));

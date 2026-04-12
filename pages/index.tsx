@@ -1,12 +1,12 @@
 // pages/index.tsx
 import { useEffect, useState } from 'react';
+import { GetServerSideProps } from 'next';
 import Head from 'next/head';
 import Header from '@/components/Header';
 import GameCard from '@/components/GameCard';
-import { getStorageWithExpire } from '@/lib/utils';
 import { useAlert } from '@/lib/alert';
-import UploadModal from '@/components/UploadModal';
 import GoogleAd from '@/components/GoogleAd';
+import clientPromise from '@/lib/mongodb';
 
 
 type GameItem = {
@@ -40,10 +40,14 @@ function getPreviewImage(item: { type: string; url: string }) {
   return item.url;
 }
 
-export default function IndexPage() {
-  const [games, setGames] = useState<Game[]>([]);
+type IndexPageProps = {
+  initialGames: Game[];
+};
+
+export default function IndexPage({ initialGames }: IndexPageProps) {
+  const [games] = useState<Game[]>(initialGames);
+  const [isDescOpen, setIsDescOpen] = useState(false);
   const [sortOption, setSortOption] = useState<'popular' | 'latest'>('popular');
-  const [dateRange, setDateRange] = useState<'all' | 'month' | 'week' | 'day'>('all');
   const [typeFilter, setTypeFilter] = useState<'all' | 'image' | 'youtube'>('all');
   const [searchInput, setSearchInput] = useState('');
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -53,61 +57,23 @@ export default function IndexPage() {
   const [showResumeModal, setShowResumeModal] = useState(false);
   const [isResumeLoading, setIsResumeLoading] = useState(false);
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadingProgress, setLoadingProgress] = useState(0);
   const { showAlert } = useAlert();
-  
+
+  // 이어하기 데이터 확인 (마운트 시 실행)
   useEffect(() => {
-    setIsLoading(true);
-    setLoadingProgress(0);
-
-    // 로딩 진행률을 단계별로 증가
-    const progressInterval = setInterval(() => {
-      setLoadingProgress(prev => {
-        if (prev >= 90) return prev;
-        return prev + Math.random() * 15;
-      });
-    }, 200);
-
-    fetch('/api/games')
-      .then((res) => {
-        setLoadingProgress(70);
-        return res.json();
-      })
-      .then((data) => {
-        setLoadingProgress(90);
-        setGames(data);
-      })
-      .catch(console.error)
-      .finally(() => {
-        setLoadingProgress(100);
-        setTimeout(() => {
-          setIsLoading(false);
-          setLoadingProgress(0);
-        }, 300);
-      });
-
-    return () => clearInterval(progressInterval);
-  }, []);
-
-  // 이어하기 데이터 확인 (로딩 완료 후 실행)
-  useEffect(() => {
-    if (!isLoading) {
-        const stored = localStorage.getItem('sukito_game');
-        
-        if (stored && stored !== 'undefined') { 
-          try {
-            const parsed = JSON.parse(stored || '{}');
-            if (parsed && parsed.gameId) {
-              setResumeData(parsed);
-              setShowResumeModal(true);
-            }
-          } catch (err) {
-            // 파싱 오류 무시
-          }
+    const stored = localStorage.getItem('sukito_game');
+    if (stored && stored !== 'undefined') {
+      try {
+        const parsed = JSON.parse(stored || '{}');
+        if (parsed && parsed.gameId) {
+          setResumeData(parsed);
+          setShowResumeModal(true);
         }
+      } catch (err) {
+        // 파싱 오류 무시
+      }
     }
-  }, [isLoading]);
+  }, []);
   
 
   const handleSearch = () => {
@@ -154,19 +120,8 @@ export default function IndexPage() {
     setShowResumeModal(false);
   };
 
-  const isWithinRange = (createdAt: string, range: 'month' | 'week' | 'day') => {
-    const now = new Date();
-    const created = new Date(createdAt);
-    const diff = now.getTime() - created.getTime();
-    if (range === 'month') return diff <= 30 * 24 * 60 * 60 * 1000;
-    if (range === 'week') return diff <= 7 * 24 * 60 * 60 * 1000;
-    if (range === 'day') return diff <= 24 * 60 * 60 * 1000;
-    return true;
-  };
-
   const filteredGames = games
     .filter((game) => {
-      if (dateRange !== 'all' && !isWithinRange(game.createdAt, dateRange)) return false;
       // タイプフィルタリングロジック修正
       if (typeFilter === 'image') {
         // image 타입만 통과
@@ -186,34 +141,18 @@ export default function IndexPage() {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
-  // make.tsx/profile.tsx 스타일 기반 스타일 객체 정의 (반응형 포함)
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 600;
-  const pageBgStyle: React.CSSProperties = {
-    background: 'linear-gradient(120deg, #f8fafc 0%, #e6f7ff 100%)',
-    minHeight: '100vh',
-    padding: isMobile ? '16px 0' : '40px 0',
-  };
-  const cardStyle: React.CSSProperties = {
-    background: '#fff',
-    borderRadius: isMobile ? 12 : 18,
-    boxShadow: '0 4px 24px #b3e5fc44',
-    maxWidth: isMobile ? '98vw' : 1100,
-    margin: '0 auto',
-    padding: isMobile ? '18px 6vw 18px 6vw' : '36px 20px 28px 20px',
-    position: 'relative',
-    border: '1.5px solid #e0f7fa',
-  };
   const buttonStyle: React.CSSProperties = {
     background: '#f7fafd',
     border: '1.5px solid #b2ebf2',
-    padding: isMobile ? '8px 10px' : '8px 18px',
+    padding: '7px 12px',
     borderRadius: 10,
     cursor: 'pointer',
-    fontSize: isMobile ? '0.95rem' : '1rem',
+    fontSize: '0.9rem',
     color: '#4caf50',
     fontWeight: 600,
     boxShadow: '0 1px 4px #b2ebf222',
     transition: 'all 0.2s',
+    whiteSpace: 'nowrap',
   };
   const activeButtonStyle: React.CSSProperties = {
     ...buttonStyle,
@@ -223,19 +162,19 @@ export default function IndexPage() {
     boxShadow: '0 2px 8px #4caf5022',
   };
   const inputStyle: React.CSSProperties = {
-    padding: isMobile ? '8px 10px' : '8px 14px',
+    padding: '7px 10px',
     border: '1.5px solid #b2ebf2',
     borderRadius: 8,
-    fontSize: isMobile ? '0.95rem' : '1rem',
+    fontSize: '0.9rem',
     background: '#f7fafd',
     color: '#222',
     outline: 'none',
-    minWidth: 120,
+    minWidth: 0,
   };
   const moreButtonStyle: React.CSSProperties = {
     width: '100%',
-    padding: isMobile ? '12px 0' : '14px 0',
-    fontSize: isMobile ? '1rem' : '1.1rem',
+    padding: '12px 0',
+    fontSize: '1rem',
     borderRadius: 10,
     backgroundColor: '#4caf50',
     color: '#fff',
@@ -245,16 +184,7 @@ export default function IndexPage() {
     boxShadow: '0 2px 8px #4caf5022',
     marginTop: 0,
   };
-  const adCardStyle: React.CSSProperties = {
-    height: 100,
-    border: '2px dashed #b2ebf2',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    background: '#f7fafd',
-    margin: isMobile ? '16px 0' : '20px 0',
-  };
+
 
   return (
     <>
@@ -335,7 +265,6 @@ export default function IndexPage() {
       </Head>
       <Header />
 
-      <UploadModal visible={isLoading} message="読み込み中..." progress={loadingProgress} />
 
       {showResumeModal && resumeData && (
         <div style={modalOverlayStyle}>
@@ -438,58 +367,77 @@ export default function IndexPage() {
       <section
         style={{
           backgroundColor: '#fff8dc',
-          padding: '24px 16px',
-          marginBottom: 24,
+          padding: '8px',
+          marginBottom: 12,
           border: '1px solid #ccc',
           borderRadius: '8px',
           textAlign: 'center',
         }}
       >
-        <h1 style={{ fontSize: '1.3rem', marginBottom: 12 }}>スキト - 好きトーナメント</h1>
-          <p style={{ fontSize: '1rem', color: '#333' }}>
-            好きな画像・動画・GIFを使ってトーナメント形式の人気投票を作成・プレイできる無料のエンタメプラットフォームです。<br />
-            誰でも気軽に参加でき、自分の「推し」をみんなと共有して楽しめます。<br />
-            ゲームは毎日追加され、アイドル・アニメ・スポーツ・食べ物などジャンルも多彩！ログインなしでも遊べます。
-          </p>
-          <div style={{ marginTop: '16px' }}>
-            <a 
-              href="/guide" 
-              style={{
-                color: '#4caf50',
-                textDecoration: 'none',
-                fontWeight: 'bold',
-                fontSize: '0.95rem',
-                padding: '8px 16px',
-                border: '2px solid #4caf50',
-                borderRadius: '6px',
-                display: 'inline-block',
-                marginTop: '8px'
-              }}
-            >
-              📖 詳しい使い方を見る
-            </a>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <h1 style={{ fontSize: '1.3rem', margin: 0 }}>スキト - 好きトーナメント</h1>
+          <button
+            onClick={() => setIsDescOpen((v) => !v)}
+            style={{
+              background: 'none',
+              border: '1px solid #aaa',
+              borderRadius: 4,
+              padding: '2px 8px',
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+              color: '#666',
+            }}
+          >
+            {isDescOpen ? '閉じる' : '詳細'}
+          </button>
+        </div>
+        {isDescOpen && (
+          <>
+            <p style={{ fontSize: '1rem', color: '#333', marginTop: 12 }}>
+              好きな画像・動画・GIFを使ってトーナメント形式の人気投票を作成・プレイできる無料のエンタメプラットフォームです。<br />
+              誰でも気軽に参加でき、自分の「推し」をみんなと共有して楽しめます。<br />
+              ゲームは毎日追加され、アイドル・アニメ・スポーツ・食べ物などジャンルも多彩！ログインなしでも遊べます。
+            </p>
+            <div style={{ marginTop: '12px' }}>
+              <a
+                href="/guide"
+                style={{
+                  color: '#4caf50',
+                  textDecoration: 'none',
+                  fontWeight: 'bold',
+                  fontSize: '0.95rem',
+                  padding: '8px 16px',
+                  border: '2px solid #4caf50',
+                  borderRadius: '6px',
+                  display: 'inline-block',
+                }}
+              >
+                詳しい使い方を見る
+              </a>
+            </div>
+          </>
+        )}
       </section>
 
 
       {/* 광고를 콘텐츠 섹션으로 감싸기 */}
       <section style={{
         backgroundColor: '#f8f9fa',
-        padding: '20px 16px',
-        marginBottom: 24,
+        padding: '10px',
+        marginBottom: 12,
         borderRadius: '8px',
         border: '1px solid #e9ecef',
       }}>
-        <h3 style={{ 
-          fontSize: '1.1rem', 
-          marginBottom: 16, 
-          textAlign: 'center',
-          color: '#495057'
+        <div style={{
+          height: 100,
+          border: '2px dashed #b2ebf2',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: 12,
+          background: '#f7fafd',
         }}>
-          📢 スポンサー広告
-        </h3>
-        <div style={adCardStyle}>
-          <GoogleAd 
+          <GoogleAd
             adSlot="4782225618"
             adFormat="auto"
             fullWidthResponsive={true}
@@ -498,29 +446,21 @@ export default function IndexPage() {
         </div>
       </section>
 
-      <div style={{ padding: isMobile ? 12 : 24 }}>
+      <div style={{ padding: 10 }}>
 
-        <div style={{ marginBottom: 20, display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: 8 }}>
+        <div className="row g-2" style={{ marginBottom: 16 }}>
+          {/* 필터 버튼 — 웹 50% / 모바일 100% */}
+          <div className="col-12 col-md-6" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
             <button onClick={() => { setSortOption('popular'); setVisibleCount(10); }} style={sortOption === 'popular' ? activeButtonStyle : buttonStyle}>人気順</button>
             <button onClick={() => { setSortOption('latest'); setVisibleCount(10); }} style={sortOption === 'latest' ? activeButtonStyle : buttonStyle}>新着順</button>
-          </div>
-
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => { setDateRange('all'); setVisibleCount(10); }} style={dateRange === 'all' ? activeButtonStyle : buttonStyle}>すべて</button>
-            <button onClick={() => { setDateRange('month'); setVisibleCount(10); }} style={dateRange === 'month' ? activeButtonStyle : buttonStyle}>月</button>
-            <button onClick={() => { setDateRange('week'); setVisibleCount(10); }} style={dateRange === 'week' ? activeButtonStyle : buttonStyle}>週</button>
-            <button onClick={() => { setDateRange('day'); setVisibleCount(10); }} style={dateRange === 'day' ? activeButtonStyle : buttonStyle}>日</button>
-          </div>
-
-          <div style={{ display: 'flex', gap: 8 }}>
+            <span style={{ alignSelf: 'stretch', borderLeft: '1px solid #ddd', margin: '0 2px' }} />
             <button onClick={() => { setTypeFilter('all'); setVisibleCount(10); }} style={typeFilter === 'all' ? activeButtonStyle : buttonStyle}>すべて</button>
             <button onClick={() => { setTypeFilter('image'); setVisibleCount(10); }} style={typeFilter === 'image' ? activeButtonStyle : buttonStyle}>画像</button>
             <button onClick={() => { setTypeFilter('youtube'); setVisibleCount(10); }} style={typeFilter === 'youtube' ? activeButtonStyle : buttonStyle}>動画</button>
           </div>
-
-          <div style={{ display: 'flex', gap: 4 }}>
-            <input type="text" placeholder="ゲーム" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} style={inputStyle} />
+          {/* 검색 — 웹 50% / 모바일 100% */}
+          <div className="col-12 col-md-6" style={{ display: 'flex', gap: 4 }}>
+            <input type="text" placeholder="ゲーム検索" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} style={{ ...inputStyle, flex: 1 }} />
             <button onClick={handleSearch} style={buttonStyle}>検索</button>
           </div>
         </div>
@@ -543,9 +483,8 @@ export default function IndexPage() {
                       backgroundColor: '#f8f9fa',
                       borderRadius: '8px'
                     }}>
-                      <div style={{ textAlign: 'center', padding: '16px' }}>
-                        <p style={{ margin: '0 0 8px 0', fontSize: '0.9rem', color: '#666' }}>スポンサー広告</p>
-                        <GoogleAd 
+                      <div style={{ textAlign: 'center', padding: '8px' }}>
+                        <GoogleAd
                           adSlot="4782225618"
                           adFormat="auto"
                           fullWidthResponsive={true}
@@ -706,68 +645,41 @@ const footerDividerStyle: React.CSSProperties = {
   color: '#ccc',
 };
 
-const cardSectionStyle: React.CSSProperties = {
-  background: '#fff',
-  boxShadow: '0 2px 12px #b2ebf222',
-  padding: '32px 16px',
-  margin: '0 auto 32px auto',
-  border: '1.5px solid #e0f7fa',
-  borderRadius: '16px',
-  textAlign: 'center',
-  maxWidth: 700,
-};
+export const getServerSideProps: GetServerSideProps = async () => {
+  try {
+    const client = await clientPromise;
+    const db = client.db('sukito');
 
-const adBoxStyle: React.CSSProperties = {
-  width: '100%',
-  maxWidth: 700,
-  margin: '0 auto 24px auto',
-  height: 100,
-  border: '2px dashed #b2ebf2',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  borderRadius: 12,
-  background: '#f7fafd',
-};
+    const games = await db.collection('games').find(
+      {},
+      {
+        projection: {
+          title: 1,
+          desc: 1,
+          thumbnails: 1,
+          createdAt: 1,
+          createdBy: 1,
+        },
+      }
+    ).sort({ createdAt: -1 }).toArray();
 
-const filterWrapStyle: React.CSSProperties = {
-  maxWidth: 700,
-  margin: '0 auto',
-  padding: '0 8px 24px 8px',
-};
+    const recordsCollection = db.collection('records');
+    const gamesWithPlayCount = await Promise.all(
+      games.map(async (game) => {
+        const playCount = await recordsCollection.countDocuments({ gameId: game._id.toString() });
+        return {
+          _id: game._id.toString(),
+          title: game.title ?? '',
+          desc: game.desc ?? '',
+          thumbnails: game.thumbnails ?? [],
+          createdAt: game.createdAt ? new Date(game.createdAt).toISOString() : new Date().toISOString(),
+          playCount,
+        };
+      })
+    );
 
-const filterRowStyle: React.CSSProperties = {
-  marginBottom: 20,
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: 16,
-  alignItems: 'center',
-  justifyContent: 'center',
-};
-
-const cardListWrapStyle: React.CSSProperties = {
-  maxWidth: 900,
-  margin: '0 auto',
-  padding: '0 8px',
-};
-
-const adCardStyle: React.CSSProperties = {
-  height: 100,
-  border: '2px dashed #b2ebf2',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  borderRadius: 12,
-  background: '#f7fafd',
-  margin: '16px 0',
-};
-
-const footerStyle: React.CSSProperties = {
-  padding: '32px 16px',
-  marginTop: '48px',
-  borderTop: '1px solid #b2ebf2',
-  textAlign: 'center',
-  fontSize: '0.95rem',
-  backgroundColor: '#f7fafd',
-  color: '#666',
+    return { props: { initialGames: gamesWithPlayCount } };
+  } catch {
+    return { props: { initialGames: [] } };
+  }
 };

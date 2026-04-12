@@ -109,11 +109,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ message: 'メソッドが許可されていません。' });
   }
 
-  console.log('=== 업로드 API 시작 ===');
-  console.log('NODE_ENV:', process.env.NODE_ENV);
-  console.log('EC2_SERVER_URL:', EC2_SERVER_URL);
-  console.log('uploadDir:', getUploadDir());
-
   const form = new IncomingForm({
     uploadDir: getUploadDir(), // EC2 환경에 맞는 디렉토리 사용
     keepExtensions: true,

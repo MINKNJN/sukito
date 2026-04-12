@@ -3,7 +3,9 @@
     "allow": [
       "Bash(npm outdated)",
       "mcp__ide__getDiagnostics",
-      "Bash(npm run lint)"
+      "Bash(npm run lint)",
+      "Bash(dir:*)",
+      "Bash(ls d:/sukito/*.md d:/sukito/*.sh)"
     ],
     "deny": [],
     "ask": []

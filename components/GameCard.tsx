@@ -32,6 +32,7 @@ interface GameCardProps {
 export default function GameCard({ id, title, desc, thumbnailItems, adminButtons }: GameCardProps) {
   const [windowWidth, setWindowWidth] = useState(1200);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isInfoHovered, setIsInfoHovered] = useState(false);
   const [validThumb, setValidThumb] = useState<boolean[]>([]);
   const { showAlert } = useAlert();
 
@@ -62,7 +63,7 @@ export default function GameCard({ id, title, desc, thumbnailItems, adminButtons
     Promise.all(checks).then((results) => setValidThumb(results));
   }, [thumbnailItems]);
 
-  const shareUrl = `${window.location.origin}/play/${id}`;
+  const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/play/${id}` : `https://sukito.net/play/${id}`;
 
   const handleShareToggle = () => {
     setIsShareOpen(!isShareOpen);
@@ -224,8 +225,23 @@ export default function GameCard({ id, title, desc, thumbnailItems, adminButtons
         })}
       </div>
 
-        <div style={{ marginTop: 8 }}>
-          <h3 className="game-card__title" style={titleStyle}>{title}</h3>
+        <div
+          style={{
+            marginTop: 8,
+            cursor: 'pointer',
+            borderRadius: 6,
+            padding: '4px 2px',
+            background: isInfoHovered ? '#f0fdf4' : 'transparent',
+            transition: 'background 0.2s',
+          }}
+          onClick={() => window.open(`/play/${id}`, '_blank')}
+          onMouseEnter={() => setIsInfoHovered(true)}
+          onMouseLeave={() => setIsInfoHovered(false)}
+        >
+          <h3 className="game-card__title" style={{
+            ...titleStyle,
+            color: isInfoHovered ? '#2e7d32' : titleStyle.color,
+          }}>{title}</h3>
           <p className="game-card__desc" style={descStyle}>{desc}</p>
         </div>
 

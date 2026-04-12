@@ -31,7 +31,7 @@ export default function GuidePage() {
           </h1>
 
           <section style={{ marginBottom: '32px' }}>
-            <h2 style={sectionTitleStyle}>🎮 ゲームの遊び方</h2>
+            <h2 style={sectionTitleStyle}>ゲームの遊び方</h2>
             <div style={stepContainerStyle}>
               <div style={stepStyle}>
                 <div style={stepNumberStyle}>1</div>
@@ -58,7 +58,7 @@ export default function GuidePage() {
           </section>
 
           <section style={{ marginBottom: '32px' }}>
-            <h2 style={sectionTitleStyle}>📝 ゲーム作成方法</h2>
+            <h2 style={sectionTitleStyle}>ゲーム作成方法</h2>
             <div style={stepContainerStyle}>
               <div style={stepStyle}>
                 <div style={stepNumberStyle}>1</div>
@@ -92,51 +92,51 @@ export default function GuidePage() {
           </section>
 
           <section style={{ marginBottom: '32px' }}>
-            <h2 style={sectionTitleStyle}>🔍 検索とフィルター機能</h2>
+            <h2 style={sectionTitleStyle}>検索とフィルター機能</h2>
             <div style={featureContainerStyle}>
               <div style={featureStyle}>
-                <h4>🔤 検索機能</h4>
+                <h4>検索機能</h4>
                 <p>ゲームタイトルや説明文でキーワード検索ができます。</p>
               </div>
               <div style={featureStyle}>
-                <h4>📅 期間フィルター</h4>
+                <h4>期間フィルター</h4>
                 <p>すべて・月・週・日で期間を絞り込んでゲームを探せます。</p>
               </div>
               <div style={featureStyle}>
-                <h4>🎬 タイプフィルター</h4>
+                <h4>タイプフィルター</h4>
                 <p>画像・動画でコンテンツタイプを絞り込めます。</p>
               </div>
               <div style={featureStyle}>
-                <h4>📊 並び替え</h4>
+                <h4>並び替え</h4>
                 <p>人気順・新着順でゲームを並び替えることができます。</p>
               </div>
             </div>
           </section>
 
           <section style={{ marginBottom: '32px' }}>
-            <h2 style={sectionTitleStyle}>💡 活用のヒント</h2>
+            <h2 style={sectionTitleStyle}>活用のヒント</h2>
             <div style={tipContainerStyle}>
               <div style={tipStyle}>
-                <h4>🎯 テーマを明確に</h4>
+                <h4>テーマを明確に</h4>
                 <p>「好きなアニメキャラクター」「おすすめの食べ物」など、明確なテーマを設定すると投票しやすくなります。</p>
               </div>
               <div style={tipStyle}>
-                <h4>📱 SNSで共有</h4>
+                <h4>SNSで共有</h4>
                 <p>作成したゲームをTwitterやInstagramで共有して、多くの人に参加してもらいましょう。</p>
               </div>
               <div style={tipStyle}>
-                <h4>🎨 高品質な画像</h4>
+                <h4>高品質な画像</h4>
                 <p>鮮明で見やすい画像や動画を使用すると、より魅力的なゲームになります。</p>
               </div>
               <div style={tipStyle}>
-                <h4>📝 分かりやすい説明</h4>
+                <h4>分かりやすい説明</h4>
                 <p>ゲームの目的や投票の基準を明確に説明すると、参加者が理解しやすくなります。</p>
               </div>
             </div>
           </section>
 
           <section style={{ marginBottom: '32px' }}>
-            <h2 style={sectionTitleStyle}>⚠️ 注意事項</h2>
+            <h2 style={sectionTitleStyle}>注意事項</h2>
             <div style={warningContainerStyle}>
               <ul style={warningListStyle}>
                 <li>著作権に注意して、適切なコンテンツをアップロードしてください</li>
@@ -148,7 +148,7 @@ export default function GuidePage() {
           </section>
 
           <div style={ctaContainerStyle}>
-            <h3 style={{ marginBottom: '16px', color: '#4caf50' }}>🚀 今すぐ始めよう！</h3>
+            <h3 style={{ marginBottom: '16px', color: '#4caf50' }}>今すぐ始めよう！</h3>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
               <button 
                 onClick={() => window.location.href = '/make'} 

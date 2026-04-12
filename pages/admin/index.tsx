@@ -515,7 +515,7 @@ export default function AdminPage() {
               👥 회원 관리
             </button>
             <button onClick={() => setTab('games')} style={modernTabStyle(tab === 'games')}>
-              🎮 게임 관리
+              게임 관리
             </button>
             <button onClick={() => setTab('comments')} style={modernTabStyle(tab === 'comments')}>
               💬 댓글 관리
@@ -618,7 +618,7 @@ export default function AdminPage() {
           {tab === 'games' && (
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                <h2 style={{ fontWeight: 800, fontSize: 24, color: '#333' }}>🎮 게임 관리 ({games.length}개)</h2>
+                <h2 style={{ fontWeight: 800, fontSize: 24, color: '#333' }}>게임 관리 ({games.length}개)</h2>
                 <div style={{ padding: '8px 16px', background: '#fff3e0', borderRadius: 20, fontSize: 14, fontWeight: 600, color: '#f57f17' }}>
                   전체 게임: {gameTotal}개
                 </div>
@@ -728,7 +728,7 @@ export default function AdminPage() {
                           {comment.content}
                           {comment.reportCount >= 3 && (
                             <span style={{ color: 'red', fontWeight: 'bold', marginLeft: 8 }}>
-                              ⚠️ 신고 누적
+                              [신고 누적]
                             </span>
                           )}
                         </td>

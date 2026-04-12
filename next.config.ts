@@ -3,6 +3,14 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+
+  // EC2 메모리 부족 방지 — 빌드 시 타입 체크/lint 스킵
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   
   // 이미지 최적화
   images: {

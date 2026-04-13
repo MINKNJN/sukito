@@ -2,6 +2,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { requireAdmin } from '@/utils/adminAuth';
+import { ObjectId } from 'mongodb';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (requireAdmin(req, res)) return;
@@ -31,19 +32,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .limit(limit)
       .toArray();
 
+    // 게임 제목 join
+    const gameIds = [...new Set(comments.map(c => c.gameId).filter(Boolean))];
+    const gameDocs = await db.collection('games')
+      .find({ _id: { $in: gameIds.map(id => { try { return new ObjectId(id); } catch { return null; } }).filter(Boolean) as ObjectId[] } })
+      .project({ title: 1 })
+      .toArray();
+    const gameMap: Record<string, string> = Object.fromEntries(gameDocs.map(g => [g._id.toString(), g.title]));
+
     const formattedComments = comments.map((comment) => ({
       _id: comment._id.toString(),
       gameId: comment.gameId?.toString() || '',
-      gameTitle: comment.gameTitle || '',
-      nickname: comment.nickname || '알 수 없음',
+      gameTitle: gameMap[comment.gameId?.toString() || ''] || '',
+      nickname: comment.nickname || '',
       content: comment.content || '',
       createdAt: comment.createdAt || '',
-      reportCount: comment.reportCount || '',
+      reportCount: comment.reportCount || 0,
     }));
 
     return res.status(200).json({ comments: formattedComments, total });
   } catch (error) {
-          console.error('コメントリスト読み込み失敗:', error);
+    console.error('comments fetch error:', error);
     return res.status(500).json({ message: '서버 오류가 발생했습니다.' });
   }
 }

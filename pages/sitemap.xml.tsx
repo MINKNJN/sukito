@@ -20,8 +20,7 @@ export const getServerSideProps: GetServerSideProps = async ({ res }) => {
 
     const staticPages = [
       { url: 'https://sukito.net/', lastmod: today, changefreq: 'daily', priority: '1.0' },
-      { url: 'https://sukito.net/ranking', lastmod: today, changefreq: 'daily', priority: '0.9' },
-      { url: 'https://sukito.net/make', lastmod: today, changefreq: 'weekly', priority: '0.9' },
+{ url: 'https://sukito.net/make', lastmod: today, changefreq: 'weekly', priority: '0.9' },
       { url: 'https://sukito.net/about', lastmod: today, changefreq: 'monthly', priority: '0.8' },
       { url: 'https://sukito.net/guide', lastmod: today, changefreq: 'monthly', priority: '0.8' },
       { url: 'https://sukito.net/mygames', lastmod: today, changefreq: 'weekly', priority: '0.7' },

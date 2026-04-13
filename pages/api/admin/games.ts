@@ -26,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const total = await gamesCol.countDocuments(filter);
     const games = await gamesCol
       .find(filter)
-      .project({ title: 1, desc: 1, items: 1 })
+      .project({ title: 1, desc: 1, items: 1, visibility: 1 })
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
@@ -37,6 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       title: game.title || '',
       desc: game.desc || '',
       itemsCount: Array.isArray(game.items) ? game.items.length : 0,
+      visibility: game.visibility || 'public',
     }));
 
     return res.status(200).json({ games: formattedGames, total });

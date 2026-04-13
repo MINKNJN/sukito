@@ -112,7 +112,7 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
   const [matchIndex, setMatchIndex] = useState(0);
   const [selectedSide, setSelectedSide] = useState<'left' | 'right' | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('sukito_game');

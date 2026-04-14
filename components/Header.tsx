@@ -113,9 +113,9 @@ export default function Header() {
         padding: isMobile ? '10px 0' : 0,
         zIndex: 1000,
       }}>
-        <Link href="/" style={linkStyle}>好きトーナメント</Link>
+        
         <Link href="/guide" style={linkStyle}>使い方</Link>
-        <button onClick={handleMakeClick} style={buttonLinkStyle}>トーナメン作る</button>
+        <button onClick={handleMakeClick} style={buttonLinkStyle}>トーナメント作る</button>
         {isLoggedIn && (
           <>
             <Link href="/mygames" style={linkStyle}>マイトーナメント</Link>

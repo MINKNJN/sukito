@@ -65,6 +65,17 @@ async function convertGifToMp4(inputPath, outputPath) {
   }
 }
 
+// MP4 첫 프레임을 JPG로 추출하는 함수
+async function extractThumbnail(mp4Path, thumbnailPath) {
+  try {
+    const command = `ffmpeg -i "${mp4Path}" -vframes 1 -f image2 "${thumbnailPath}"`;
+    await execAsync(command);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
 // 파일 정리 함수
 function cleanupFiles(filePath) {
   if (fs.existsSync(filePath)) {
@@ -92,7 +103,11 @@ app.post('/convert', upload.single('gif'), async (req, res) => {
     const success = await convertGifToMp4(inputPath, outputPath);
 
     if (success) {
-      // 변환된 파일 정보 반환
+      // 썸네일 추출
+      const thumbnailFileName = path.parse(outputFileName).name + '_thumb.jpg';
+      const thumbnailPath = path.join(outputDir, thumbnailFileName);
+      const thumbSuccess = await extractThumbnail(outputPath, thumbnailPath);
+
       const stats = fs.statSync(outputPath);
       const fileSize = (stats.size / (1024 * 1024)).toFixed(2); // MB
 
@@ -103,7 +118,8 @@ app.post('/convert', upload.single('gif'), async (req, res) => {
           originalName: req.file.originalname,
           outputFileName: outputFileName,
           fileSize: fileSize + ' MB',
-          downloadUrl: `/download/${outputFileName}`
+          downloadUrl: `/download/${outputFileName}`,
+          thumbnailDownloadUrl: thumbSuccess ? `/download/${thumbnailFileName}` : null,
         }
       });
 
@@ -154,6 +170,53 @@ app.get('/download/:filename', (req, res) => {
       success: false, 
       message: '파일을 찾을 수 없습니다.' 
     });
+  }
+});
+
+// MP4 URL에서 첫 프레임 추출 API (기존 게임 썸네일 재생성용)
+app.post('/extract-thumbnail-from-url', async (req, res) => {
+  const { mp4Url, filename } = req.body;
+  if (!mp4Url || !filename) {
+    return res.status(400).json({ success: false, message: 'mp4Url과 filename이 필요합니다.' });
+  }
+
+  const tempMp4Path = path.join(uploadDir, filename + '_temp.mp4');
+  const thumbnailFileName = filename + '_thumb.jpg';
+  const thumbnailPath = path.join(outputDir, thumbnailFileName);
+
+  try {
+    // MP4 다운로드
+    const https = require('https');
+    const http = require('http');
+    const protocol = mp4Url.startsWith('https') ? https : http;
+
+    await new Promise((resolve, reject) => {
+      const file = fs.createWriteStream(tempMp4Path);
+      protocol.get(mp4Url, (response) => {
+        response.pipe(file);
+        file.on('finish', () => { file.close(); resolve(); });
+      }).on('error', (err) => {
+        fs.unlink(tempMp4Path, () => {});
+        reject(err);
+      });
+    });
+
+    // 첫 프레임 추출
+    const success = await extractThumbnail(tempMp4Path, thumbnailPath);
+    cleanupFiles(tempMp4Path);
+
+    if (!success) {
+      return res.status(500).json({ success: false, message: '썸네일 추출에 실패했습니다.' });
+    }
+
+    res.json({
+      success: true,
+      data: { thumbnailDownloadUrl: `/download/${thumbnailFileName}` }
+    });
+  } catch (error) {
+    cleanupFiles(tempMp4Path);
+    cleanupFiles(thumbnailPath);
+    res.status(500).json({ success: false, message: '처리 중 오류가 발생했습니다.' });
   }
 });
 

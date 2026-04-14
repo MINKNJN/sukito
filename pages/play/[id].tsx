@@ -12,6 +12,7 @@ interface GameItem {
   name: string;
   url: string;
   type: 'image' | 'gif' | 'youtube';
+  thumbUrl?: string;
 }
 
 interface Game {
@@ -33,9 +34,9 @@ function getOgImage(item?: GameItem): string {
   if (item.type === 'youtube') {
     const match = item.url.match(/embed\/([a-zA-Z0-9_-]{11})/);
     const videoId = match?.[1];
-    return videoId ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` : 'https://sukito.net/og-image.jpg';
+    return videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : 'https://sukito.net/og-image.jpg';
   }
-  if (item.type === 'gif') return 'https://sukito.net/og-image.jpg';
+  if (item.type === 'gif') return item.thumbUrl || 'https://sukito.net/og-image.jpg';
   return item.url;
 }
 const ANIMATION_DURATION = 800;

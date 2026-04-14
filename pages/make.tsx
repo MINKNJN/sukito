@@ -36,6 +36,7 @@ export default function MakePage() {
   const [files, setFiles] = useState<File[]>([]);
   const [fileNames, setFileNames] = useState<string[]>([]);
   const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
+  const [uploadedThumbUrls, setUploadedThumbUrls] = useState<string[]>([]);
   const [videoRows, setVideoRows] = useState<VideoRow[]>([{
     url: '', name: '', stime: '', etime: '', valid: true
   }]);
@@ -120,6 +121,7 @@ export default function MakePage() {
             setVideoRows(videos);
           } else {
             setUploadedUrls(data.items.map((i: any) => i.url));
+            setUploadedThumbUrls(data.items.map((i: any) => i.thumbUrl || ''));
             setFileNames(data.items.map((i: any) => i.name));
           }
         });
@@ -164,7 +166,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 
     const isValidType =
       (activeTab === 'image' && /\.(jpe?g|png)$/i.test(file.name)) ||
-      (activeTab === 'gif' && /\.(gif)$/i.test(file.name)); 
+      (activeTab === 'gif' && /\.(gif|webp)$/i.test(file.name));
 
     if (!isValidSize) {
       showAlert(`「${file.name}」は${MAX_FILE_SIZE_MB}MB以下のみアップロード可能です。`, 'error');
@@ -180,7 +182,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 
   setFileNames(prev => [
     ...prev,
-    ...filtered.map(f => f.name.replace(/\.(jpe?g|png|gif)$/i, '')), 
+    ...filtered.map(f => f.name.replace(/\.(jpe?g|png|gif|webp)$/i, '')),
   ]);
 };
 
@@ -188,6 +190,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFiles([]);
     setFileNames([]);
     setUploadedUrls([]);
+    setUploadedThumbUrls([]);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -365,7 +368,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUploadProgress(20);
     let items: { name: string; url: string; type: 'image' | 'gif' | 'youtube'; thumbUrl?: string }[] = [];
     let newUploadedUrls: string[] = [];
-    let newGifUploaded: { mp4Url: string }[] = [];
+    let newGifUploaded: { mp4Url: string; thumbUrl?: string }[] = [];
     if (activeTab === 'image') {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -400,7 +403,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (activeTab === 'gif') {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        setUploadMessage(`GIFをアップロード中 (${i + 1}/${files.length})`);
+        setUploadMessage(`GIF/WEBPをアップロード中 (${i + 1}/${files.length})`);
         setUploadProgress(20 + Math.round((i / files.length) * 40));
         const formData = new FormData();
         formData.append('file', file);
@@ -411,16 +414,18 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         });
         const data = await res.json();
         if (!res.ok || !data.results || !data.results[0]?.mp4Url) {
-          showAlert(data.message || 'GIFのアップロードに失敗しました。もう一度お試しください。', 'error');
+          showAlert(data.message || 'GIF/WEBPのアップロードに失敗しました。もう一度お試しください。', 'error');
           continue;
         }
-        newGifUploaded.push({ mp4Url: data.results[0].mp4Url });
+        newGifUploaded.push({ mp4Url: data.results[0].mp4Url, thumbUrl: data.results[0].thumbnailUrl });
       }
       const allGifUrls = [...uploadedUrls, ...newGifUploaded.map(item => item.mp4Url)];
+      const allThumbUrls = [...uploadedThumbUrls, ...newGifUploaded.map(item => item.thumbUrl || '')];
       items = fileNames.map((name, i) => ({
         name,
         url: allGifUrls[i],
         type: 'gif',
+        ...(allThumbUrls[i] ? { thumbUrl: allThumbUrls[i] } : {}),
       }));
     }
     if (activeTab === 'youtube') {
@@ -463,6 +468,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           name: item.name,
           url: item.url,
           type: item.type,
+          ...(item.thumbUrl ? { thumbUrl: item.thumbUrl } : {}),
         };
       })
       .filter(Boolean);
@@ -512,7 +518,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
           position: 'relative',
           border: '1.5px solid #e0f7fa',
         }}>
-          <h1 style={{ fontWeight: 700, fontSize: isMobile ? 22 : 28, marginBottom: isMobile ? 18 : 28, letterSpacing: -1, color: '#4caf50', textAlign: 'center', fontFamily: '"Noto Sans JP", "Hiragino Sans", "Meiryo", sans-serif' }}>{isEditMode ? 'トーナメント編集' : 'トーナメン作る'}</h1>
+          <h1 style={{ fontWeight: 700, fontSize: isMobile ? 22 : 28, marginBottom: isMobile ? 18 : 28, letterSpacing: -1, color: '#4caf50', textAlign: 'center', fontFamily: '"Noto Sans JP", "Hiragino Sans", "Meiryo", sans-serif' }}>{isEditMode ? 'トーナメント編集' : 'トーナメント作る'}</h1>
 
           <UploadModal visible={isUploading} progress={uploadProgress} message={uploadMessage} />
 
@@ -572,9 +578,10 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                 marginBottom: '12px',
                 border: '1px solid #ccc',
               }}>
-                1.ファイル選択」ボタンをクリックして、画像やGIFファイルをアップロードしてください。<br />
-                2.ファイル名は自動的に「タイトル」として入力されます。（必要に応じて編集可能）<br />
-                3.代表画像を2つ選択してください。選択しない場合は、最初にアップロードされた2つが自動的に選ばれます。<br />
+                {activeTab === 'image'
+                  ? <>1. 「ファイル選択」から JPG・PNG ファイルを選んでください<br />2. ファイル名が自動でタイトルになります（編集可能）<br />3. 代表画像を2つ選択してください。未選択の場合は最初の2つが自動的に選ばれます</>
+                  : <>1. 「ファイル選択」から GIF・WEBP ファイルを選んでください（最大10MB）<br />2. アップロード後、自動的にMP4に変換されます<br />3. 代表画像を2つ選択してください。未選択の場合は最初の2つが自動的に選ばれます</>
+                }
                 
               </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
@@ -603,7 +610,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                 </button>
                 <span style={{ marginLeft: 8 }}>{fileNames.length} ファイル</span>
                 <div style={{ flex: 1 }} />
-                <input type="file" ref={fileInputRef} multiple accept={activeTab === 'image' ? '.jpg,.jpeg,.png' : '.gif'} onChange={handleFileChange} style={{ display: 'none' }} />
+                <input type="file" ref={fileInputRef} multiple accept={activeTab === 'image' ? '.jpg,.jpeg,.png' : '.gif,.webp'} onChange={handleFileChange} style={{ display: 'none' }} />
               </div>
               {fileNames.map((name, i) => {
                 const isNew = i >= uploadedUrls.length;

@@ -30,70 +30,45 @@ function isAnimatedWebp(filepath: string): boolean {
   return buffer.includes(Buffer.from('ANIM'));
 }
 
-// EC2 서버로 GIF 변환 요청 (개선된 버전 - axios 사용)
-async function convertGifOnEC2(filepath: string, originalFilename: string): Promise<string> {
+// EC2 서버로 GIF 변환 + 썸네일 추출 요청
+async function convertGifOnEC2WithThumb(filepath: string, originalFilename: string): Promise<{ mp4Path: string; thumbPath: string | null }> {
   const axios = require('axios');
   const FormData = require('form-data');
-  
-  try {
-    // FormData 생성 - 파일 버퍼 사용 (더 안정적)
-    const formData = new FormData();
-    const fileBuffer = fs.readFileSync(filepath);
-    formData.append('gif', fileBuffer, {
-      filename: originalFilename,
-      contentType: 'image/gif'
-    });
 
-    // axios로 요청 전송 (fetch보다 안정적)
-    const response = await axios.post(`${EC2_SERVER_URL}/convert`, formData, {
-      headers: {
-        ...formData.getHeaders(),
-        'Accept': 'application/json'
-      },
-      timeout: 60000, // 60초 타임아웃
-      maxContentLength: 25 * 1024 * 1024, // 25MB (20MB + 여유분)
-      maxBodyLength: 25 * 1024 * 1024
-    });
-    
-    const result = response.data;
-    if (!result.success) {
-      throw new Error(result.message || '変換 失敗');
-    }
+  const formData = new FormData();
+  const fileBuffer = fs.readFileSync(filepath);
+  formData.append('gif', fileBuffer, { filename: originalFilename, contentType: 'image/gif' });
 
-    // 변환된 파일 다운로드
-    const downloadUrl = `${EC2_SERVER_URL}${result.data.downloadUrl}`;
-    
-    const downloadResponse = await axios.get(downloadUrl, {
-      responseType: 'arraybuffer',
-      timeout: 60000
-    });
-    
-    if (downloadResponse.status !== 200) {
-      throw new Error('変換されたファイルのダウンロードに失敗しました');
-    }
+  const response = await axios.post(`${EC2_SERVER_URL}/convert`, formData, {
+    headers: { ...formData.getHeaders(), 'Accept': 'application/json' },
+    timeout: 60000,
+    maxContentLength: 25 * 1024 * 1024,
+    maxBodyLength: 25 * 1024 * 1024,
+  });
 
-    // 임시 파일로 저장
-    const tempMp4Path = filepath.replace(/\.(gif|webp)$/i, '.mp4');
-    fs.writeFileSync(tempMp4Path, Buffer.from(downloadResponse.data));
+  const result = response.data;
+  if (!result.success) throw new Error(result.message || '変換失敗');
 
-    return tempMp4Path;
-  } catch (error: any) {
-    // EC2 변환 에러
-    
-    // 구체적인 에러 메시지 제공
-    if (error.code === 'ECONNREFUSED') {
-      throw new Error('EC2サーバーに接続できません。サーバーが停止している可能性があります。');
+  // MP4 다운로드
+  const mp4Response = await axios.get(`${EC2_SERVER_URL}${result.data.downloadUrl}`, { responseType: 'arraybuffer', timeout: 60000 });
+  const mp4Path = filepath.replace(/\.(gif|webp)$/i, '.mp4');
+  fs.writeFileSync(mp4Path, Buffer.from(mp4Response.data));
+
+  // 썸네일 다운로드 (있을 경우)
+  let thumbPath: string | null = null;
+  if (result.data.thumbnailDownloadUrl) {
+    try {
+      const thumbResponse = await axios.get(`${EC2_SERVER_URL}${result.data.thumbnailDownloadUrl}`, { responseType: 'arraybuffer', timeout: 30000 });
+      thumbPath = filepath.replace(/\.(gif|webp)$/i, '_thumb.jpg');
+      fs.writeFileSync(thumbPath, Buffer.from(thumbResponse.data));
+    } catch {
+      // 썸네일 실패해도 MP4는 계속 진행
     }
-    if (error.code === 'ENOTFOUND') {
-      throw new Error('EC2サーバーのアドレスが見つかりません。');
-    }
-    if (error.code === 'ETIMEDOUT') {
-      throw new Error('EC2サーバーへの接続がタイムアウトしました。');
-    }
-    
-    throw error;
   }
+
+  return { mp4Path, thumbPath };
 }
+
 
 export const config = {
   api: {
@@ -175,18 +150,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // GIF/WEBP 분기 (EC2 서버를 사용해서 MP4로 변환)
         if (/\.(gif|webp)$/i.test(originalFilename)) {
           let mp4Path: string | null = null;
+          let thumbPath: string | null = null;
           try {
-            // EC2 서버로 변환 요청
-            mp4Path = await convertGifOnEC2(filepath, originalFilename);
-            const mp4Url = await uploadToS3(mp4Path, originalFilename.replace(/\.(gif|webp)$/i, '.mp4'), 'video/mp4', folder);
-            uploadedResults.push({ mp4Url });
+            const result = await convertGifOnEC2WithThumb(filepath, originalFilename);
+            mp4Path = result.mp4Path;
+            thumbPath = result.thumbPath;
+
+            const baseName = originalFilename.replace(/\.(gif|webp)$/i, '');
+            const mp4Url = await uploadToS3(mp4Path, baseName + '.mp4', 'video/mp4', folder);
+
+            let thumbnailUrl: string | undefined;
+            if (thumbPath && fs.existsSync(thumbPath)) {
+              thumbnailUrl = await uploadToS3(thumbPath, baseName + '_thumb.jpg', 'image/jpeg', folder);
+            }
+
+            uploadedResults.push({ mp4Url, thumbnailUrl });
           } catch (error: any) {
             throw error;
           } finally {
-            // 에러가 발생해도 임시 파일 정리
             try {
               if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
               if (mp4Path && fs.existsSync(mp4Path)) fs.unlinkSync(mp4Path);
+              if (thumbPath && fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath);
             } catch (cleanupError) {
               // 임시 파일 정리 실패 무시
             }

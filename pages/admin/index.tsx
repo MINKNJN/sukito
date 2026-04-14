@@ -62,6 +62,8 @@ export default function AdminPage() {
   const [commentPage, setCommentPage] = useState(1);
   const [commentSearch, setCommentSearch] = useState('');
   const [editingComment, setEditingComment] = useState<EditingComment>(null);
+  const [regenLoading, setRegenLoading] = useState(false);
+  const [regenResult, setRegenResult] = useState<{ processed: number; failed: number; skipped: number; total: number } | null>(null);
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -154,6 +156,28 @@ export default function AdminPage() {
       setCommentTotal(data.total || 0);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRegenThumbnails = async () => {
+    setRegenLoading(true);
+    setRegenResult(null);
+    try {
+      const res = await fetch('/api/admin/regenerate-thumbnails', {
+        method: 'POST',
+        headers: authHeaders(),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setRegenResult(data);
+        showToast(`완료: ${data.processed}개 성공, ${data.failed}개 실패`);
+      } else {
+        showToast(data.message || '실패했습니다.', false);
+      }
+    } catch {
+      showToast('서버 오류가 발생했습니다.', false);
+    } finally {
+      setRegenLoading(false);
     }
   };
 
@@ -367,6 +391,28 @@ export default function AdminPage() {
                 style={inputSt}
               />
               <button onClick={() => fetchGames(1)} style={btn('#111', '#fff')}>검색</button>
+            </div>
+
+            {/* GIF 썸네일 재생성 */}
+            <div style={{ marginBottom: 20, padding: '14px 16px', background: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: '#111', marginBottom: 2 }}>GIF 썸네일 재생성</div>
+                  <div style={{ fontSize: 13, color: '#6b7280' }}>thumbUrl 없는 GIF 타입 게임의 MP4에서 첫 프레임을 추출해 저장합니다.</div>
+                </div>
+                <button
+                  onClick={handleRegenThumbnails}
+                  disabled={regenLoading}
+                  style={{ ...btn(regenLoading ? '#9ca3af' : '#2563eb', '#fff'), whiteSpace: 'nowrap', cursor: regenLoading ? 'default' : 'pointer' }}
+                >
+                  {regenLoading ? '처리 중...' : '재생성 실행'}
+                </button>
+              </div>
+              {regenResult && (
+                <div style={{ marginTop: 10, fontSize: 13, color: '#374151' }}>
+                  결과 — 전체: {regenResult.total}개 게임 / 성공: {regenResult.processed}개 / 실패: {regenResult.failed}개 / 건너뜀: {regenResult.skipped}개
+                </div>
+              )}
             </div>
 
             <table style={tableSt}>

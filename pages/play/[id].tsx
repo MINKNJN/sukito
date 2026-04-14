@@ -523,11 +523,13 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
             name: item.name,
             url: item.url,
             type: item.type || 'image',
+            thumbUrl: item.thumbUrl,
           })),
           thumbnails: (game.thumbnails ?? []).map((item: any) => ({
             name: item.name,
             url: item.url,
             type: item.type || 'image',
+            thumbUrl: item.thumbUrl,
           })),
         },
       },

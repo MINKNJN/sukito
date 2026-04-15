@@ -2,11 +2,12 @@
 import { GetServerSideProps, NextPage } from 'next';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useState } from 'react';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { getStorageWithExpire } from '@/lib/utils';
 import GoogleAd from '@/components/GoogleAd';
+import Header from '@/components/Header';
 
 interface GameItem {
   name: string;
@@ -25,6 +26,7 @@ interface Game {
 
 interface PlayPageProps {
   game: Game | null;
+  ogThumbnail?: GameItem;
 }
 
 const ROUND_OPTIONS = [4, 8, 16, 32, 64, 128, 256];
@@ -104,7 +106,7 @@ const pickRandomItems = <T,>(arr: T[], count: number): T[] => {
   return result;
 };
 
-const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
+const PlayPage: NextPage<PlayPageProps> = ({ game, ogThumbnail }) => {
   const router = useRouter();
   const [selectedRound, setSelectedRound] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -134,6 +136,12 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
     }
     setLoading(false);
   }, [game]);
+
+  useLayoutEffect(() => {
+    if (isPlaying) {
+      window.scrollTo(0, 99999);
+    }
+  }, [isPlaying]);
 
   if (loading) return null;
 
@@ -238,9 +246,11 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
     }, ANIMATION_DURATION);
   };
 
+
   if (!isPlaying) {
     return (
       <>
+        <Header />
         <Head>
           <title>{game.title} - トーナメント開始 | スキト</title>
           <meta name="description" content={`${game.desc} - トーナメント形式の投票ゲームを開始します。`} />
@@ -254,7 +264,7 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
           <meta property="og:type" content="website" />
           <meta property="og:site_name" content="スキト" />
           <meta property="og:locale" content="ja_JP" />
-          <meta property="og:image" content={getOgImage(game.thumbnails?.[0])} />
+          <meta property="og:image" content={getOgImage(ogThumbnail ?? game.thumbnails?.[0])} />
           <meta property="og:image:width" content="1200" />
           <meta property="og:image:height" content="630" />
 
@@ -262,7 +272,7 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
           <meta name="twitter:card" content="summary_large_image" />
           <meta name="twitter:title" content={`${game.title} - トーナメント開始`} />
           <meta name="twitter:description" content={`${game.desc} - トーナメント形式の投票ゲーム`} />
-          <meta name="twitter:image" content={getOgImage(game.thumbnails?.[0])} />
+          <meta name="twitter:image" content={getOgImage(ogThumbnail ?? game.thumbnails?.[0])} />
           
           {/* Canonical URL */}
           <link rel="canonical" href={`https://sukito.net/play/${game._id}`} />
@@ -290,6 +300,42 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
         </Head>
         <div className="round-card-bg">
           <div className="round-card">
+
+            {/* VS 배틀 연출 */}
+            {game.thumbnails && game.thumbnails.length > 0 && (() => {
+              const left0 = game.thumbnails![0];
+              const right0 = game.thumbnails!.length > 1 ? game.thumbnails![1] : game.thumbnails![0];
+              const renderMedia = (item: GameItem, side: string) => {
+                if (item.url.endsWith('.mp4')) {
+                  return (
+                    <video
+                      src={item.url}
+                      autoPlay loop muted playsInline
+                      className={`vs-media vs-media-${side}`}
+                    />
+                  );
+                }
+                const src = item.type === 'youtube' ? getOgImage(item) : (item.thumbUrl || item.url);
+                return <img src={src} alt={item.name} className={`vs-media vs-media-${side}`} />;
+              };
+              return (
+                <div className="vs-wrap">
+                  <div className="vs-side vs-side-left">
+                    {renderMedia(left0, 'left')}
+                    <p className="vs-name">{left0.name}</p>
+                  </div>
+                  <div className="vs-center">
+                    <span className="vs-text">VS</span>
+                    <div className="vs-finger">👆</div>
+                  </div>
+                  <div className="vs-side vs-side-right">
+                    {renderMedia(right0, 'right')}
+                    <p className="vs-name">{right0.name}</p>
+                  </div>
+                </div>
+              );
+            })()}
+
             <h1 className="title">{game.title}</h1>
             <p className="desc">{game.desc}</p>
             <div className="selector">
@@ -325,15 +371,100 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
               border-radius: 18px;
               box-shadow: 0 4px 24px #b3e5fc44;
               border: 1.5px solid #e0f7fa;
-              max-width: 600px;
+              max-width: 680px;
               width: 98vw;
               margin: 32px auto;
-              padding: 32px 20px 28px 20px;
+              padding: 28px 20px 28px 20px;
               display: flex;
               flex-direction: column;
               align-items: center;
               text-align: center;
             }
+
+            /* ── VS 배틀 연출 ── */
+            .vs-wrap {
+              display: flex;
+              align-items: flex-start;
+              justify-content: center;
+              gap: 0;
+              width: 100%;
+              margin-bottom: 24px;
+              overflow: hidden;
+            }
+            .vs-side {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              flex: 1;
+            }
+            .vs-side-left {
+              animation: slideFromLeft 0.6s cubic-bezier(.22,1,.36,1) both;
+            }
+            .vs-side-right {
+              animation: slideFromRight 0.6s cubic-bezier(.22,1,.36,1) both;
+            }
+            .vs-media {
+              width: 100%;
+              max-width: 220px;
+              height: 240px;
+              object-fit: cover;
+              border-radius: 12px;
+              border: 3px solid #e0f7fa;
+              box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+              display: block;
+              background: #000;
+            }
+            .vs-name {
+              margin: 8px 0 0 0;
+              font-size: 0.85rem;
+              color: #444;
+              max-width: 180px;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+            }
+            .vs-center {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              flex: 0 0 80px;
+              align-self: center;
+              gap: 14px;
+            }
+            .vs-text {
+              font-size: 3.2rem;
+              font-weight: 900;
+              color: #e53935;
+              letter-spacing: 2px;
+              animation: vsPulse 1.4s ease-in-out infinite;
+              text-shadow: 0 2px 8px rgba(229,57,53,0.3);
+            }
+            .vs-finger {
+              font-size: 3.2rem;
+              animation: fingerBounce 1.6s ease-in-out infinite;
+              transform-origin: center;
+            }
+
+            @keyframes slideFromLeft {
+              from { opacity: 0; transform: translateX(-60px); }
+              to   { opacity: 1; transform: translateX(0); }
+            }
+            @keyframes slideFromRight {
+              from { opacity: 0; transform: translateX(60px); }
+              to   { opacity: 1; transform: translateX(0); }
+            }
+            @keyframes vsPulse {
+              0%, 100% { transform: scale(1); }
+              50%       { transform: scale(1.18); }
+            }
+            @keyframes fingerBounce {
+              0%   { transform: translateX(-18px) rotate(-25deg); }
+              50%  { transform: translateX(18px)  rotate(25deg); }
+              100% { transform: translateX(-18px) rotate(-25deg); }
+            }
+
+            /* ── 기존 스타일 ── */
             .title {
               font-size: 2.2rem;
               font-weight: bold;
@@ -375,16 +506,36 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
               background: #45a049;
               transform: translateY(-2px);
             }
-            @media (max-width: 768px) {
+
+            @media (max-width: 600px) {
               .round-card {
-                margin: 16px auto;
-                padding: 24px 16px 20px 16px;
+                margin: 12px auto;
+                padding: 20px 10px 20px 10px;
+              }
+              .vs-media {
+                max-width: 130px;
+                height: 160px;
+                border-radius: 8px;
+              }
+              .vs-center {
+                flex: 0 0 40px;
+                gap: 8px;
+              }
+              .vs-text {
+                font-size: 2rem;
+              }
+              .vs-finger {
+                font-size: 2rem;
+              }
+              .vs-name {
+                font-size: 0.75rem;
+                max-width: 110px;
               }
               .title {
-                font-size: 1.8rem;
+                font-size: 1.6rem;
               }
               .desc {
-                font-size: 1rem;
+                font-size: 0.95rem;
               }
               .selector label {
                 font-size: 0.95rem;
@@ -414,6 +565,7 @@ const PlayPage: NextPage<PlayPageProps> = ({ game }) => {
 
   return (
     <>
+      <Header />
       <Head>
         <title>{`${game.title} - ${left?.name || ''} vs ${right?.name || ''} | スキト`}</title>
         <meta name="description" content={`${left?.name} vs ${right?.name} ベスト·オブ·ベスト`} />
@@ -513,8 +665,19 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
 
     if (!game) return { props: { game: null } };
 
+    const thumbnails = (game.thumbnails ?? []).map((item: any) => ({
+      name: item.name,
+      url: item.url,
+      type: item.type || 'image',
+      thumbUrl: item.thumbUrl ?? null,
+    }));
+
+    const ogPool = thumbnails.slice(0, 2);
+    const ogThumbnail = ogPool.length > 0 ? ogPool[Math.floor(Math.random() * ogPool.length)] : null;
+
     return {
       props: {
+        ogThumbnail,
         game: {
           _id: game._id.toString(),
           title: game.title ?? '',
@@ -523,14 +686,9 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
             name: item.name,
             url: item.url,
             type: item.type || 'image',
-            thumbUrl: item.thumbUrl,
+            thumbUrl: item.thumbUrl ?? null,
           })),
-          thumbnails: (game.thumbnails ?? []).map((item: any) => ({
-            name: item.name,
-            url: item.url,
-            type: item.type || 'image',
-            thumbUrl: item.thumbUrl,
-          })),
+          thumbnails,
         },
       },
     };

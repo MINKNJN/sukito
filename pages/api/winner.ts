@@ -15,15 +15,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const db = client.db('sukito');
     const collection = db.collection('records');
 
-    const latestRecord = await collection.find({ gameId: id }).sort({ playedAt: -1 }).limit(1).toArray();
+    const aggregation = await collection.aggregate([
+      { $match: { gameId: id } },
+      { $group: {
+          _id: { name: '$winnerName', url: '$winnerUrl' },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { count: -1 } },
+      { $limit: 1 }
+    ]).toArray();
 
-    if (!latestRecord.length) {
+    if (!aggregation.length) {
       return res.status(404).json({ message: '記録がありません。' });
     }
 
     const winner = {
-      name: latestRecord[0].winnerName,
-      url: latestRecord[0].winnerUrl
+      name: aggregation[0]._id.name,
+      url: aggregation[0]._id.url,
     };
 
     return res.status(200).json({ winner });

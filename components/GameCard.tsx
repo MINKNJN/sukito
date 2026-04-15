@@ -234,7 +234,7 @@ export default function GameCard({ id, title, desc, thumbnailItems, adminButtons
             background: isInfoHovered ? '#f0fdf4' : 'transparent',
             transition: 'background 0.2s',
           }}
-          onClick={() => window.open(`/play/${id}`, '_blank')}
+          onClick={() => location.href = `/play/${id}`}
           onMouseEnter={() => setIsInfoHovered(true)}
           onMouseLeave={() => setIsInfoHovered(false)}
         >
@@ -246,7 +246,7 @@ export default function GameCard({ id, title, desc, thumbnailItems, adminButtons
         </div>
 
         <div className="game-card__buttons" style={buttonGroupStyle}>
-          <button onClick={() => window.open(`/play/${id}`, '_blank')} style={{ ...buttonStyle, ...startButtonStyle }}>スタート</button>
+          <button onClick={() => location.href = `/play/${id}`} style={{ ...buttonStyle, ...startButtonStyle }}>スタート</button>
           <button onClick={() => location.href = `/result?id=${id}`} style={{ ...buttonStyle, ...rankButtonStyle }}>ランキング</button>
           <button onClick={handleShareToggle} style={{ ...buttonStyle, ...shareButtonStyle }}>シェア</button>
           {adminButtons && adminButtons}

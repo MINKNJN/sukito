@@ -65,10 +65,10 @@ async function convertGifToMp4(inputPath, outputPath) {
   }
 }
 
-// MP4 첫 프레임을 JPG로 추출하는 함수
+// MP4 6번째 프레임을 JPG로 추출하는 함수
 async function extractThumbnail(mp4Path, thumbnailPath) {
   try {
-    const command = `ffmpeg -i "${mp4Path}" -vframes 1 -f image2 "${thumbnailPath}"`;
+    const command = `ffmpeg -i "${mp4Path}" -vf "select=eq(n\\,5)" -vframes 1 -f image2 "${thumbnailPath}"`;
     await execAsync(command);
     return true;
   } catch (error) {

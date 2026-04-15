@@ -1,5 +1,21 @@
 # 변경 이력
 
+## 2026-04-15
+
+### SNS 공유 최적화
+- `pages/play/[id].tsx`: `getServerSideProps` 매핑에 `thumbUrl` 누락 수정 → og:image 정상화
+- `pages/play/[id].tsx`: `getServerSideProps`에서 thumbnails 앞 2장 중 랜덤 선택해 `ogThumbnail` props 전달
+- `pages/result.tsx`: CSR → SSR 전환 (`getServerSideProps` 추가) — DB 1위 winner + thumbUrl 조회해 og:image SSR 세팅
+- `pages/api/winner.ts`: `sort({playedAt:-1}).limit(1)` → aggregation 기준 1위 반환으로 수정
+
+### GIF 썸네일 추출 개선
+- `server/app.js`: FFmpeg 첫 프레임(`-vframes 1`) → 6번째 프레임(`-vf "select=eq(n\\,5)"`) 추출로 변경
+
+### 게임 플레이 UX 개선
+- `components/GameCard.tsx`: `window.open(_blank)` → `location.href` 같은 창으로 변경
+- `pages/play/[id].tsx`: Header 추가 (스크롤 업 시 표시 / 기본 숨김) — 라운드 선택·게임 플레이 화면 공통 적용
+- `pages/play/[id].tsx`: 라운드 선택 화면에 VS 배틀 연출 추가 — 대표 이미지 슬라이드인, VS 텍스트 펄스, 손가락 왕복 애니메이션, 모바일 대응
+
 ## 2026-04-13
 
 ### SEO 수정

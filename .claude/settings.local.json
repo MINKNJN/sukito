@@ -5,7 +5,8 @@
       "mcp__ide__getDiagnostics",
       "Bash(npm run lint)",
       "Bash(dir:*)",
-      "Bash(ls d:/sukito/*.md d:/sukito/*.sh)"
+      "Bash(ls d:/sukito/*.md d:/sukito/*.sh)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []

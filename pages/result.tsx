@@ -1,4 +1,5 @@
 // pages/result.tsx
+import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
@@ -8,11 +9,24 @@ import { getStorageWithExpire } from '@/lib/utils';
 import GoogleAd from '@/components/GoogleAd';
 import { useAlert } from '@/lib/alert';
 import { getRandomComment } from '@/lib/commentTemplates';
+import clientPromise from '@/lib/mongodb';
+import { ObjectId } from 'mongodb';
 
+interface SsrData {
+  gameTitle: string;
+  gameDesc: string;
+  ssrWinner: { name: string; url: string } | null;
+  ogImage: string;
+}
 
-export default function ResultPage() {
+interface ResultPageProps {
+  ssrData: SsrData | null;
+  gameId: string;
+}
+
+export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
   const router = useRouter();
-  const { id } = router.query;
+  const id = gameId;
 
   const [winner, setWinner] = useState<{ name: string; url: string } | null>(null);
   const [ranking, setRanking] = useState<{ name: string; url: string; count: number }[]>([]);
@@ -33,7 +47,9 @@ export default function ResultPage() {
   const [currentUserId, setCurrentUserId] = useState<string>('');
   const [commentPage, setCommentPage] = useState(1);
   const [hasMoreComments, setHasMoreComments] = useState(true);
-  const [gameInfo, setGameInfo] = useState<{ title: string; desc: string } | null>(null);
+  const [gameInfo] = useState<{ title: string; desc: string } | null>(
+    ssrData ? { title: ssrData.gameTitle, desc: ssrData.gameDesc } : null
+  );
   const { showAlert, showConfirm } = useAlert();
 
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/result?id=${id}` : '';
@@ -80,16 +96,6 @@ export default function ResultPage() {
       });
 
     fetchComments();
-
-    // 게임 정보 가져오기
-    fetch(`/api/games/${id}`)
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        if (data) {
-          setGameInfo({ title: data.title, desc: data.desc });
-        }
-      })
-      .catch(err => console.error('게임 정보 로드 실패:', err));
 
     const localNickname = getStorageWithExpire('nickname');
     if (localNickname) {
@@ -159,7 +165,6 @@ export default function ResultPage() {
 
   const winnerRank = ranking.findIndex(r => r.name === winner?.name && r.url === winner?.url) + 1;
   const top10 = ranking.slice(0, 10);
-  const topNames = top10.map(r => r.name).join(', ');
   const filteredRanking = ranking.filter(item => item.name.includes(searchKeyword));
 
   const handleCommentSubmit = async () => {
@@ -319,13 +324,13 @@ export default function ResultPage() {
     setEditingContent('');
   };
 
-  if (!id) return <div>お待ちください。</div>;
+  if (!gameId) return <div>お待ちください。</div>;
 
-  const title = winner ? `${winner.name} - スキト結果` : 'スキト結果';
-  const description = winner
-    ? `${isMyWinner ? 'あなたが選んだ' : '多くの人が選んだ'}最終優勝者は ${winner.name} です！ Top 10: ${topNames}`
+  const title = winner ? `${winner.name} - スキト結果` : (ssrData?.ssrWinner ? `${ssrData.ssrWinner.name} - スキト結果` : 'スキト結果');
+  const description = ssrData?.ssrWinner
+    ? `多くの人が選んだ最終優勝者は ${ssrData.ssrWinner.name} です！`
     : '優勝者をチェックしよう！';
-  const image = winner ? convertToThumbnail(winner.url) : '/og-image.png';
+  const ogImage = ssrData?.ogImage || 'https://sukito.net/og-image.jpg';
 
   return (
     <>
@@ -338,7 +343,7 @@ export default function ResultPage() {
         {/* Open Graph */}
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
-        <meta property="og:image" content={image} />
+        <meta property="og:image" content={ogImage} />
         <meta property="og:url" content={`https://sukito.net/result?id=${id}`} />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="スキト" />
@@ -348,7 +353,7 @@ export default function ResultPage() {
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={title} />
         <meta name="twitter:description" content={description} />
-        <meta name="twitter:image" content={image} />
+        <meta name="twitter:image" content={ogImage} />
         <meta name="twitter:site" content="@sukito_net" />
         
         {/* Canonical URL */}
@@ -364,10 +369,10 @@ export default function ResultPage() {
               "name": title,
               "description": description,
               "url": `https://sukito.net/result?id=${id}`,
-              "winner": winner ? {
+              "winner": ssrData?.ssrWinner ? {
                 "@type": "Person",
-                "name": winner.name,
-                "image": image
+                "name": ssrData.ssrWinner.name,
+                "image": ogImage
               } : null,
               "provider": {
                 "@type": "Organization",
@@ -434,7 +439,7 @@ export default function ResultPage() {
             <h2 style={{ fontSize: '2rem', marginTop: '1rem' }}>{winner.name}</h2>
             {winnerRank > 0 && <p style={{ fontSize: '1rem', color: '#ccc' }}>総合ランキング {winnerRank}位</p>}
             <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-              <button onClick={() => setIsShareOpen(!isShareOpen)} style={{ padding: '10px 20px', fontSize: '1rem', borderRadius: '6px', backgroundColor: '#0070f3', color: 'white', border: 'none', cursor: 'pointer' }}>シェア</button>
+              <button onClick={() => setIsShareOpen(!isShareOpen)} style={{ padding: '10px 20px', fontSize: '1rem', borderRadius: '6px', backgroundColor: '#0070f3', color: 'white', border: 'none', cursor: 'pointer' }}>ランキングシェア</button>
               <button onClick={() => router.push(`/play/${id}`)} style={{ padding: '10px 20px', fontSize: '1rem', borderRadius: '6px', backgroundColor: '#00c471', color: 'white', border: 'none', cursor: 'pointer' }}>再プレイ</button>
             </div>
             {isShareOpen && (
@@ -885,3 +890,58 @@ export default function ResultPage() {
     </>
   );
 }
+
+export const getServerSideProps: GetServerSideProps = async (ctx) => {
+  const { id } = ctx.query;
+  if (!id || typeof id !== 'string') {
+    return { props: { ssrData: null, gameId: '' } };
+  }
+
+  try {
+    const client = await clientPromise;
+    const db = client.db('sukito');
+
+    const game = await db.collection('games').findOne(
+      { _id: new ObjectId(id) },
+      { projection: { title: 1, desc: 1, items: 1 } }
+    );
+
+    const aggregation = await db.collection('records').aggregate([
+      { $match: { gameId: id } },
+      { $group: { _id: { name: '$winnerName', url: '$winnerUrl' }, count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 1 }
+    ]).toArray();
+
+    let ssrWinner = null;
+    let ogImage = 'https://sukito.net/og-image.jpg';
+
+    if (aggregation.length > 0) {
+      const winnerUrl = aggregation[0]._id.url;
+      const winnerName = aggregation[0]._id.name;
+
+      let thumbUrl: string | null = null;
+      if (game?.items) {
+        const matchingItem = game.items.find((item: any) => item.url === winnerUrl);
+        if (matchingItem?.thumbUrl) thumbUrl = matchingItem.thumbUrl;
+      }
+
+      ssrWinner = { name: winnerName, url: winnerUrl };
+      ogImage = thumbUrl || (winnerUrl.endsWith('.mp4') ? 'https://sukito.net/og-image.jpg' : winnerUrl);
+    }
+
+    return {
+      props: {
+        gameId: id,
+        ssrData: {
+          gameTitle: game?.title ?? '',
+          gameDesc: game?.desc ?? '',
+          ssrWinner,
+          ogImage,
+        },
+      },
+    };
+  } catch {
+    return { props: { ssrData: null, gameId: id as string } };
+  }
+};

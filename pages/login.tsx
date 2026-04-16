@@ -15,7 +15,7 @@ export default function LoginPage() {
     setErrorMessage('');
 
     if (!email.trim() || !password.trim()) {
-      setErrorMessage('両方入力してください。');
+      setErrorMessage('メールアドレスとパスワードを入力してください。');
       return;
     }
 
@@ -141,7 +141,7 @@ export default function LoginPage() {
             transition: 'background 0.2s',
             opacity: loading ? 0.7 : 1,
           }} disabled={loading}>
-            {loading ? 'ログイン 中...' : 'ログイン'}
+            {loading ? 'ログイン中...' : 'ログイン'}
           </button>
           <button onClick={handleGoToSignup} style={{
             width: '100%',

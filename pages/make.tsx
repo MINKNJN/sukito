@@ -272,11 +272,11 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       });
     });
     if (errorLine !== -1) {
-      setVideoPasteError(`${errorLine}번째 줄에 오류가 있습니다. (제목, 유튜브링크, 시작초, 종료초 순서로 탭으로 구분해 주세요)`);
+      setVideoPasteError(`${errorLine}番目の行にエラーがあります。（タイトル、YouTubeリンク、開始秒、終了秒の順でタブ区切りにしてください）`);
       return;
     }
     if (newRows.length === 0) {
-      setVideoPasteError('ペーストから有効なデータがありません。');
+      setVideoPasteError('ペーストされたデータが有効ではありません。');
       return;
     }
     const updatedRows = [...videoRows];
@@ -291,7 +291,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       } else if (prev.length < 2) {
         return [...prev, index]; 
       } else {
-        showAlert('代表は最大2つまで選べます', 'warning'); 
+        showAlert('代表画像は最大2つまで選択できます。', 'warning');
         return prev;
       }
     });
@@ -300,11 +300,11 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 
   const handleSubmit = async () => {
     if (!title.trim()) {
-      showAlert('タイトルが空です。', 'error');
+      showAlert('タイトルを入力してください。', 'error');
       return;
     }
     if (!desc.trim()) {
-      showAlert('説明が空です。', 'error');
+      showAlert('説明を入力してください。', 'error');
       return;
     }
     // 업로드 자료 체크

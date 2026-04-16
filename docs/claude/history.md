@@ -1,5 +1,19 @@
 # 변경 이력
 
+## 2026-04-16
+
+### result.tsx UI 개선
+- `pages/result.tsx`: `isMobile` 훅 추가 — 外部 패딩·테이블 패딩·폰트 모바일 축소, 이미지 열 50×75px로 축소 표시
+- `pages/result.tsx`: 싫어요 버튼 카운트 숨김 (버튼은 유지)
+- `pages/result.tsx`: 검색 중 랭킹 제목 동적 변경 — `「검색어」の検索結果 (N件)`
+- `pages/result.tsx`: 댓글 fetch 시 pinned 3개 유지 + 나머지 무작위 셔플
+- `pages/result.tsx`: alt 텍스트 `투표 결과` → `投票結果`, 섹션 제목 이모지(🔥💬) 제거
+- `lib/commentTemplates.ts`: 토너먼트 결과 특화 표현 20개 추가
+
+### 관리자 댓글 관리 개선
+- `pages/api/admin/comments.ts`: `sortBy` 파라미터 추가(createdAt/dislikes), likes/dislikes 필드 응답에 포함
+- `pages/admin/index.tsx`: Comment 인터페이스에 likes/dislikes 추가, 👎 많은 순 정렬 버튼, 👍👎 열 추가, dislikes≥5 행 배경 강조
+
 ## 2026-04-15
 
 ### SNS 공유 최적화

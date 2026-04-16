@@ -88,9 +88,9 @@ export default function GameCard({ id, title, desc, thumbnailItems, adminButtons
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
-      showAlert('コピーOK', 'success');
+      showAlert('リンクをコピーしました。', 'success');
     } catch {
-      showAlert('ERROR', 'error');
+      showAlert('コピーに失敗しました。', 'error');
     }
   };
 

@@ -27,6 +27,13 @@ interface ResultPageProps {
 export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
   const router = useRouter();
   const id = gameId;
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 480);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   const [winner, setWinner] = useState<{ name: string; url: string } | null>(null);
   const [ranking, setRanking] = useState<{ name: string; url: string; count: number }[]>([]);
@@ -144,13 +151,21 @@ export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
       const res = await fetch(`/api/comments?id=${id}&page=${page}&limit=${COMMENTS_PER_PAGE}`);
       if (res.ok) {
         const data = await res.json();
+        const raw: any[] = data.comments || [];
+        const pinCount: number = data.pinnedCount || 0;
+
+        // pinned(상위 pinCount개)는 순서 유지, 나머지는 무작위
+        const pinned = raw.slice(0, pinCount);
+        const rest = raw.slice(pinCount).sort(() => Math.random() - 0.5);
+        const shuffled = [...pinned, ...rest];
+
         if (page === 1) {
-          setComments(data.comments || []);
-          setPinnedCount(data.pinnedCount || 0); // 고정 댓글 개수 저장
+          setComments(shuffled);
+          setPinnedCount(pinCount);
         } else {
-          setComments(prev => [...prev, ...(data.comments || [])]);
+          setComments(prev => [...prev, ...shuffled]);
         }
-        setHasMoreComments((data.comments || []).length === COMMENTS_PER_PAGE);
+        setHasMoreComments(raw.length === COMMENTS_PER_PAGE);
       }
     } catch (err) {
       console.error('コメント読み込みエラー:', err);
@@ -326,7 +341,7 @@ export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
 
   if (!gameId) return <div>お待ちください。</div>;
 
-  const title = winner ? `${winner.name} - スキト結果` : (ssrData?.ssrWinner ? `${ssrData.ssrWinner.name} - スキト結果` : 'スキト結果');
+  const title = ssrData?.gameTitle ? `${ssrData.gameTitle} - スキト結果` : 'スキト結果';
   const description = ssrData?.ssrWinner
     ? `多くの人が選んだ最終優勝者は ${ssrData.ssrWinner.name} です！`
     : '優勝者をチェックしよう！';
@@ -384,7 +399,7 @@ export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
         />
       </Head>
       <Header />
-      <div style={{ padding: 24 }}>
+      <div style={{ padding: isMobile ? 12 : 24 }}>
         {/* 광고를 콘텐츠 섹션으로 감싸기 */}
         <section style={{
           backgroundColor: '#f8f9fa',
@@ -427,13 +442,13 @@ export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
                 loop
                 muted
                 playsInline
-                style={{maxWidth: '300px', objectFit: 'cover', borderRadius: '12px', border: '4px solid gold', boxShadow: '0 0 12px rgba(255,215,0,0.6)', margin: '0 auto', display: 'block'}}
+                style={{maxWidth: isMobile ? '70vw' : '300px', objectFit: 'cover', borderRadius: '12px', border: '4px solid gold', boxShadow: '0 0 12px rgba(255,215,0,0.6)', margin: '0 auto', display: 'block'}}
               />
             ) : (
               <img
                 src={convertToThumbnail(winner.url)}
                 alt={winner.name}
-                style={{maxWidth: '300px', objectFit: 'cover', borderRadius: '12px', border: '4px solid gold', boxShadow: '0 0 12px rgba(255,215,0,0.6)', margin: '0 auto', display: 'block'}}
+                style={{maxWidth: isMobile ? '70vw' : '300px', objectFit: 'cover', borderRadius: '12px', border: '4px solid gold', boxShadow: '0 0 12px rgba(255,215,0,0.6)', margin: '0 auto', display: 'block'}}
               />
             )}
             <h2 style={{ fontSize: '2rem', marginTop: '1rem' }}>{winner.name}</h2>
@@ -480,7 +495,11 @@ export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
           flexWrap: 'wrap',
           gap: 16
         }}>
-          <h1>🔥 総合ランキング (Top 10)</h1>
+          <h1>
+            {searchKeyword
+              ? `「${searchKeyword}」の検索結果 (${filteredRanking.length}件)`
+              : '総合ランキング (Top 10)'}
+          </h1>
           <input 
             type="text" 
             placeholder="検索" 
@@ -501,11 +520,11 @@ export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
           <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 24 }}>
             <thead>
               <tr style={{ backgroundColor: '#eee' }}>
-                <th style={{ padding: 8 }}>順位</th>
-                <th style={{ padding: 8 }}>画像</th>
-                <th style={{ padding: 8 }}>名前</th>
-                <th style={{ padding: 8 }}>優勝回数</th>
-                <th style={{ padding: 8 }}>優勝率</th>
+                <th style={{ padding: isMobile ? 4 : 8, fontSize: isMobile ? '0.75rem' : undefined }}>順位</th>
+                <th style={{ padding: isMobile ? 4 : 8, fontSize: isMobile ? '0.75rem' : undefined }}>画像</th>
+                <th style={{ padding: isMobile ? 4 : 8, fontSize: isMobile ? '0.75rem' : undefined }}>名前</th>
+                <th style={{ padding: isMobile ? 4 : 8, fontSize: isMobile ? '0.75rem' : undefined }}>優勝回数</th>
+                <th style={{ padding: isMobile ? 4 : 8, fontSize: isMobile ? '0.75rem' : undefined }}>優勝率</th>
               </tr>
             </thead>
             <tbody>
@@ -514,8 +533,8 @@ export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
                 const percentage = totalPlays ? (item.count / totalPlays * 100).toFixed(2) : '0';
                 return (
                   <tr key={idx} style={{ borderBottom: '1px solid #ddd' }}>
-                    <td style={{ padding: 8 }}>{rankIndex + 1}</td>
-                    <td style={{ padding: 8 }}>
+                    <td style={{ padding: isMobile ? 4 : 8, fontSize: isMobile ? '0.75rem' : undefined, textAlign: 'center' }}>{rankIndex + 1}</td>
+                    <td style={{ padding: isMobile ? 4 : 8 }}>
                       {item.url.endsWith('.mp4') ? (
                         <video
                           src={item.url}
@@ -523,28 +542,28 @@ export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
                           loop
                           muted
                           playsInline
-                          width={100}
-                          height={150}
-                          style={{ objectFit: 'cover', borderRadius: 8, background: '#000' }}
+                          width={isMobile ? 50 : 100}
+                          height={isMobile ? 75 : 150}
+                          style={{ objectFit: 'cover', borderRadius: 6, background: '#000', display: 'block' }}
                         />
                       ) : (
                         <img
                           src={convertToThumbnail(item.url)}
-                          alt={`${item.name} - 투표 결과`}
-                          width={100}
-                          height={150}
-                          style={{ objectFit: 'cover', borderRadius: 8, background: '#000' }}
+                          alt={`${item.name} - 投票結果`}
+                          width={isMobile ? 50 : 100}
+                          height={isMobile ? 75 : 150}
+                          style={{ objectFit: 'cover', borderRadius: 6, background: '#000', display: 'block' }}
                         />
                       )}
                     </td>
-                    <td style={{ padding: 8 }}>{item.name}</td>
-                    <td style={{ padding: 8 }}>{item.count}回</td>
-                    <td style={{ padding: 8 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <div style={{ backgroundColor: '#ffccd5', width: '100%', height: 10, borderRadius: 4, overflow: 'hidden' }}>
+                    <td style={{ padding: isMobile ? 4 : 8, fontSize: isMobile ? '0.75rem' : undefined, wordBreak: 'break-word', maxWidth: isMobile ? 80 : undefined }}>{item.name}</td>
+                    <td style={{ padding: isMobile ? 4 : 8, fontSize: isMobile ? '0.75rem' : undefined, textAlign: 'center', whiteSpace: 'nowrap' }}>{item.count}回</td>
+                    <td style={{ padding: isMobile ? 4 : 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 2 : 6 }}>
+                        <div style={{ backgroundColor: '#ffccd5', width: '100%', height: 8, borderRadius: 4, overflow: 'hidden' }}>
                           <div style={{ width: `${percentage}%`, backgroundColor: '#ff4d6d', height: '100%' }}></div>
                         </div>
-                        <span style={{ minWidth: 50 }}>{percentage}%</span>
+                        <span style={{ minWidth: isMobile ? 36 : 50, fontSize: isMobile ? '0.7rem' : undefined }}>{percentage}%</span>
                       </div>
                     </td>
                   </tr>
@@ -558,7 +577,7 @@ export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
           <GoogleAd />
         </div>
 
-        <h1>💬 コメント</h1>
+        <h1>コメント</h1>
         <div style={{ 
           marginTop: 16, 
           padding: '16px', 
@@ -793,7 +812,7 @@ export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
                                   onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f0f0f0'}
                                   onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                                 >
-                                  👎 {c.dislikes || 0}
+                                  👎
                                 </button>
                               </div>
                             </div>

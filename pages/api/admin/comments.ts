@@ -18,16 +18,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const page = parseInt((req.query.page as string) || '1', 10);
     const limit = parseInt((req.query.limit as string) || '20', 10);
     const search = (req.query.search as string) || '';
+    const sortBy = (req.query.sortBy as string) || 'createdAt';
 
     const filter: any = {};
     if (search) {
       filter.content = { $regex: search, $options: 'i' };
     }
 
+    const sortField = sortBy === 'dislikes' ? { dislikes: -1 } : { createdAt: -1 };
+
     const total = await commentsCol.countDocuments(filter);
     const comments = await commentsCol
       .find(filter)
-      .sort({ createdAt: -1 })
+      .sort(sortField)
       .skip((page - 1) * limit)
       .limit(limit)
       .toArray();
@@ -48,6 +51,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       content: comment.content || '',
       createdAt: comment.createdAt || '',
       reportCount: comment.reportCount || 0,
+      likes: comment.likes || 0,
+      dislikes: comment.dislikes || 0,
     }));
 
     return res.status(200).json({ comments: formattedComments, total });

@@ -343,7 +343,7 @@ export default function IndexPage({ initialGames }: IndexPageProps) {
                 onClick={handleResumeClick}
                 disabled={isResumeLoading}
               >
-                {isResumeLoading ? '確認中...' : '続きから'}
+                {isResumeLoading ? '確認中...' : '前回の続きから'}
               </button>
               <button 
                 style={deleteButtonStyle} 

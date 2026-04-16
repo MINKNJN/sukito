@@ -28,6 +28,8 @@ interface Comment {
   content: string;
   createdAt: string;
   reportCount: number;
+  likes: number;
+  dislikes: number;
 }
 
 type Tab = 'users' | 'games' | 'comments';
@@ -61,6 +63,7 @@ export default function AdminPage() {
   const [commentTotal, setCommentTotal] = useState(0);
   const [commentPage, setCommentPage] = useState(1);
   const [commentSearch, setCommentSearch] = useState('');
+  const [commentSortBy, setCommentSortBy] = useState<'createdAt' | 'dislikes'>('createdAt');
   const [editingComment, setEditingComment] = useState<EditingComment>(null);
   const [regenLoading, setRegenLoading] = useState(false);
   const [regenResult, setRegenResult] = useState<{ processed: number; failed: number; skipped: number; total: number } | null>(null);
@@ -145,10 +148,11 @@ export default function AdminPage() {
     }
   };
 
-  const fetchComments = async (page: number) => {
+  const fetchComments = async (page: number, sortBy?: 'createdAt' | 'dislikes') => {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), limit: String(PAGE_LIMIT) });
     if (commentSearch) params.set('search', commentSearch);
+    params.set('sortBy', sortBy ?? commentSortBy);
     try {
       const res = await fetch(`/api/admin/comments?${params}`, { headers: authHeaders() });
       const data = await res.json();
@@ -461,7 +465,7 @@ export default function AdminPage() {
         {/* 댓글 탭 */}
         {tab === 'comments' && (
           <>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
               <input
                 placeholder="댓글 내용 검색"
                 value={commentSearch}
@@ -470,6 +474,16 @@ export default function AdminPage() {
                 style={inputSt}
               />
               <button onClick={() => fetchComments(1)} style={btn('#111', '#fff')}>검색</button>
+              <button
+                onClick={() => {
+                  const next = commentSortBy === 'createdAt' ? 'dislikes' : 'createdAt';
+                  setCommentSortBy(next);
+                  fetchComments(1, next);
+                }}
+                style={btn(commentSortBy === 'dislikes' ? '#dc2626' : '#6b7280', '#fff')}
+              >
+                {commentSortBy === 'dislikes' ? '👎 싫어요 많은 순' : '최신순'}
+              </button>
             </div>
 
             <table style={tableSt}>
@@ -478,6 +492,8 @@ export default function AdminPage() {
                   <th style={th}>게임명</th>
                   <th style={th}>작성자</th>
                   <th style={th}>댓글 내용</th>
+                  <th style={th}>👍</th>
+                  <th style={th}>👎</th>
                   <th style={th}>신고</th>
                   <th style={th}>작성일</th>
                   <th style={th}>관리</th>
@@ -485,13 +501,13 @@ export default function AdminPage() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={6} style={loadingTd}>불러오는 중...</td></tr>
+                  <tr><td colSpan={8} style={loadingTd}>불러오는 중...</td></tr>
                 ) : comments.length === 0 ? (
-                  <tr><td colSpan={6} style={loadingTd}>댓글이 없습니다.</td></tr>
+                  <tr><td colSpan={8} style={loadingTd}>댓글이 없습니다.</td></tr>
                 ) : comments.map(c => {
                   const isEditing = editingComment?.id === c._id;
                   return (
-                    <tr key={c._id} style={{ borderBottom: '1px solid #f3f4f6', background: c.reportCount >= 3 ? '#fff7f7' : '#fff' }}>
+                    <tr key={c._id} style={{ borderBottom: '1px solid #f3f4f6', background: c.reportCount >= 3 ? '#fff7f7' : (c.dislikes >= 5 ? '#fff8f0' : '#fff') }}>
                       <td style={{ ...td, whiteSpace: 'nowrap' }}>
                         {c.gameTitle || <span style={{ color: '#9ca3af' }}>삭제된 게임</span>}
                       </td>
@@ -505,6 +521,8 @@ export default function AdminPage() {
                           />
                         ) : c.content}
                       </td>
+                      <td style={{ ...td, textAlign: 'center', color: '#16a34a', fontWeight: 500 }}>{c.likes}</td>
+                      <td style={{ ...td, textAlign: 'center', color: c.dislikes >= 5 ? '#dc2626' : '#374151', fontWeight: c.dislikes >= 5 ? 700 : 400 }}>{c.dislikes}</td>
                       <td style={{ ...td, textAlign: 'center' }}>
                         {isEditing ? (
                           <input

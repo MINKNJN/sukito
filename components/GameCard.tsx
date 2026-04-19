@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { convertToThumbnail } from '@/lib/utils';
 import { useAlert } from '@/lib/alert';
+import { trackResultShare } from '@/lib/tracking';
 
 const YoutubeIcon = () => (
   <svg
@@ -73,22 +74,26 @@ export default function GameCard({ id, title, desc, thumbnailItems, adminButtons
     const url = encodeURIComponent(shareUrl);
     const text = encodeURIComponent('好きトーナメント');
     window.open(`https://twitter.com/intent/tweet?url=${url}&text=${text}`, '_blank');
+    trackResultShare('x', 'game_card');
   };
 
   const shareToFacebook = () => {
     const url = encodeURIComponent(shareUrl);
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
+    trackResultShare('facebook', 'game_card');
   };
 
   const shareToLine = () => {
     const url = encodeURIComponent(shareUrl);
     window.open(`https://social-plugins.line.me/lineit/share?url=${url}`, '_blank');
+    trackResultShare('line', 'game_card');
   };
 
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
       showAlert('リンクをコピーしました。', 'success');
+      trackResultShare('link_copy', 'game_card');
     } catch {
       showAlert('コピーに失敗しました。', 'error');
     }

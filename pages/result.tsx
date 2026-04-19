@@ -9,6 +9,7 @@ import { getStorageWithExpire } from '@/lib/utils';
 import GoogleAd from '@/components/GoogleAd';
 import { useAlert } from '@/lib/alert';
 import { getRandomComment } from '@/lib/commentTemplates';
+import { trackResultShare } from '@/lib/tracking';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 
@@ -221,10 +222,26 @@ export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);
-      showAlert('リンクコピー', 'success');
+      showAlert('リンクをコピーしました。', 'success');
+      trackResultShare('link_copy', 'result_page');
     } catch {
-      showAlert('リンクコピーエラー', 'error');
+      showAlert('コピーに失敗しました。', 'error');
     }
+  };
+
+  const shareToX = () => {
+    window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent('スキト結果')}`, '_blank');
+    trackResultShare('x', 'result_page');
+  };
+
+  const shareToFacebook = () => {
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank');
+    trackResultShare('facebook', 'result_page');
+  };
+
+  const shareToLine = () => {
+    window.open(`https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl)}`, '_blank');
+    trackResultShare('line', 'result_page');
   };
 
   const handleLikeComment = async (comment: { _id: string; likes: number; dislikes: number; likeUsers: string[]; dislikeUsers: string[] }, action: 'like' | 'dislike' | 'unlike' | 'undislike') => {
@@ -459,9 +476,9 @@ export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
             </div>
             {isShareOpen && (
               <div style={{ marginTop: 12, display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button onClick={() => window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent('スキト結果')}`, '_blank')} style={{ backgroundColor: '#1DA1F2', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 12px', cursor: 'pointer' }}>X</button>
-                <button onClick={() => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank')} style={{ backgroundColor: '#1877F2', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 12px', cursor: 'pointer' }}>FaceBook</button>
-                <button onClick={() => window.open(`https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl)}`, '_blank')} style={{ backgroundColor: '#00C300', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 12px', cursor: 'pointer' }}>LINE</button>
+                <button onClick={shareToX} style={{ backgroundColor: '#1DA1F2', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 12px', cursor: 'pointer' }}>X</button>
+                <button onClick={shareToFacebook} style={{ backgroundColor: '#1877F2', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 12px', cursor: 'pointer' }}>FaceBook</button>
+                <button onClick={shareToLine} style={{ backgroundColor: '#00C300', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 12px', cursor: 'pointer' }}>LINE</button>
                 <button onClick={copyLink} style={{ backgroundColor: '#999', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 12px', cursor: 'pointer' }}>リンクコピー</button>
               </div>
             )}

@@ -8,6 +8,7 @@ import { ObjectId } from 'mongodb';
 import { getStorageWithExpire } from '@/lib/utils';
 import GoogleAd from '@/components/GoogleAd';
 import Header from '@/components/Header';
+import { trackTournamentStart, trackTournamentComplete } from '@/lib/tracking';
 
 interface GameItem {
   name: string;
@@ -179,6 +180,7 @@ const PlayPage: NextPage<PlayPageProps> = ({ game, ogThumbnail }) => {
     setMatchIndex(0);
     setSelectedSide(null);
     setIsPlaying(true);
+    trackTournamentStart(game.title, game._id, selectedRound);
   };
 
   const handleSelect = (side: 'left' | 'right') => {
@@ -214,6 +216,7 @@ const PlayPage: NextPage<PlayPageProps> = ({ game, ogThumbnail }) => {
           } catch (e) {
             // 오류 무시
           }
+          trackTournamentComplete(game.title, game._id, winner.name);
           localStorage.removeItem('sukito_game');
           router.push(`/result?id=${game._id}`);
           return;

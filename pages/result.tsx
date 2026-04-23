@@ -230,7 +230,7 @@ export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
   };
 
   const shareToX = () => {
-    window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent('スキト結果')}`, '_blank');
+    window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(title)}`, '_blank');
     trackResultShare('x', 'result_page');
   };
 

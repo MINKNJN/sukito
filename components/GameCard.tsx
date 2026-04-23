@@ -72,7 +72,7 @@ export default function GameCard({ id, title, desc, thumbnailItems, adminButtons
 
   const shareToTwitter = () => {
     const url = encodeURIComponent(shareUrl);
-    const text = encodeURIComponent('好きトーナメント');
+    const text = encodeURIComponent(title);
     window.open(`https://twitter.com/intent/tweet?url=${url}&text=${text}`, '_blank');
     trackResultShare('x', 'game_card');
   };

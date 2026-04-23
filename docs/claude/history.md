@@ -1,5 +1,17 @@
 # 변경 이력
 
+## 2026-04-23
+
+### 마케팅 추적 시스템 구축
+- `pages/_document.tsx`: 기존 GA4 gtag 직접 스크립트 제거
+- `pages/_document.tsx`: GTM(`GTM-KQTKB8RT`) 스크립트 설치 (`<head>` 최상단 + `<body>` noscript)
+- `pages/_document.tsx`: TikTok 픽셀(`D7HMBKRC77U62Q87D7FG`), X 픽셀(`rbzh9`), Meta 픽셀(`2202013950602138`) 베이스 스크립트 설치
+- `lib/tracking.ts`: 신규 생성 — `trackTournamentStart`, `trackTournamentComplete`, `trackResultShare` (GTM dataLayer + 각 픽셀 동시 발사)
+- `pages/play/[id].tsx`: 게임 시작(`startTournament`) 및 완료 시점에 추적 이벤트 연결
+- `components/GameCard.tsx`: 공유 4개 버튼에 `trackResultShare` 연결
+- `pages/result.tsx`: 공유 4개 버튼에 `trackResultShare` 연결, X 공유 텍스트를 실제 게임 제목으로 변경
+- `components/GameCard.tsx`: X 공유 텍스트를 실제 게임 제목으로 변경
+
 ## 2026-04-16
 
 ### result.tsx UI 개선

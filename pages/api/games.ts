@@ -50,6 +50,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             thumbnails: 1,
             createdAt: 1,
             createdBy: 1,
+            status: 1,
+            rejectionReason: 1,
           },
         }
       )
@@ -95,6 +97,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       gameData.itemsHistory = [...gameData.items];
+      gameData.status = 'pending';
 
       const result = await collection.insertOne(gameData);
       return res.status(201).json({ message: '保存完了', id: result.insertedId });
@@ -135,7 +138,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const result = await collection.updateOne(
           { _id: new ObjectId(id) },
-          { $set: { ...updateData } }
+          { $set: { ...updateData, status: 'pending' } }
         );
 
         if (result.matchedCount === 0) {

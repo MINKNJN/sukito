@@ -8,8 +8,6 @@ import imageCompression from 'browser-image-compression';
 import { convertToThumbnail } from '@/lib/utils';
 import fs from 'fs';
 
-const visibilityOptions = ['public', 'private', 'password'] as const;
-type Visibility = typeof visibilityOptions[number];
 const tabOptions = ['image', 'gif', 'youtube'] as const;
 type TabType = typeof tabOptions[number];
 
@@ -29,8 +27,6 @@ export default function MakePage() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
-  const [visibility, setVisibility] = useState<Visibility>('public');
-  const [password, setPassword] = useState('');
   const [activeTab, setActiveTab] = useState<TabType>('image');
 
   const [files, setFiles] = useState<File[]>([]);
@@ -95,8 +91,6 @@ export default function MakePage() {
           if (!data || !data.items) return;
           setTitle(data.title);
           setDesc(data.desc);
-          setVisibility(data.visibility);
-          setPassword(data.password || '');
           setActiveTab(data.type);
           setItemsHistory(data.itemsHistory || []); 
 
@@ -343,8 +337,6 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         body: JSON.stringify({
           title,
           desc,
-          visibility,
-          password: visibility === 'password' ? password : '',
           type: activeTab,
           items: [], // 임시
           thumbnails: [], // 임시
@@ -475,8 +467,6 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const payload = {
       title,
       desc,
-      visibility,
-      password: visibility === 'password' ? password : '',
       type: activeTab,
       items,
       thumbnails: thumbnailItems, 
@@ -524,16 +514,6 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="タイトル" style={{ width: '100%', marginBottom: isMobile ? 8 : 10, padding: isMobile ? '10px 10px' : '12px 14px', borderRadius: 10, border: '1.5px solid #b2ebf2', fontSize: isMobile ? 15 : 17, background: '#f7fafd', color: '#222', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', boxShadow: '0 1px 4px #b2ebf222', display: 'block' }} />
           <textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="説明" style={{ width: '100%', marginBottom: isMobile ? 8 : 10, padding: isMobile ? '10px 10px' : '12px 14px', borderRadius: 10, border: '1.5px solid #b2ebf2', fontSize: isMobile ? 14 : 16, background: '#f7fafd', color: '#222', boxSizing: 'border-box', outline: 'none', resize: 'vertical', minHeight: isMobile ? 40 : 56, fontFamily: 'inherit', boxShadow: '0 1px 4px #b2ebf222', display: 'block' }} />
-
-          <select value={visibility} onChange={(e) => setVisibility(e.target.value as Visibility)} style={{ width: '100%', marginBottom: isMobile ? 8 : 10, padding: isMobile ? '8px 10px' : '10px 14px', borderRadius: 10, border: '1.5px solid #b2ebf2', fontSize: isMobile ? 14 : 16, background: '#f7fafd', color: '#222', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', boxShadow: '0 1px 4px #b2ebf222', display: 'block' }}>
-            <option value="public">公開</option>
-            <option value="private">非公開</option>
-            <option value="password" hidden>パスワード</option>
-          </select>
-
-          {visibility === 'password' && (
-            <input type="text" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="パスワード入力" style={{ width: '100%', marginBottom: isMobile ? 8 : 10, padding: isMobile ? '10px 10px' : '12px 14px', borderRadius: 10, border: '1.5px solid #b2ebf2', fontSize: isMobile ? 14 : 16, background: '#f7fafd', color: '#222', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', boxShadow: '0 1px 4px #b2ebf222', display: 'block' }} />
-          )}
 
           <div style={{ display: 'flex', marginBottom: isMobile ? 12 : 20, gap: isMobile ? 4 : 8, flexDirection: isMobile ? 'column' : 'row', justifyContent: 'center', alignItems: 'center' }}>
             {tabOptions.map((tab) => (
@@ -910,12 +890,12 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                           />
                           代表画像
                         </label>
-                        {i > 0 && (
+                        {(
                           <button
                             onClick={() => {
                               const updated = [...videoRows];
                               updated.splice(i, 1);
-                              setVideoRows(updated);
+                              setVideoRows(updated.length > 0 ? updated : [{ url: '', name: '', stime: '', etime: '', valid: true }]);
                             }}
                             style={{
                               padding: '4px 8px',

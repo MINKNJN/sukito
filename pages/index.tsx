@@ -651,7 +651,7 @@ export const getServerSideProps: GetServerSideProps = async () => {
     const db = client.db('sukito');
 
     const games = await db.collection('games').find(
-      {},
+      { $or: [{ status: 'approved' }, { status: { $exists: false } }] },
       {
         projection: {
           title: 1,

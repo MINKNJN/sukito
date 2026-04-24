@@ -345,22 +345,23 @@ const descStyle: React.CSSProperties = {
 
 const buttonGroupStyle: React.CSSProperties = {
   display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  marginTop: 12,
-  gap: 2,
+  alignItems: 'stretch',
+  marginTop: 10,
+  gap: 4,
   minWidth: 0,
-  flexWrap: 'wrap',
 };
 
 const buttonStyle: React.CSSProperties = {
+  flex: 1,
+  minWidth: 0,
   background: '#fff',
   border: '1px solid #ccc',
-  borderRadius: 4,
-  padding: '2px',
-  fontSize: '0.75rem',
+  borderRadius: 6,
+  padding: '7px 2px',
+  fontSize: '0.8rem',
   cursor: 'pointer',
   fontWeight: 'bold',
+  lineHeight: 1.2,
 };
 
 const startButtonStyle: React.CSSProperties = {
@@ -382,19 +383,20 @@ const shareButtonStyle: React.CSSProperties = {
 };
 
 const shareMenuStyle: React.CSSProperties = {
-  marginTop: 8,
-  display: 'flex',
-  gap: 6,
-  flexWrap: 'wrap',
-  justifyContent: 'center',
+  marginTop: 6,
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: 4,
 };
 
 const shareMenuButtonStyle: React.CSSProperties = {
   color: '#fff',
   border: 'none',
-  borderRadius: 4,
-  padding: '4px 8px',
+  borderRadius: 6,
+  padding: '7px 4px',
   fontSize: '0.8rem',
   cursor: 'pointer',
+  fontWeight: 'bold',
+  width: '100%',
 };
 

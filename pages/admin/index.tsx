@@ -16,10 +16,25 @@ interface User {
 interface Game {
   _id: string;
   title: string;
-  desc: string;
   itemsCount: number;
-  visibility: string;
+  type: string;
+  status: string;
+  rejectionReason: 'items' | 'title' | null;
+  createdAt?: string;
 }
+
+type CheckResult = {
+  checkedCount: number;
+  brokenGamesCount: number;
+  games: Array<{
+    _id: string;
+    title: string;
+    status: string;
+    brokenCount: number;
+    totalCount: number;
+    brokenItems: Array<{ name: string; type: string }>;
+  }>;
+} | null;
 
 interface Comment {
   _id: string;
@@ -58,6 +73,7 @@ export default function AdminPage() {
   const [gameTotal, setGameTotal] = useState(0);
   const [gamePage, setGamePage] = useState(1);
   const [gameSearch, setGameSearch] = useState('');
+  const [gameStatusFilter, setGameStatusFilter] = useState('');
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentTotal, setCommentTotal] = useState(0);
@@ -67,6 +83,11 @@ export default function AdminPage() {
   const [editingComment, setEditingComment] = useState<EditingComment>(null);
   const [regenLoading, setRegenLoading] = useState(false);
   const [regenResult, setRegenResult] = useState<{ processed: number; failed: number; skipped: number; total: number } | null>(null);
+  const [rejectingGameId, setRejectingGameId] = useState<string | null>(null);
+  const [checkLoading, setCheckLoading] = useState(false);
+  const [checkResult, setCheckResult] = useState<CheckResult>(null);
+  const [gameStatusCounts, setGameStatusCounts] = useState({ pending: 0, approved: 0, rejected: 0 });
+  const [toolsOpen, setToolsOpen] = useState(false);
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -134,15 +155,18 @@ export default function AdminPage() {
     }
   };
 
-  const fetchGames = async (page: number) => {
+  const fetchGames = async (page: number, statusFilter?: string) => {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), limit: String(PAGE_LIMIT) });
     if (gameSearch) params.set('search', gameSearch);
+    const sf = statusFilter !== undefined ? statusFilter : gameStatusFilter;
+    if (sf) params.set('status', sf);
     try {
       const res = await fetch(`/api/admin/games?${params}`, { headers: authHeaders() });
       const data = await res.json();
       setGames(data.games || []);
       setGameTotal(data.total || 0);
+      if (data.statusCounts) setGameStatusCounts(data.statusCounts);
     } finally {
       setLoading(false);
     }
@@ -220,6 +244,39 @@ export default function AdminPage() {
     res.ok ? (showToast('삭제했습니다.'), fetchGames(gamePage)) : showToast('삭제에 실패했습니다.', false);
   });
 
+  const approveGame = async (id: string, action: 'approve' | 'reject', reason?: 'items' | 'title') => {
+    const res = await fetch('/api/admin/approveGame', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ gameId: id, action, rejectionReason: reason ?? null }),
+    });
+    if (res.ok) {
+      showToast(action === 'approve' ? '承認しました。' : '反映しました。');
+      setRejectingGameId(null);
+      fetchGames(gamePage);
+    } else {
+      showToast('실패했습니다.', false);
+    }
+  };
+
+  const handleCheckGameItems = async () => {
+    setCheckLoading(true);
+    setCheckResult(null);
+    try {
+      const res = await fetch('/api/admin/checkGameItems', {
+        method: 'POST',
+        headers: authHeaders(),
+      });
+      const data = await res.json();
+      if (res.ok) setCheckResult(data);
+      else showToast(data.message || '검사 실패', false);
+    } catch {
+      showToast('서버 오류', false);
+    } finally {
+      setCheckLoading(false);
+    }
+  };
+
   const deleteComment = (id: string) => doConfirm('이 댓글을 삭제할까요?', async () => {
     setConfirm(null);
     const res = await fetch('/api/admin/deleteComment', {
@@ -294,7 +351,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 16px' }}>
+      <div style={{ maxWidth: 1100, minWidth: 320, width: '100%', margin: '0 auto', padding: '32px 16px', boxSizing: 'border-box' }}>
 
         {/* 헤더 */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -386,6 +443,130 @@ export default function AdminPage() {
         {/* 게임 탭 */}
         {tab === 'games' && (
           <>
+            {/* 유틸리티 도구 */}
+            <div style={{ marginBottom: 20, border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'hidden' }}>
+              <button
+                onClick={() => setToolsOpen(o => !o)}
+                style={{
+                  width: '100%', padding: '12px 16px', background: '#f9fafb', border: 'none', cursor: 'pointer',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  fontSize: 14, fontWeight: 600, color: '#374151',
+                }}
+              >
+                <span>유틸리티 도구</span>
+                <span style={{ fontSize: 12, color: '#9ca3af', transform: toolsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▼</span>
+              </button>
+              {toolsOpen && (
+                <div style={{ padding: '16px', background: '#fff', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {/* GIF 썸네일 재생성 */}
+                  <div style={{ padding: '14px 16px', background: '#f0f9ff', borderRadius: 8, border: '1px solid #bae6fd' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: 14, color: '#0369a1', marginBottom: 2 }}>GIF 썸네일 재생성</div>
+                        <div style={{ fontSize: 13, color: '#6b7280' }}>thumbUrl 없는 GIF 타입 게임의 MP4에서 첫 프레임을 추출해 저장합니다.</div>
+                      </div>
+                      <button onClick={handleRegenThumbnails} disabled={regenLoading} style={{ ...btn(regenLoading ? '#9ca3af' : '#0284c7', '#fff'), whiteSpace: 'nowrap', cursor: regenLoading ? 'default' : 'pointer' }}>
+                        {regenLoading ? '처리 중...' : '재생성 실행'}
+                      </button>
+                    </div>
+                    {regenResult && (
+                      <div style={{ marginTop: 10, fontSize: 13, color: '#374151' }}>
+                        결과 — 전체: {regenResult.total}개 / 성공: {regenResult.processed}개 / 실패: {regenResult.failed}개 / 건너뜀: {regenResult.skipped}개
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 콘텐츠 검사 */}
+                  <div style={{ padding: '14px 16px', background: '#faf5ff', borderRadius: 8, border: '1px solid #e9d5ff' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: 14, color: '#7c3aed', marginBottom: 2 }}>콘텐츠 검사</div>
+                        <div style={{ fontSize: 13, color: '#6b7280' }}>게임 항목의 이미지·영상·YouTube 링크 유효성을 서버에서 확인합니다.</div>
+                      </div>
+                      <button onClick={handleCheckGameItems} disabled={checkLoading} style={{ ...btn(checkLoading ? '#9ca3af' : '#7c3aed', '#fff'), whiteSpace: 'nowrap', cursor: checkLoading ? 'default' : 'pointer' }}>
+                        {checkLoading ? '검사 중...' : '검사 실행'}
+                      </button>
+                    </div>
+                    {checkResult && (
+                      <div style={{ marginTop: 12 }}>
+                        <div style={{ fontSize: 13, color: '#374151', marginBottom: 8 }}>
+                          {checkResult.checkedCount}개 게임 검사 완료 — 문제 게임 <strong style={{ color: checkResult.brokenGamesCount > 0 ? '#dc2626' : '#16a34a' }}>{checkResult.brokenGamesCount}개</strong>
+                        </div>
+                        {checkResult.games.map(g => (
+                          <div key={g._id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: '#fff', borderRadius: 6, border: '1px solid #fecaca', marginBottom: 6, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 13, fontWeight: 600, flex: 1, minWidth: 120 }}>{g.title}</span>
+                            <span style={{ fontSize: 12, color: '#dc2626' }}>깨진 항목 {g.brokenCount}/{g.totalCount}개</span>
+                            <span style={{ fontSize: 12, color: '#6b7280' }}>{g.brokenItems.map(i => `[${i.type}] ${i.name}`).join(', ')}</span>
+                            <button onClick={() => router.push(`/make?id=${g._id}`)} style={smBtn('#f3f4f6', '#374151')}>수정</button>
+                            <button onClick={() => approveGame(g._id, 'reject', 'items')} style={smBtn('#fee2e2', '#dc2626')}>반려(항목수정)</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 상태 요약 카드 */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
+              {([
+                { key: 'pending', label: '대기중', count: gameStatusCounts.pending, bg: '#fffbeb', border: '#fde68a', color: '#92400e', activeBg: '#f59e0b' },
+                { key: 'approved', label: '승인', count: gameStatusCounts.approved, bg: '#f0fdf4', border: '#bbf7d0', color: '#166534', activeBg: '#16a34a' },
+                { key: 'rejected', label: '반려', count: gameStatusCounts.rejected, bg: '#fff1f2', border: '#fecdd3', color: '#9f1239', activeBg: '#dc2626' },
+              ] as const).map(s => {
+                const isActive = gameStatusFilter === s.key;
+                return (
+                  <button
+                    key={s.key}
+                    onClick={() => {
+                      const next = isActive ? '' : s.key;
+                      setGameStatusFilter(next);
+                      setGamePage(1);
+                      fetchGames(1, next);
+                    }}
+                    style={{
+                      padding: '14px 12px', borderRadius: 10, border: `2px solid ${isActive ? s.activeBg : s.border}`,
+                      background: isActive ? s.activeBg : s.bg, cursor: 'pointer', textAlign: 'center',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    <div style={{ fontSize: 22, fontWeight: 800, color: isActive ? '#fff' : s.color, lineHeight: 1.2 }}>{s.count}</div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: isActive ? 'rgba(255,255,255,0.85)' : s.color, marginTop: 2 }}>{s.label}</div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* 서브 탭 */}
+            <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', marginBottom: 16 }}>
+              {([
+                { key: '', label: '전체' },
+                { key: 'pending', label: '대기중' },
+                { key: 'approved', label: '승인' },
+                { key: 'rejected', label: '반려' },
+              ] as const).map(s => (
+                <button
+                  key={s.key}
+                  onClick={() => {
+                    setGameStatusFilter(s.key);
+                    setGamePage(1);
+                    fetchGames(1, s.key);
+                  }}
+                  style={{
+                    padding: '7px 18px', border: 'none', background: 'none', cursor: 'pointer',
+                    fontSize: 13, fontWeight: gameStatusFilter === s.key ? 700 : 400,
+                    color: gameStatusFilter === s.key ? '#111' : '#9ca3af',
+                    borderBottom: gameStatusFilter === s.key ? '2px solid #111' : '2px solid transparent',
+                    marginBottom: -1,
+                  }}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+
+            {/* 검색 */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
               <input
                 placeholder="게임 제목 검색"
@@ -394,68 +575,75 @@ export default function AdminPage() {
                 onKeyDown={e => e.key === 'Enter' && fetchGames(1)}
                 style={inputSt}
               />
-              <button onClick={() => fetchGames(1)} style={btn('#111', '#fff')}>검색</button>
+              <button onClick={() => { setGamePage(1); fetchGames(1); }} style={btn('#111', '#fff')}>검색</button>
             </div>
 
-            {/* GIF 썸네일 재생성 */}
-            <div style={{ marginBottom: 20, padding: '14px 16px', background: '#f9fafb', borderRadius: 8, border: '1px solid #e5e7eb' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 14, color: '#111', marginBottom: 2 }}>GIF 썸네일 재생성</div>
-                  <div style={{ fontSize: 13, color: '#6b7280' }}>thumbUrl 없는 GIF 타입 게임의 MP4에서 첫 프레임을 추출해 저장합니다.</div>
-                </div>
-                <button
-                  onClick={handleRegenThumbnails}
-                  disabled={regenLoading}
-                  style={{ ...btn(regenLoading ? '#9ca3af' : '#2563eb', '#fff'), whiteSpace: 'nowrap', cursor: regenLoading ? 'default' : 'pointer' }}
-                >
-                  {regenLoading ? '처리 중...' : '재생성 실행'}
-                </button>
-              </div>
-              {regenResult && (
-                <div style={{ marginTop: 10, fontSize: 13, color: '#374151' }}>
-                  결과 — 전체: {regenResult.total}개 게임 / 성공: {regenResult.processed}개 / 실패: {regenResult.failed}개 / 건너뜀: {regenResult.skipped}개
-                </div>
-              )}
-            </div>
-
+            {/* 게임 테이블 */}
             <table style={tableSt}>
               <thead>
                 <tr style={{ background: '#f9fafb' }}>
                   <th style={th}>제목</th>
-                  <th style={th}>설명</th>
-                  <th style={th}>공개</th>
-                  <th style={th}>아이템</th>
+                  <th style={th}>타입</th>
+                  <th style={th}>상태</th>
+                  <th style={{ ...th, textAlign: 'center' }}>아이템</th>
+                  <th style={th}>등록일</th>
                   <th style={th}>관리</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={5} style={loadingTd}>불러오는 중...</td></tr>
+                  <tr><td colSpan={6} style={loadingTd}>불러오는 중...</td></tr>
                 ) : games.length === 0 ? (
-                  <tr><td colSpan={5} style={loadingTd}>게임이 없습니다.</td></tr>
-                ) : games.map(g => (
-                  <tr key={g._id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                    <td style={td}>{g.title}</td>
-                    <td style={{ ...td, color: '#6b7280', maxWidth: 260 }}>
-                      {g.desc?.length > 50 ? g.desc.slice(0, 50) + '...' : g.desc}
-                    </td>
-                    <td style={td}>
-                      <span style={{
-                        display: 'inline-block', padding: '2px 10px', borderRadius: 12, fontSize: 12, fontWeight: 600,
-                        background: g.visibility === 'public' ? '#dcfce7' : '#f3f4f6',
-                        color: g.visibility === 'public' ? '#16a34a' : '#6b7280',
-                      }}>
-                        {g.visibility === 'public' ? '공개' : g.visibility === 'private' ? '비공개' : '비밀번호'}
-                      </span>
-                    </td>
-                    <td style={td}>{g.itemsCount}개</td>
-                    <td style={td}>
-                      <button onClick={() => router.push(`/make?id=${g._id}`)} style={smBtn('#f3f4f6', '#374151')}>수정</button>
-                      <button onClick={() => deleteGame(g._id)} style={smBtn('#fee2e2', '#dc2626')}>삭제</button>
-                    </td>
-                  </tr>
-                ))}
+                  <tr><td colSpan={6} style={loadingTd}>게임이 없습니다.</td></tr>
+                ) : games.map(g => {
+                  const statusInfo = (() => {
+                    if (g.status === 'approved') return { label: '승인', bg: '#dcfce7', color: '#16a34a' };
+                    if (g.status === 'rejected') {
+                      if (g.rejectionReason === 'items') return { label: '반려(항목수정)', bg: '#fee2e2', color: '#dc2626' };
+                      if (g.rejectionReason === 'title') return { label: '반려(제목수정)', bg: '#fee2e2', color: '#dc2626' };
+                      return { label: '반려', bg: '#fee2e2', color: '#dc2626' };
+                    }
+                    return { label: '대기중', bg: '#fef3c7', color: '#92400e' };
+                  })();
+                  const isRejecting = rejectingGameId === g._id;
+                  return (
+                    <tr key={g._id} style={{ borderBottom: '1px solid #f3f4f6', background: g.status === 'pending' ? '#fffbeb' : '#fff' }}>
+                      <td style={td}>{g.title}</td>
+                      <td style={td}>
+                        <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 8, fontSize: 11, fontWeight: 600, background: g.type === 'youtube' ? '#fef3c7' : g.type === 'gif' ? '#f0fdf4' : '#eff6ff', color: g.type === 'youtube' ? '#92400e' : g.type === 'gif' ? '#166534' : '#1e40af' }}>
+                          {g.type === 'youtube' ? 'YouTube' : g.type === 'gif' ? 'GIF' : '이미지'}
+                        </span>
+                      </td>
+                      <td style={td}>
+                        <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 12, fontSize: 12, fontWeight: 600, background: statusInfo.bg, color: statusInfo.color }}>
+                          {statusInfo.label}
+                        </span>
+                      </td>
+                      <td style={{ ...td, textAlign: 'center' }}>{g.itemsCount}</td>
+                      <td style={{ ...td, whiteSpace: 'nowrap', color: '#6b7280', fontSize: 13 }}>{g.createdAt ? fmt(g.createdAt) : '-'}</td>
+                      <td style={{ ...td, whiteSpace: 'nowrap' }}>
+                        {isRejecting ? (
+                          <>
+                            <button onClick={() => approveGame(g._id, 'reject', 'items')} style={smBtn('#fee2e2', '#dc2626')}>항목수정</button>
+                            <button onClick={() => approveGame(g._id, 'reject', 'title')} style={smBtn('#fee2e2', '#dc2626')}>제목수정</button>
+                            <button onClick={() => setRejectingGameId(null)} style={smBtn('#f3f4f6', '#374151')}>취소</button>
+                          </>
+                        ) : (
+                          <>
+                            {g.status !== 'approved' && (
+                              <button onClick={() => approveGame(g._id, 'approve')} style={smBtn('#dcfce7', '#16a34a')}>승인</button>
+                            )}
+                            {g.status === 'pending' && (
+                              <button onClick={() => setRejectingGameId(g._id)} style={smBtn('#fee2e2', '#dc2626')}>반려▾</button>
+                            )}
+                            <button onClick={() => router.push(`/make?id=${g._id}`)} style={smBtn('#f3f4f6', '#374151')}>수정</button>
+                            <button onClick={() => deleteGame(g._id)} style={smBtn('#fecdd3', '#9f1239')}>삭제</button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
             <Pagination page={gamePage} total={gameTotal} onChange={setGamePage} />

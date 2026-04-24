@@ -22,6 +22,8 @@ type Game = {
   thumbnails?: GameItem[];
   playCount?: number;
   commentCount?: number;
+  status?: string;
+  rejectionReason?: 'items' | 'title' | null;
 };
 
 export default function MyGamesPage() {
@@ -316,6 +318,27 @@ export default function MyGamesPage() {
                 <div style={badgeRowStyle}>
                   <span style={badgeStyle}>プレイ {game.playCount ?? 0}</span>
                   <span style={badgeStyle}>コメント {game.commentCount ?? 0}</span>
+                </div>
+                <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 4 }}>
+                  {(() => {
+                    const s = game.status ?? 'approved';
+                    const r = game.rejectionReason;
+                    let info: { label: string; bg: string; color: string };
+                    if (s === 'approved') {
+                      info = { label: '公開中', bg: '#dcfce7', color: '#16a34a' };
+                    } else if (s === 'rejected') {
+                      info = r === 'title'
+                        ? { label: '反映(タイトル修正)', bg: '#fee2e2', color: '#dc2626' }
+                        : { label: '反映(項目修正)', bg: '#fee2e2', color: '#dc2626' };
+                    } else {
+                      info = { label: '審査中', bg: '#fef3c7', color: '#92400e' };
+                    }
+                    return (
+                      <span style={{ display: 'inline-block', background: info.bg, color: info.color, borderRadius: 8, padding: '2px 10px', fontSize: 12, fontWeight: 700 }}>
+                        {info.label}
+                      </span>
+                    );
+                  })()}
                 </div>
                 <div style={buttonGroupStyle}>
                   <button style={{ ...buttonStyle, ...playButtonStyle }} onClick={() => location.href = `/play/${game._id}`}>プレイ</button>

@@ -7,275 +7,257 @@ export default function GuidePage() {
     <>
       <Head>
         <title>使い方ガイド | スキト - 好きトーナメント</title>
-        <meta name="description" content="スキトの使い方を詳しく解説。ゲームの遊び方、作成方法、検索・フィルター機能、活用のヒントなどを紹介します。" />
-        <meta name="keywords" content="スキト,使い方,ガイド,ゲーム作成,投票方法,検索機能,フィルター機能" />
-        <meta property="og:title" content="使い方ガイド | スキト - 好きトーナメント" />
-        <meta property="og:description" content="スキトの使い方を詳しく解説。ゲームの遊び方、作成方法、検索・フィルター機能、活用のヒントなどを紹介します。" />
+        <meta name="description" content="スキトの使い方ガイド。ゲームの遊び方・作成方法・検索機能を解説します。" />
+        <meta property="og:title" content="使い方ガイド | スキト" />
         <meta property="og:url" content="https://sukito.net/guide" />
-        <meta property="og:type" content="website" />
         <link rel="canonical" href="https://sukito.net/guide" />
       </Head>
       <Header />
-      <div style={{ background: 'linear-gradient(120deg, #f8fafc 0%, #e6f7ff 100%)', minHeight: '100dvh', width: '100vw', padding: 0, margin: 0 }}>
-        <main style={{
-          maxWidth: 800,
-          margin: '48px auto 0 auto',
-          background: '#fff',
-          borderRadius: 16,
-          boxShadow: '0 4px 24px #b2ebf222',
-          border: '1.5px solid #e0f7fa',
-          padding: '40px 24px',
-        }}>
-          <h1 style={{ fontSize: '2rem', marginBottom: '24px', fontWeight: 700, color: '#4caf50', letterSpacing: -1, textAlign: 'center', fontFamily: 'inherit' }}>
-            使い方ガイド
-          </h1>
+      <div style={pageWrap}>
+        <main style={card}>
+          <h1 style={h1Style}>使い方ガイド</h1>
 
-          <section style={{ marginBottom: '32px' }}>
-            <h2 style={sectionTitleStyle}>ゲームの遊び方</h2>
-            <div style={stepContainerStyle}>
-              <div style={stepStyle}>
-                <div style={stepNumberStyle}>1</div>
-                <div style={stepContentStyle}>
-                  <h4>ゲームを選択</h4>
-                  <p>ホームページから興味のあるゲームをクリックして選択します。</p>
-                </div>
-              </div>
-              <div style={stepStyle}>
-                <div style={stepNumberStyle}>2</div>
-                <div style={stepContentStyle}>
-                  <h4>投票する</h4>
-                  <p>表示された2つの選択肢から、より好きな方をクリックして投票します。</p>
-                </div>
-              </div>
-              <div style={stepStyle}>
-                <div style={stepNumberStyle}>3</div>
-                <div style={stepContentStyle}>
-                  <h4>結果を確認</h4>
-                  <p>投票が完了すると、最終的な結果と統計情報を確認できます。</p>
-                </div>
-              </div>
+          <section style={section}>
+            <h2 style={sectionTitle}>ゲームの遊び方</h2>
+            <div style={stepList}>
+              <Step n={1} title="ゲームを選ぶ" desc="ホーム画面から気になるゲームを選んで「スタート」をタップ。" />
+              <Step n={2} title="投票する" desc="表示された2枚の中から好きな方をタップ。これを繰り返して優勝者を決めます。" />
+              <Step n={3} title="結果を確認" desc="トーナメント終了後、優勝者と総合ランキングを確認できます。SNSでシェアも可能です。" />
             </div>
           </section>
 
-          <section style={{ marginBottom: '32px' }}>
-            <h2 style={sectionTitleStyle}>ゲーム作成方法</h2>
-            <div style={stepContainerStyle}>
-              <div style={stepStyle}>
-                <div style={stepNumberStyle}>1</div>
-                <div style={stepContentStyle}>
-                  <h4>作成ページに移動</h4>
-                  <p>「ゲームを作成する」ボタンをクリックして作成ページに移動します。</p>
-                </div>
-              </div>
-              <div style={stepStyle}>
-                <div style={stepNumberStyle}>2</div>
-                <div style={stepContentStyle}>
-                  <h4>コンテンツをアップロード</h4>
-                  <p>画像・動画・GIF・YouTubeリンクをアップロードします。最低4つ、最大16個まで追加可能です。</p>
-                </div>
-              </div>
-              <div style={stepStyle}>
-                <div style={stepNumberStyle}>3</div>
-                <div style={stepContentStyle}>
-                  <h4>タイトルと説明を入力</h4>
-                  <p>ゲームのタイトルと説明を入力して、どのような投票ゲームかを明確にします。</p>
-                </div>
-              </div>
-              <div style={stepStyle}>
-                <div style={stepNumberStyle}>4</div>
-                <div style={stepContentStyle}>
-                  <h4>公開する</h4>
-                  <p>「作成する」ボタンをクリックしてゲームを公開します。URLが生成されるので、友達と共有できます。</p>
-                </div>
-              </div>
+          <section style={section}>
+            <h2 style={sectionTitle}>ゲームの作り方</h2>
+            <p style={note}>ゲーム作成には無料の会員登録が必要です。</p>
+            <div style={stepList}>
+              <Step n={1} title="作成ページへ移動" desc="ヘッダーのメニューから「トーナメント作る」を選択します。" />
+              <Step n={2} title="タイトルと説明を入力" desc="ゲームのテーマが伝わるタイトルと簡単な説明を入力します。" />
+              <Step n={3} title="コンテンツをアップロード" desc="画像・GIF・動画・YouTubeリンクを最低4つ以上追加します。" />
+              <Step n={4} title="申請する" desc="「作成する」ボタンを押すと審査リクエストが送信されます。管理者の承認後、ホームに公開されます。" />
             </div>
           </section>
 
-          <section style={{ marginBottom: '32px' }}>
-            <h2 style={sectionTitleStyle}>検索とフィルター機能</h2>
-            <div style={featureContainerStyle}>
-              <div style={featureStyle}>
-                <h4>検索機能</h4>
-                <p>ゲームタイトルや説明文でキーワード検索ができます。</p>
-              </div>
-              <div style={featureStyle}>
-                <h4>期間フィルター</h4>
-                <p>すべて・月・週・日で期間を絞り込んでゲームを探せます。</p>
-              </div>
-              <div style={featureStyle}>
-                <h4>タイプフィルター</h4>
-                <p>画像・動画でコンテンツタイプを絞り込めます。</p>
-              </div>
-              <div style={featureStyle}>
-                <h4>並び替え</h4>
-                <p>人気順・新着順でゲームを並び替えることができます。</p>
-              </div>
+          <section style={section}>
+            <h2 style={sectionTitle}>検索・フィルター機能</h2>
+            <div style={featureGrid}>
+              <FeatureCard title="キーワード検索" desc="タイトルや説明文でゲームを検索できます。" />
+              <FeatureCard title="タイプ絞り込み" desc="「画像」「動画」でコンテンツの種類を絞り込めます。" />
+              <FeatureCard title="並び替え" desc="「人気順」「新着順」で表示順を切り替えられます。" />
             </div>
           </section>
 
-          <section style={{ marginBottom: '32px' }}>
-            <h2 style={sectionTitleStyle}>活用のヒント</h2>
-            <div style={tipContainerStyle}>
-              <div style={tipStyle}>
-                <h4>テーマを明確に</h4>
-                <p>「好きなアニメキャラクター」「おすすめの食べ物」など、明確なテーマを設定すると投票しやすくなります。</p>
-              </div>
-              <div style={tipStyle}>
-                <h4>SNSで共有</h4>
-                <p>作成したゲームをTwitterやInstagramで共有して、多くの人に参加してもらいましょう。</p>
-              </div>
-              <div style={tipStyle}>
-                <h4>高品質な画像</h4>
-                <p>鮮明で見やすい画像や動画を使用すると、より魅力的なゲームになります。</p>
-              </div>
-              <div style={tipStyle}>
-                <h4>分かりやすい説明</h4>
-                <p>ゲームの目的や投票の基準を明確に説明すると、参加者が理解しやすくなります。</p>
-              </div>
-            </div>
+          <section style={{ ...section, marginBottom: 0 }}>
+            <h2 style={sectionTitle}>ご利用上の注意</h2>
+            <ul style={ul}>
+              <li>著作権・肖像権を侵害するコンテンツは投稿しないでください</li>
+              <li>誹謗中傷・差別的な表現を含むゲームは削除されます</li>
+              <li>個人情報はコンテンツに含めないようにしてください</li>
+              <li>他のユーザーへの配慮をお願いします</li>
+            </ul>
           </section>
 
-          <section style={{ marginBottom: '32px' }}>
-            <h2 style={sectionTitleStyle}>注意事項</h2>
-            <div style={warningContainerStyle}>
-              <ul style={warningListStyle}>
-                <li>著作権に注意して、適切なコンテンツをアップロードしてください</li>
-                <li>不適切なコンテンツは削除される場合があります</li>
-                <li>個人情報や機密情報は含めないでください</li>
-                <li>他のユーザーを尊重し、マナーを守ってご利用ください</li>
-              </ul>
-            </div>
-          </section>
-
-          <div style={ctaContainerStyle}>
-            <h3 style={{ marginBottom: '16px', color: '#4caf50' }}>今すぐ始めよう！</h3>
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button 
-                onClick={() => window.location.href = '/make'} 
-                style={ctaButtonStyle}
-              >
-                ゲームを作成する
-              </button>
-              <button 
-                onClick={() => window.location.href = '/'} 
-                style={secondaryButtonStyle}
-              >
-                ゲームを探す
-              </button>
-            </div>
+          <div style={cta}>
+            <a href="/make" style={ctaBtn}>ゲームを作成する</a>
+            <a href="/" style={ctaBtnSecondary}>ゲームを探す</a>
           </div>
+
+          <nav style={footerNav}>
+            <a href="/about" style={navLink}>このサイトについて</a>
+            <a href="/terms" style={navLink}>利用規約</a>
+            <a href="/privacy" style={navLink}>プライバシーポリシー</a>
+          </nav>
         </main>
       </div>
     </>
   );
 }
 
-const sectionTitleStyle: React.CSSProperties = {
-  fontSize: '1.25rem',
-  fontWeight: 600,
-  marginBottom: '16px',
-  borderLeft: '4px solid #4caf50',
-  paddingLeft: '8px',
+function Step({ n, title, desc }: { n: number; title: string; desc: string }) {
+  return (
+    <div style={stepRow}>
+      <div style={stepNum}>{n}</div>
+      <div>
+        <div style={stepTitle}>{title}</div>
+        <div style={stepDesc}>{desc}</div>
+      </div>
+    </div>
+  );
+}
+
+function FeatureCard({ title, desc }: { title: string; desc: string }) {
+  return (
+    <div style={featureCard}>
+      <div style={featureTitle}>{title}</div>
+      <div style={featureDesc}>{desc}</div>
+    </div>
+  );
+}
+
+const pageWrap: React.CSSProperties = {
+  background: 'linear-gradient(120deg, #f8fafc 0%, #e6f7ff 100%)',
+  minHeight: '100dvh',
+  padding: '0 0 48px',
 };
 
-const stepContainerStyle: React.CSSProperties = {
+const card: React.CSSProperties = {
+  maxWidth: 720,
+  margin: '40px auto 0',
+  background: '#fff',
+  borderRadius: 16,
+  boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
+  border: '1.5px solid #e0f7fa',
+  padding: '40px 32px',
+};
+
+const h1Style: React.CSSProperties = {
+  fontSize: '1.75rem',
+  fontWeight: 700,
+  color: '#4caf50',
+  letterSpacing: -0.5,
+  textAlign: 'center',
+  marginBottom: 32,
+};
+
+const section: React.CSSProperties = {
+  marginBottom: 32,
+};
+
+const sectionTitle: React.CSSProperties = {
+  fontSize: '1.05rem',
+  fontWeight: 700,
+  color: '#2e7d32',
+  marginBottom: 14,
+  paddingLeft: 10,
+  borderLeft: '3px solid #4caf50',
+};
+
+const note: React.CSSProperties = {
+  fontSize: '0.85rem',
+  color: '#666',
+  marginBottom: 12,
+  paddingLeft: 4,
+};
+
+const stepList: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: '16px',
+  gap: 10,
 };
 
-const stepStyle: React.CSSProperties = {
+const stepRow: React.CSSProperties = {
   display: 'flex',
+  gap: 14,
   alignItems: 'flex-start',
-  gap: '12px',
-  padding: '16px',
-  backgroundColor: '#f8f9fa',
-  borderRadius: '8px',
+  padding: '14px 16px',
+  background: '#f8fafc',
+  borderRadius: 10,
   border: '1px solid #e9ecef',
 };
 
-const stepNumberStyle: React.CSSProperties = {
-  width: '32px',
-  height: '32px',
+const stepNum: React.CSSProperties = {
+  width: 28,
+  height: 28,
   borderRadius: '50%',
-  backgroundColor: '#4caf50',
+  background: '#4caf50',
   color: '#fff',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  fontWeight: 'bold',
+  fontWeight: 700,
+  fontSize: '0.85rem',
   flexShrink: 0,
+  marginTop: 1,
 };
 
-const stepContentStyle: React.CSSProperties = {
-  flex: 1,
+const stepTitle: React.CSSProperties = {
+  fontWeight: 600,
+  fontSize: '0.95rem',
+  marginBottom: 4,
+  color: '#222',
 };
 
-const featureContainerStyle: React.CSSProperties = {
+const stepDesc: React.CSSProperties = {
+  fontSize: '0.88rem',
+  color: '#555',
+  lineHeight: 1.6,
+};
+
+const featureGrid: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-  gap: '16px',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+  gap: 12,
 };
 
-const featureStyle: React.CSSProperties = {
-  padding: '16px',
-  backgroundColor: '#e8f5e8',
-  borderRadius: '8px',
-  border: '1px solid #4caf50',
+const featureCard: React.CSSProperties = {
+  padding: '14px 16px',
+  background: '#f0fdf4',
+  borderRadius: 10,
+  border: '1px solid #c8e6c9',
 };
 
-const tipContainerStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-  gap: '16px',
+const featureTitle: React.CSSProperties = {
+  fontWeight: 700,
+  fontSize: '0.9rem',
+  color: '#2e7d32',
+  marginBottom: 4,
 };
 
-const tipStyle: React.CSSProperties = {
-  padding: '16px',
-  backgroundColor: '#fff3cd',
-  borderRadius: '8px',
-  border: '1px solid #ffeaa7',
+const featureDesc: React.CSSProperties = {
+  fontSize: '0.85rem',
+  color: '#444',
+  lineHeight: 1.5,
 };
 
-const warningContainerStyle: React.CSSProperties = {
-  padding: '16px',
-  backgroundColor: '#f8d7da',
-  borderRadius: '8px',
-  border: '1px solid #f5c6cb',
-};
-
-const warningListStyle: React.CSSProperties = {
+const ul: React.CSSProperties = {
+  paddingLeft: 20,
+  lineHeight: 1.9,
+  color: '#444',
   margin: 0,
-  paddingLeft: '20px',
-  color: '#721c24',
 };
 
-const ctaContainerStyle: React.CSSProperties = {
-  textAlign: 'center',
-  padding: '24px',
-  backgroundColor: '#f0f8ff',
-  borderRadius: '8px',
-  border: '1px solid #b0c4de',
+const cta: React.CSSProperties = {
+  marginTop: 32,
+  display: 'flex',
+  gap: 12,
+  justifyContent: 'center',
+  flexWrap: 'wrap',
 };
 
-const ctaButtonStyle: React.CSSProperties = {
-  backgroundColor: '#4caf50',
+const ctaBtn: React.CSSProperties = {
+  display: 'inline-block',
+  background: '#4caf50',
   color: '#fff',
-  border: 'none',
-  padding: '12px 24px',
-  borderRadius: '6px',
-  fontSize: '1rem',
-  cursor: 'pointer',
-  fontWeight: 'bold',
+  textDecoration: 'none',
+  padding: '10px 24px',
+  borderRadius: 8,
+  fontWeight: 700,
+  fontSize: '0.95rem',
 };
 
-const secondaryButtonStyle: React.CSSProperties = {
-  backgroundColor: '#fff',
+const ctaBtnSecondary: React.CSSProperties = {
+  display: 'inline-block',
+  background: '#fff',
   color: '#4caf50',
+  textDecoration: 'none',
+  padding: '10px 24px',
+  borderRadius: 8,
+  fontWeight: 700,
+  fontSize: '0.95rem',
   border: '2px solid #4caf50',
-  padding: '12px 24px',
-  borderRadius: '6px',
-  fontSize: '1rem',
-  cursor: 'pointer',
-  fontWeight: 'bold',
-}; 
+};
+
+const footerNav: React.CSSProperties = {
+  marginTop: 36,
+  paddingTop: 20,
+  borderTop: '1px solid #e5e7eb',
+  display: 'flex',
+  gap: 20,
+  justifyContent: 'center',
+  flexWrap: 'wrap',
+};
+
+const navLink: React.CSSProperties = {
+  color: '#1565c0',
+  textDecoration: 'none',
+  fontSize: '0.9rem',
+};

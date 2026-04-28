@@ -129,11 +129,18 @@ const PlayPage: NextPage<PlayPageProps> = ({ game, ogThumbnail }) => {
           setRoundItems(parsed.items);
           setAdvancing(parsed.advancing || []);
           setMatchIndex(parsed.matchIndex || 0);
+          setLoading(false);
+          return;
         }
       } catch (error) {
         console.error('エラー:', error);
         localStorage.removeItem('sukito_game');
       }
+    }
+    if (game) {
+      const rounds = ROUND_OPTIONS.filter(r => r <= game.items.length);
+      const defaultRound = rounds.includes(32) ? 32 : rounds[rounds.length - 1] ?? 0;
+      setSelectedRound(defaultRound);
     }
     setLoading(false);
   }, [game]);
@@ -221,7 +228,7 @@ const PlayPage: NextPage<PlayPageProps> = ({ game, ogThumbnail }) => {
           router.push(`/result?id=${game._id}`);
           return;
         } else {
-          const nextRoundItems = [...newAdvancing];
+          const nextRoundItems = pickRandomItems(newAdvancing, newAdvancing.length);
           localStorage.setItem('sukito_game', JSON.stringify({
             gameId: game._id,
             gameTitle: game.title,

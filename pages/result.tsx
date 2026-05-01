@@ -37,8 +37,9 @@ export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
   }, []);
 
   const [winner, setWinner] = useState<{ name: string; url: string } | null>(null);
-  const [ranking, setRanking] = useState<{ name: string; url: string; count: number }[]>([]);
+  const [ranking, setRanking] = useState<{ name: string; url: string; count: number; battleWins: number; battleRate: number }[]>([]);
   const [totalPlays, setTotalPlays] = useState<number>(0);
+  const [totalBattles, setTotalBattles] = useState<number>(0);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [nickname, setNickname] = useState('ゲスト');
 
@@ -100,6 +101,7 @@ export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
         if (data && data.ranking) {
           setRanking(data.ranking);
           setTotalPlays(data.totalPlays || 0);
+          setTotalBattles(data.totalBattles || 0);
         }
       });
 
@@ -534,60 +536,71 @@ export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
           />
         </div>
         {(searchKeyword ? filteredRanking : top10).length > 0 ? (
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 24 }}>
-            <thead>
-              <tr style={{ backgroundColor: '#eee' }}>
-                <th style={{ padding: isMobile ? 4 : 8, fontSize: isMobile ? '0.75rem' : undefined }}>順位</th>
-                <th style={{ padding: isMobile ? 4 : 8, fontSize: isMobile ? '0.75rem' : undefined }}>画像</th>
-                <th style={{ padding: isMobile ? 4 : 8, fontSize: isMobile ? '0.75rem' : undefined }}>名前</th>
-                <th style={{ padding: isMobile ? 4 : 8, fontSize: isMobile ? '0.75rem' : undefined }}>優勝回数</th>
-                <th style={{ padding: isMobile ? 4 : 8, fontSize: isMobile ? '0.75rem' : undefined }}>優勝率</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(searchKeyword ? filteredRanking : top10).map((item, idx) => {
-                const rankIndex = ranking.findIndex(r => r.name === item.name && r.url === item.url);
-                const percentage = totalPlays ? (item.count / totalPlays * 100).toFixed(2) : '0';
-                return (
-                  <tr key={idx} style={{ borderBottom: '1px solid #ddd' }}>
-                    <td style={{ padding: isMobile ? 4 : 8, fontSize: isMobile ? '0.75rem' : undefined, textAlign: 'center' }}>{rankIndex + 1}</td>
-                    <td style={{ padding: isMobile ? 4 : 8 }}>
-                      {item.url.endsWith('.mp4') ? (
-                        <video
-                          src={item.url}
-                          autoPlay
-                          loop
-                          muted
-                          playsInline
-                          width={isMobile ? 50 : 100}
-                          height={isMobile ? 75 : 150}
-                          style={{ objectFit: 'cover', borderRadius: 6, background: '#000', display: 'block' }}
-                        />
-                      ) : (
-                        <img
-                          src={convertToThumbnail(item.url)}
-                          alt={`${item.name} - 投票結果`}
-                          width={isMobile ? 50 : 100}
-                          height={isMobile ? 75 : 150}
-                          style={{ objectFit: 'cover', borderRadius: 6, background: '#000', display: 'block' }}
-                        />
-                      )}
-                    </td>
-                    <td style={{ padding: isMobile ? 4 : 8, fontSize: isMobile ? '0.75rem' : undefined, wordBreak: 'break-word', maxWidth: isMobile ? 80 : undefined }}>{item.name}</td>
-                    <td style={{ padding: isMobile ? 4 : 8, fontSize: isMobile ? '0.75rem' : undefined, textAlign: 'center', whiteSpace: 'nowrap' }}>{item.count}回</td>
-                    <td style={{ padding: isMobile ? 4 : 8 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 2 : 6 }}>
-                        <div style={{ backgroundColor: '#ffccd5', width: '100%', height: 8, borderRadius: 4, overflow: 'hidden' }}>
-                          <div style={{ width: `${percentage}%`, backgroundColor: '#ff4d6d', height: '100%' }}></div>
+          <div style={{ overflowX: 'auto', marginBottom: 24 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: isMobile ? 280 : undefined }}>
+              <thead>
+                <tr style={{ backgroundColor: '#eee' }}>
+                  <th style={{ padding: isMobile ? '6px 4px' : 8, fontSize: isMobile ? '0.72rem' : '0.9rem', whiteSpace: 'nowrap' }}>順位</th>
+                  <th style={{ padding: isMobile ? '6px 4px' : 8, fontSize: isMobile ? '0.72rem' : '0.9rem' }}>画像</th>
+                  <th style={{ padding: isMobile ? '6px 4px' : 8, fontSize: isMobile ? '0.72rem' : '0.9rem' }}>名前</th>
+                  <th style={{ padding: isMobile ? '6px 4px' : 8, fontSize: isMobile ? '0.72rem' : '0.9rem', whiteSpace: 'nowrap' }}>優勝率</th>
+                  <th style={{ padding: isMobile ? '6px 4px' : 8, fontSize: isMobile ? '0.72rem' : '0.9rem', whiteSpace: 'nowrap' }}>対戦勝率</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(searchKeyword ? filteredRanking : top10).map((item, idx) => {
+                  const rankIndex = ranking.findIndex(r => r.name === item.name && r.url === item.url);
+                  const percentage = totalPlays ? (item.count / totalPlays * 100).toFixed(2) : '0';
+                  return (
+                    <tr key={idx} style={{ borderBottom: '1px solid #ddd' }}>
+                      <td style={{ padding: isMobile ? '6px 4px' : 8, fontSize: isMobile ? '0.85rem' : '1rem', textAlign: 'center', fontWeight: 'bold' }}>
+                        {rankIndex + 1}
+                      </td>
+                      <td style={{ padding: isMobile ? '6px 4px' : 8 }}>
+                        {item.url.endsWith('.mp4') ? (
+                          <video
+                            src={item.url}
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            width={isMobile ? 44 : 80}
+                            height={isMobile ? 60 : 110}
+                            style={{ objectFit: 'cover', borderRadius: 6, background: '#000', display: 'block' }}
+                          />
+                        ) : (
+                          <img
+                            src={convertToThumbnail(item.url)}
+                            alt={`${item.name} - 投票結果`}
+                            width={isMobile ? 44 : 80}
+                            height={isMobile ? 60 : 110}
+                            style={{ objectFit: 'cover', borderRadius: 6, background: '#000', display: 'block' }}
+                          />
+                        )}
+                      </td>
+                      <td style={{ padding: isMobile ? '6px 4px' : 8, fontSize: isMobile ? '0.78rem' : '0.95rem', wordBreak: 'break-word', maxWidth: isMobile ? 90 : 200 }}>{item.name}</td>
+                      <td style={{ padding: isMobile ? '6px 4px' : 8, minWidth: isMobile ? 70 : 120 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <div style={{ backgroundColor: '#ffccd5', width: '100%', height: isMobile ? 6 : 8, borderRadius: 4, overflow: 'hidden' }}>
+                            <div style={{ width: `${percentage}%`, backgroundColor: '#ff4d6d', height: '100%' }}></div>
+                          </div>
+                          <span style={{ fontSize: isMobile ? '0.72rem' : '0.85rem', color: '#555', textAlign: 'right' }}>{percentage}%</span>
                         </div>
-                        <span style={{ minWidth: isMobile ? 36 : 50, fontSize: isMobile ? '0.7rem' : undefined }}>{percentage}%</span>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                      <td style={{ padding: isMobile ? '6px 4px' : 8, minWidth: isMobile ? 70 : 120 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <div style={{ backgroundColor: '#c8e6c9', width: '100%', height: isMobile ? 6 : 8, borderRadius: 4, overflow: 'hidden' }}>
+                            <div style={{ width: `${item.battleRate ?? 0}%`, backgroundColor: '#43a047', height: '100%' }}></div>
+                          </div>
+                          <span style={{ fontSize: isMobile ? '0.72rem' : '0.85rem', color: '#555', textAlign: 'right' }}>{item.battleRate ?? 0}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         ) : <p>まだプレイ履歴がありません。</p>}
 
         <div style={{ width: '100%', height: 100, border: '2px dashed #ccc', margin: '20px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

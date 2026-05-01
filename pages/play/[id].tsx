@@ -2,7 +2,7 @@
 import { GetServerSideProps, NextPage } from 'next';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import React, { useEffect, useLayoutEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { getStorageWithExpire } from '@/lib/utils';
@@ -115,7 +115,7 @@ const PlayPage: NextPage<PlayPageProps> = ({ game, ogThumbnail }) => {
   const [advancing, setAdvancing] = useState<GameItem[]>([]);
   const [matchIndex, setMatchIndex] = useState(0);
   const [selectedSide, setSelectedSide] = useState<'left' | 'right' | null>(null);
-  const [isAnimating, setIsAnimating] = useState(false);
+  const isAnimatingRef = useRef(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -191,12 +191,18 @@ const PlayPage: NextPage<PlayPageProps> = ({ game, ogThumbnail }) => {
   };
 
   const handleSelect = (side: 'left' | 'right') => {
-    if (isAnimating) return;
+    if (isAnimatingRef.current) return;
+    isAnimatingRef.current = true;
     setSelectedSide(side);
-    setIsAnimating(true);
 
     const winner = side === 'left' ? roundItems[matchIndex * 2] : roundItems[matchIndex * 2 + 1];
     const newAdvancing = [...advancing, winner];
+
+    fetch('/api/battles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gameId: game._id, winnerName: winner.name, winnerUrl: winner.url }),
+    }).catch(() => {});
 
     setTimeout(() => {
       const isLastMatch = matchIndex + 1 >= totalMatches;
@@ -632,33 +638,54 @@ const PlayPage: NextPage<PlayPageProps> = ({ game, ogThumbnail }) => {
           <h2 style={{ color: 'white', textAlign: 'center', padding: '0.5rem 0' }}>{game.title} ベスト{roundItems.length} {matchIndex + 1}/{totalMatches}</h2>
         </div>
 
-        <div style={{ display: 'flex', flex: 1, width: '100%' }}>
-          <div className={`media-wrapper ${isLeftExpanded ? 'expanded' : selectedSide === 'right' ? 'collapsed' : ''}`} onClick={() => left.type === 'youtube' ? null : handleSelect('left')}>
-            <Media url={left.url} type={left.type} />
-            <div className="overlay name">{left.name}</div>
-            {(left.type === 'youtube') && <button className="select-button left" onClick={() => handleSelect('left')}>✔ 選択</button>}
+        <div style={{ display: 'flex', flex: 1, width: '100%', minHeight: 0 }}>
+          <div className={`media-wrapper ${isLeftExpanded ? 'expanded' : selectedSide === 'right' ? 'collapsed' : ''} ${left.type === 'youtube' ? 'yt-wrapper' : ''}`} onClick={() => left.type === 'youtube' ? null : handleSelect('left')}>
+            <div className={left.type === 'youtube' ? 'media-area' : 'media-area-full'}>
+              <Media url={left.url} type={left.type} />
+              <div className="overlay name">{left.name}</div>
+            </div>
+            {left.type === 'youtube' && (
+              <div className="yt-btn-area">
+                <button className="select-button left" onClick={() => handleSelect('left')}>✔ 選択</button>
+              </div>
+            )}
           </div>
 
-          <div className={`media-wrapper ${isRightExpanded ? 'expanded' : selectedSide === 'left' ? 'collapsed' : ''}`} onClick={() => right.type === 'youtube' ? null : handleSelect('right')}>
-            <Media url={right.url} type={right.type} />
-            <div className="overlay name">{right.name}</div>
-            {(right.type === 'youtube') && <button className="select-button right" onClick={() => handleSelect('right')}>✔ 選択</button>}
+          <div className={`media-wrapper ${isRightExpanded ? 'expanded' : selectedSide === 'left' ? 'collapsed' : ''} ${right.type === 'youtube' ? 'yt-wrapper' : ''}`} onClick={() => right.type === 'youtube' ? null : handleSelect('right')}>
+            <div className={right.type === 'youtube' ? 'media-area' : 'media-area-full'}>
+              <Media url={right.url} type={right.type} />
+              <div className="overlay name">{right.name}</div>
+            </div>
+            {right.type === 'youtube' && (
+              <div className="yt-btn-area">
+                <button className="select-button right" onClick={() => handleSelect('right')}>✔ 選択</button>
+              </div>
+            )}
           </div>
         </div>
 
         <style jsx>{`
           .battle { display: flex; width: 100vw; height: 100vh; overflow: hidden; }
-          .media-wrapper { flex: 1; height: 90%; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; transition: all ${ANIMATION_DURATION}ms ease; }
+          .media-wrapper { flex: 1; display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; transition: all ${ANIMATION_DURATION}ms ease; }
           .media-wrapper.expanded { flex: 1 0 100%; opacity: 1; }
           .media-wrapper.collapsed { flex: 0 0 0%; opacity: 0; transform: scale(0); }
-          .overlay.name { position: absolute; bottom: 14%; width: 100%; text-align: center; font-size: 2rem; color: white; text-shadow: 0 0 4px black, 0 0 8px black, 0 0 12px black; pointer-events: none; }
-          .select-button { position: absolute; bottom: 2%; left: 50%; transform: translateX(-50%); padding: 1rem 2rem; font-size: 1.5rem; border: none; border-radius: 8px; cursor: pointer; color: white; }
+
+          /* 이미지/GIF: 전체 높이 사용 */
+          .media-area-full { width: 100%; height: 100%; position: relative; }
+
+          /* YouTube: 90% 영상 + 10% 버튼 */
+          .yt-wrapper { flex-direction: column; align-items: stretch; justify-content: flex-start; }
+          .media-area { flex: 9; position: relative; overflow: hidden; width: 100%; }
+          .yt-btn-area { flex: 1; display: flex; align-items: stretch; justify-content: center; background: #111; min-height: 60px; }
+
+          .overlay.name { position: absolute; bottom: 10%; width: 100%; text-align: center; font-size: 2rem; color: white; text-shadow: 0 0 4px black, 0 0 8px black, 0 0 12px black; pointer-events: none; }
+          .select-button { width: 100%; padding: 0; font-size: 1.6rem; font-weight: bold; border: none; border-radius: 0; cursor: pointer; color: white; }
           .select-button.left { background-color: #d94350; }
           .select-button.right { background-color: #0070f3; }
           @media (max-width: 768px) {
-            .media-wrapper { height: 35vh; }
-            .overlay.name { font-size: 1.2rem; }
-            .select-button { font-size: 1rem; padding: 0.5rem 1.0rem; }
+            .overlay.name { font-size: 1.1rem; bottom: 8%; }
+            .select-button { font-size: 1.2rem; }
+            .yt-btn-area { min-height: 48px; }
           }
         `}</style>
       </div>

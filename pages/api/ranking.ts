@@ -30,15 +30,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ]).toArray();
 
     const battlesCol = db.collection('battles');
-    const [totalBattles, battleAgg] = await Promise.all([
+    const [totalBattles, battleAgg, lossAgg] = await Promise.all([
       battlesCol.countDocuments({ gameId: id }),
       battlesCol.aggregate([
         { $match: { gameId: id } },
-        { $group: {
-            _id: { name: '$winnerName', url: '$winnerUrl' },
-            battleWins: { $sum: 1 }
-          }
-        }
+        { $group: { _id: { name: '$winnerName', url: '$winnerUrl' }, battleWins: { $sum: 1 } } }
+      ]).toArray(),
+      battlesCol.aggregate([
+        { $match: { gameId: id } },
+        { $group: { _id: { name: '$loserName', url: '$loserUrl' }, battleLosses: { $sum: 1 } } }
       ]).toArray(),
     ]);
 
@@ -47,9 +47,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       battleMap.set(`${item._id.name}||${item._id.url}`, item.battleWins);
     });
 
+    const lossMap = new Map<string, number>();
+    lossAgg.forEach(item => {
+      lossMap.set(`${item._id.name}||${item._id.url}`, item.battleLosses);
+    });
+
     const ranking = aggregation.map(item => {
-      const battleWins = battleMap.get(`${item._id.name}||${item._id.url}`) ?? 0;
-      const battleRate = totalBattles > 0 ? Math.round(battleWins / totalBattles * 1000) / 10 : 0;
+      const key = `${item._id.name}||${item._id.url}`;
+      const battleWins = battleMap.get(key) ?? 0;
+      const battleLosses = lossMap.get(key) ?? 0;
+      const participated = battleWins + battleLosses;
+      const battleRate = participated > 0 ? Math.round(battleWins / participated * 1000) / 10 : 0;
       return {
         name: item._id.name,
         url: item._id.url,

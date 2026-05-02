@@ -196,12 +196,13 @@ const PlayPage: NextPage<PlayPageProps> = ({ game, ogThumbnail }) => {
     setSelectedSide(side);
 
     const winner = side === 'left' ? roundItems[matchIndex * 2] : roundItems[matchIndex * 2 + 1];
+    const loser = side === 'left' ? roundItems[matchIndex * 2 + 1] : roundItems[matchIndex * 2];
     const newAdvancing = [...advancing, winner];
 
     fetch('/api/battles', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ gameId: game._id, winnerName: winner.name, winnerUrl: winner.url }),
+      body: JSON.stringify({ gameId: game._id, winnerName: winner.name, winnerUrl: winner.url, loserName: loser.name, loserUrl: loser.url }),
     }).catch(() => {});
 
     setTimeout(() => {

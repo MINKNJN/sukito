@@ -8,10 +8,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { gameId, winnerName, winnerUrl } = req.body;
+    const { gameId, winnerName, winnerUrl, loserName, loserUrl } = req.body;
 
     if (!gameId || typeof winnerName !== 'string' || !winnerName.trim() ||
-        typeof winnerUrl !== 'string' || !winnerUrl.startsWith('http')) {
+        typeof winnerUrl !== 'string' || !winnerUrl.startsWith('http') ||
+        typeof loserName !== 'string' || !loserName.trim() ||
+        typeof loserUrl !== 'string' || !loserUrl.startsWith('http')) {
       return res.status(400).json({ message: '有効なデータではありません。' });
     }
 
@@ -22,6 +24,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       gameId,
       winnerName,
       winnerUrl,
+      loserName,
+      loserUrl,
       playedAt: new Date().toISOString(),
     });
 

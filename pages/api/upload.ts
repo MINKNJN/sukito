@@ -30,6 +30,31 @@ function isAnimatedWebp(filepath: string): boolean {
   return buffer.includes(Buffer.from('ANIM'));
 }
 
+// EC2 서버로 MP4 썸네일만 추출
+async function extractThumbFromMp4OnEC2(filepath: string, originalFilename: string): Promise<string | null> {
+  const axios = require('axios');
+  const FormData = require('form-data');
+
+  const formData = new FormData();
+  const fileBuffer = fs.readFileSync(filepath);
+  formData.append('mp4', fileBuffer, { filename: originalFilename, contentType: 'video/mp4' });
+
+  const response = await axios.post(`${EC2_SERVER_URL}/thumbnail`, formData, {
+    headers: { ...formData.getHeaders() },
+    timeout: 30000,
+    maxContentLength: 15 * 1024 * 1024,
+    maxBodyLength: 15 * 1024 * 1024,
+  });
+
+  const result = response.data;
+  if (!result.success) return null;
+
+  const thumbResponse = await axios.get(`${EC2_SERVER_URL}${result.data.thumbnailDownloadUrl}`, { responseType: 'arraybuffer', timeout: 30000 });
+  const thumbPath = filepath.replace(/\.mp4$/i, '_thumb.jpg');
+  fs.writeFileSync(thumbPath, Buffer.from(thumbResponse.data));
+  return thumbPath;
+}
+
 // EC2 서버로 GIF 변환 + 썸네일 추출 요청
 async function convertGifOnEC2WithThumb(filepath: string, originalFilename: string): Promise<{ mp4Path: string; thumbPath: string | null }> {
   const axios = require('axios');
@@ -121,16 +146,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           return res.status(400).json({ message: 'ファイルが見つかりません。' });
         }
         
-        // 용량 제한 (20MB)
-        const MAX_FILE_SIZE = 20 * 1024 * 1024;
         const fileSize = fs.statSync(filepath).size;
-        // 파일 크기 확인
-        
+        const isMp4 = /\.mp4$/i.test(originalFilename);
+        const isGifWebp = /\.(gif|webp)$/i.test(originalFilename);
+
+        // 용량 제한: MP4는 10MB, 그 외는 20MB
+        const MAX_FILE_SIZE = isMp4 ? 10 * 1024 * 1024 : 20 * 1024 * 1024;
         if (fileSize > MAX_FILE_SIZE) {
           fs.unlinkSync(filepath);
-          return res.status(400).json({ message: 'ファイルサイズが20MBを超えています。' });
+          return res.status(400).json({ message: isMp4 ? 'MP4ファイルは10MB以下のみアップロード可能です。' : 'ファイルサイズが20MBを超えています。' });
         }
-        
+
         // 이미지/움짤 파일 실제 디코딩 검사 (sharp)
         if (/\.(jpg|jpeg|png|gif|webp)$/i.test(originalFilename)) {
           try {
@@ -140,15 +166,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(400).json({ message: '画像ファイルが正しくありません。' });
           }
         }
-        
+
         let folder = '';
         if (fields && fields.folder) {
           folder = String(fields.folder);
         }
-        // 폴더 설정
-        
-        // GIF/WEBP 분기 (EC2 서버를 사용해서 MP4로 변환)
-        if (/\.(gif|webp)$/i.test(originalFilename)) {
+
+        // MP4 분기: 변환 없이 S3 직접 업로드 + EC2에서 썸네일만 추출
+        if (isMp4) {
+          let thumbPath: string | null = null;
+          try {
+            const baseName = originalFilename.replace(/\.mp4$/i, '');
+            const mp4Url = await uploadToS3(filepath, originalFilename, 'video/mp4', folder);
+
+            try {
+              thumbPath = await extractThumbFromMp4OnEC2(filepath, originalFilename);
+            } catch {
+              // 썸네일 추출 실패해도 mp4 업로드는 유지
+            }
+
+            let thumbnailUrl: string | undefined;
+            if (thumbPath && fs.existsSync(thumbPath)) {
+              thumbnailUrl = await uploadToS3(thumbPath, baseName + '_thumb.jpg', 'image/jpeg', folder);
+            }
+
+            uploadedResults.push({ mp4Url, thumbnailUrl });
+          } finally {
+            try {
+              if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+              if (thumbPath && fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath);
+            } catch {}
+          }
+        // GIF/WEBP 분기: EC2에서 MP4로 변환 + 썸네일 추출
+        } else if (isGifWebp) {
           let mp4Path: string | null = null;
           let thumbPath: string | null = null;
           try {
@@ -172,23 +222,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
               if (mp4Path && fs.existsSync(mp4Path)) fs.unlinkSync(mp4Path);
               if (thumbPath && fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath);
-            } catch (cleanupError) {
-              // 임시 파일 정리 실패 무시
-            }
+            } catch {}
           }
         } else {
           try {
             const url = await uploadToS3(filepath, originalFilename, mimetype, folder);
             uploadedResults.push({ url });
-          } catch (error) {
-            throw error;
           } finally {
-            // 에러가 발생해도 임시 파일 정리
             try {
               if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
-            } catch (cleanupError) {
-              // 임시 파일 정리 실패 무시
-            }
+            } catch {}
           }
         }
       }

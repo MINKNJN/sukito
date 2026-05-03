@@ -36,10 +36,9 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ 
+const upload = multer({
   storage: storage,
   fileFilter: (req, file, cb) => {
-    // GIF/WEBP 파일 허용 (mimetype 체크 완화)
     const isGif = file.mimetype === 'image/gif' || file.originalname.toLowerCase().endsWith('.gif');
     const isWebp = file.mimetype === 'image/webp' || file.originalname.toLowerCase().endsWith('.webp');
     if (isGif || isWebp) {
@@ -49,9 +48,19 @@ const upload = multer({
     }
   },
   limits: {
-    fileSize: 20 * 1024 * 1024, // 20MB 제한으로 증가
-    fieldSize: 20 * 1024 * 1024, // 필드 크기도 20MB로 증가
+    fileSize: 20 * 1024 * 1024,
+    fieldSize: 20 * 1024 * 1024,
   }
+});
+
+const uploadMp4 = multer({
+  storage: storage,
+  fileFilter: (req, file, cb) => {
+    const isMp4 = file.mimetype === 'video/mp4' || file.originalname.toLowerCase().endsWith('.mp4');
+    if (isMp4) cb(null, true);
+    else cb(new Error('MP4 파일만 업로드 가능합니다.'), false);
+  },
+  limits: { fileSize: 15 * 1024 * 1024 },
 });
 
 // GIF를 MP4로 변환하는 함수
@@ -82,6 +91,33 @@ function cleanupFiles(filePath) {
     fs.unlinkSync(filePath);
   }
 }
+
+// MP4 썸네일만 추출하는 API
+app.post('/thumbnail', uploadMp4.single('mp4'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'MP4 파일을 업로드해주세요.' });
+    }
+    const inputPath = req.file.path;
+    const thumbnailFileName = path.parse(req.file.filename).name + '_thumb.jpg';
+    const thumbnailPath = path.join(outputDir, thumbnailFileName);
+
+    const success = await extractThumbnail(inputPath, thumbnailPath);
+    cleanupFiles(inputPath);
+
+    if (!success) {
+      return res.status(500).json({ success: false, message: '썸네일 추출에 실패했습니다.' });
+    }
+
+    res.json({
+      success: true,
+      data: { thumbnailDownloadUrl: `/download/${thumbnailFileName}` }
+    });
+  } catch (error) {
+    console.error('thumbnail API 오류:', error);
+    res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
+  }
+});
 
 // GIF to MP4 변환 API
 app.post('/convert', upload.single('gif'), async (req, res) => {

@@ -153,17 +153,18 @@ export default function MakePage() {
 
 const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   const selectedFiles = Array.from(e.target.files || []);
-  const MAX_FILE_SIZE_MB = 20; // 20MB로 증가
 
   const filtered = selectedFiles.filter(file => {
-    const isValidSize = file.size <= MAX_FILE_SIZE_MB * 1024 * 1024;
+    const isMp4 = /\.mp4$/i.test(file.name);
+    const maxSizeMB = isMp4 ? 10 : 20;
+    const isValidSize = file.size <= maxSizeMB * 1024 * 1024;
 
     const isValidType =
       (activeTab === 'image' && /\.(jpe?g|png)$/i.test(file.name)) ||
-      (activeTab === 'gif' && /\.(gif|webp)$/i.test(file.name));
+      (activeTab === 'gif' && /\.(gif|webp|mp4)$/i.test(file.name));
 
     if (!isValidSize) {
-      showAlert(`「${file.name}」は${MAX_FILE_SIZE_MB}MB以下のみアップロード可能です。`, 'error');
+      showAlert(`「${file.name}」は${maxSizeMB}MB以下のみアップロード可能です。`, 'error');
     }
     if (!isValidType) {
       showAlert(`「${file.name}」はサポートされていない形式です。`, 'error');
@@ -176,7 +177,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 
   setFileNames(prev => [
     ...prev,
-    ...filtered.map(f => f.name.replace(/\.(jpe?g|png|gif|webp)$/i, '')),
+    ...filtered.map(f => f.name.replace(/\.(jpe?g|png|gif|webp|mp4)$/i, '')),
   ]);
 };
 
@@ -395,7 +396,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (activeTab === 'gif') {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        setUploadMessage(`GIF/WEBPをアップロード中 (${i + 1}/${files.length})`);
+        setUploadMessage(`GIF/WEBP/MP4をアップロード中 (${i + 1}/${files.length})`);
         setUploadProgress(20 + Math.round((i / files.length) * 40));
         const formData = new FormData();
         formData.append('file', file);
@@ -406,7 +407,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         });
         const data = await res.json();
         if (!res.ok || !data.results || !data.results[0]?.mp4Url) {
-          showAlert(data.message || 'GIF/WEBPのアップロードに失敗しました。もう一度お試しください。', 'error');
+          showAlert(data.message || 'GIF/WEBP/MP4のアップロードに失敗しました。もう一度お試しください。', 'error');
           continue;
         }
         newGifUploaded.push({ mp4Url: data.results[0].mp4Url, thumbUrl: data.results[0].thumbnailUrl });
@@ -560,7 +561,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
               }}>
                 {activeTab === 'image'
                   ? <>1. 「ファイル選択」から JPG・PNG ファイルを選んでください<br />2. ファイル名が自動でタイトルになります（編集可能）<br />3. 代表画像を2つ選択してください。未選択の場合は最初の2つが自動的に選ばれます</>
-                  : <>1. 「ファイル選択」から GIF・WEBP ファイルを選んでください（最大10MB）<br />2. アップロード後、自動的にMP4に変換されます<br />3. 代表画像を2つ選択してください。未選択の場合は最初の2つが自動的に選ばれます</>
+                  : <>1. 「ファイル選択」から GIF・WEBP・MP4 ファイルを選んでください（GIF/WEBP: 最大20MB、MP4: 最大10MB）<br />2. GIF/WEBPはMP4に自動変換されます。MP4はそのままアップロードされます<br />3. 代表画像を2つ選択してください。未選択の場合は最初の2つが自動的に選ばれます</>
                 }
                 
               </p>
@@ -590,7 +591,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                 </button>
                 <span style={{ marginLeft: 8 }}>{fileNames.length} ファイル</span>
                 <div style={{ flex: 1 }} />
-                <input type="file" ref={fileInputRef} multiple accept={activeTab === 'image' ? '.jpg,.jpeg,.png' : '.gif,.webp'} onChange={handleFileChange} style={{ display: 'none' }} />
+                <input type="file" ref={fileInputRef} multiple accept={activeTab === 'image' ? '.jpg,.jpeg,.png' : '.gif,.webp,.mp4'} onChange={handleFileChange} style={{ display: 'none' }} />
               </div>
               {fileNames.map((name, i) => {
                 const isNew = i >= uploadedUrls.length;

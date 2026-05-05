@@ -9,7 +9,7 @@ MongoDB DB명: `sukito`
   _id: ObjectId,
   title: string,
   desc: string,
-  items: [{ name, url, type }],       // 토너먼트 참가 아이템
+  items: [{ name, url, type, thumbUrl? }],  // 토너먼트 참가 아이템 (gif/mp4는 thumbUrl 포함)
   itemsHistory: [...],                 // 이전 아이템 보존
   thumbnails: [{ name, url, type }],  // 대표 이미지
   visibility: 'public' | 'private' | 'password',
@@ -59,6 +59,20 @@ MongoDB DB명: `sukito`
   gameId: string,
   winnerName: string,
   winnerUrl: string,
+  playedAt: Date
+}
+```
+
+## battles
+
+```js
+{
+  _id: ObjectId,
+  gameId: string,
+  winnerName: string,
+  winnerUrl: string,
+  loserName: string,   // 추가 — 대결승률 per-item 계산용
+  loserUrl: string,    // 추가
   playedAt: Date
 }
 ```

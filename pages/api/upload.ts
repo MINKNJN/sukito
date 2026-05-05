@@ -24,12 +24,6 @@ const getUploadDir = () => {
   return '/tmp'; // 개발 환경에서는 /tmp 사용
 };
 
-// Helper to check if webp is animated
-function isAnimatedWebp(filepath: string): boolean {
-  const buffer = fs.readFileSync(filepath);
-  return buffer.includes(Buffer.from('ANIM'));
-}
-
 // EC2 서버로 MP4 썸네일만 추출
 async function extractThumbFromMp4OnEC2(filepath: string, originalFilename: string): Promise<string | null> {
   const axios = require('axios');

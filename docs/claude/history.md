@@ -1,5 +1,34 @@
 # 변경 이력
 
+## 2026-05-05
+
+### 결과 페이지 랭킹 테이블 개선
+- `pages/result.tsx`: 優勝回数 컬럼 삭제, 優勝率(분홍 바)·対戦勝率(초록 바) 유지
+- `pages/result.tsx`: 상위 3위 메달 이모지 제거
+- `pages/result.tsx`: 모바일 대응 — `overflowX: auto` 래퍼, 이미지 44×60px, 바+수치 flex column
+
+### YouTube 게임 버튼 레이아웃 수정
+- `pages/play/[id].tsx`: 화면(90%) + 선택 버튼(10%) flex-column 배치로 버튼이 영상과 겹치지 않도록 수정
+- `pages/play/[id].tsx`: 선택 버튼 전체 너비(`width: 100%`) 적용
+- `pages/play/[id].tsx`: 게임 시작 시 `window.scrollTo(0, 99999)` — 헤더 자동 숨김
+
+### 대결승률 계산식 수정 (per-item 기준)
+- `pages/api/battles.ts`: `loserName`, `loserUrl` 필드 저장 추가
+- `pages/api/ranking.ts`: `lossAgg` 집계 추가, `battleRate = battleWins / (battleWins + battleLosses)` per-item 계산
+
+### GIF 탭 MP4 직접 업로드 지원
+- `server/app.js`: `/thumbnail` 엔드포인트 신규 추가 — MP4 업로드 후 6번째 프레임 JPG 추출·반환
+- `pages/api/upload.ts`: `extractThumbFromMp4OnEC2()` 추가, MP4 분기(10MB 제한·S3 직접 업로드·EC2 썸네일 추출) 신규 구현
+- `pages/make.tsx`: gif 탭 파일 accept에 `.mp4` 추가, MP4 용량 검사(10MB) 분리
+
+### 업로드 실패 B방식 UX 구현
+- `pages/make.tsx`: 실패 파일 추적(`failedFiles`) + 일본어 에러 사유 + 부분 저장 confirm 다이얼로그
+- `pages/make.tsx`: `doSave()` 헬퍼 추가 — undefined URL 필터링 후 DB 저장 보장
+- `pages/make.tsx`: image·gif·youtube 세 타입 모두 동일 UX 흐름 적용
+
+### 수정 페이지 크래시 수정
+- `pages/edit/[id].tsx`(해당 파일): gif+mp4 혼합 게임 로드 시 `previewUrl?.endsWith` 옵셔널 체이닝 적용
+
 ## 2026-04-23
 
 ### 마케팅 추적 시스템 구축

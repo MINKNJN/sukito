@@ -6,7 +6,7 @@ import UploadModal from '@/components/UploadModal';
 import { useAlert } from '@/lib/alert';
 import imageCompression from 'browser-image-compression';
 import { convertToThumbnail } from '@/lib/utils';
-import fs from 'fs';
+
 
 const tabOptions = ['image', 'gif', 'youtube'] as const;
 type TabType = typeof tabOptions[number];
@@ -149,7 +149,7 @@ export default function MakePage() {
     setVideoRows([{ url: '', name: '', stime: '', etime: '', valid: true }]);
   };
 
-  const MAX_FILE_SIZE_MB = 15;
+
 
 const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   const selectedFiles = Array.from(e.target.files || []);
@@ -293,169 +293,16 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   };
   
 
-  const handleSubmit = async () => {
-    if (!title.trim()) {
-      showAlert('タイトルを入力してください。', 'error');
-      return;
-    }
-    if (!desc.trim()) {
-      showAlert('説明を入力してください。', 'error');
-      return;
-    }
-    // 업로드 자료 체크
-    if (activeTab === 'image' || activeTab === 'gif') {
-      if (fileNames.length < 2) {
-        showAlert('ファイルを2つ以上選択してください。', 'error');
-        return;
-      }
-    }
-    if (activeTab === 'youtube') {
-      // 유튜브 정보가 2개 이상 입력되어 있는지 체크
-      const validVideoCount = videoRows.filter(row => row.name.trim() && row.url.trim() && row.stime.trim() && row.etime.trim()).length;
-      if (validVideoCount < 2) {
-        showAlert('YouTube情報を2つ以上入力してください。', 'error');
-        return;
-      }
-    }
+  type UploadItem = { name: string; url: string; type: 'image' | 'gif' | 'youtube'; thumbUrl?: string };
 
-    // 대표 썸네일 2개 선택 필수 검증
-    if (selectedThumbnails.length !== 2) {
-      showAlert('代表画像を2つ選択してください。', 'error');
-      return;
-    }
-
-    setIsUploading(true); 
-    setUploadMessage('ゲームIDを作成中...');
-    setUploadProgress(5);
-
-    let gameId = id;
-    let isNewGame = false;
-    // 1. 게임 ID 먼저 생성 (신규일 때만)
-    if (!isEditMode) {
-      const res = await fetch('/api/games', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title,
-          desc,
-          type: activeTab,
-          items: [], // 임시
-          thumbnails: [], // 임시
-          itemsHistory: [], // 임시
-          createdBy: userId,
-          createdAt: new Date().toISOString(),
-        }),
-      });
-      const result = await res.json();
-      if (!res.ok || !result.id) {
-        showAlert(result.message || 'ゲームIDの作成に失敗しました。', 'error');
-        setIsUploading(false);
-        return;
-      }
-      gameId = result.id;
-      isNewGame = true;
-    }
-
-    // 2. 파일 업로드 (id 기반 폴더)
-    setUploadMessage('ファイルをアップロード中...');
-    setUploadProgress(20);
-    let items: { name: string; url: string; type: 'image' | 'gif' | 'youtube'; thumbUrl?: string }[] = [];
-    let newUploadedUrls: string[] = [];
-    let newGifUploaded: { mp4Url: string; thumbUrl?: string }[] = [];
-    if (activeTab === 'image') {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        setUploadMessage(`画像をアップロード中 (${i + 1}/${files.length})`);
-        setUploadProgress(20 + Math.round((i / files.length) * 40));
-        const compressedFile = await imageCompression(file, {
-          maxSizeMB: 2,
-          maxWidthOrHeight: 1024,
-          useWebWorker: true,
-        });
-        const formData = new FormData();
-        formData.append('file', compressedFile);
-        if (gameId) formData.append('folder', String(gameId));
-        const res = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        const data = await res.json();
-        if (!res.ok || !data.results || !data.results[0]?.url) {
-          showAlert(data.message || '画像のアップロードに失敗しました。もう一度お試しください。', 'error');
-          continue;
-        }
-        newUploadedUrls.push(data.results[0].url);
-      }
-      const allUrls = [...uploadedUrls, ...newUploadedUrls];
-      items = fileNames.map((name, i) => ({
-        name,
-        url: allUrls[i],
-        type: 'image',
-      }));
-    }
-    if (activeTab === 'gif') {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        setUploadMessage(`GIF/WEBP/MP4をアップロード中 (${i + 1}/${files.length})`);
-        setUploadProgress(20 + Math.round((i / files.length) * 40));
-        const formData = new FormData();
-        formData.append('file', file);
-        if (gameId) formData.append('folder', String(gameId));
-        const res = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        const data = await res.json();
-        if (!res.ok || !data.results || !data.results[0]?.mp4Url) {
-          showAlert(data.message || 'GIF/WEBP/MP4のアップロードに失敗しました。もう一度お試しください。', 'error');
-          continue;
-        }
-        newGifUploaded.push({ mp4Url: data.results[0].mp4Url, thumbUrl: data.results[0].thumbnailUrl });
-      }
-      const allGifUrls = [...uploadedUrls, ...newGifUploaded.map(item => item.mp4Url)];
-      const allThumbUrls = [...uploadedThumbUrls, ...newGifUploaded.map(item => item.thumbUrl || '')];
-      items = fileNames.map((name, i) => ({
-        name,
-        url: allGifUrls[i],
-        type: 'gif',
-        ...(allThumbUrls[i] ? { thumbUrl: allThumbUrls[i] } : {}),
-      }));
-    }
-    if (activeTab === 'youtube') {
-      setUploadMessage('YouTubeリンクを確認中...');
-      setUploadProgress(60);
-      const invalidRows = [];
-      for (const row of videoRows) {
-        const videoId = extractVideoId(row.url);
-        const isValid = videoId ? await isYoutubeThumbnailValid(videoId) : false;
-        if (!isValid) {
-          invalidRows.push(row);
-        }
-      }
-      if (invalidRows.length > 0) {
-        showAlert('以下のYouTubeリンクが無効または削除されている可能性があります:\n' + 
-              invalidRows.map(r => `・${r.name} (${r.url})`).join('\n'), 'error');
-        setIsUploading(false);
-        return;
-      }
-      items = videoRows.map((row) => {
-        const videoId = extractVideoId(row.url);
-        const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}?start=${row.stime}&end=${row.etime}` : '';
-        return {
-          name: row.name,
-          url: embedUrl,
-          type: 'youtube',
-        };
-      });
-    }
-
-    // 3. 게임 정보 최종 업데이트
-    setUploadMessage('ゲームを保存中...');
-    setUploadProgress(90);
-    // 실제 자료가 없는 경우(placeholder) thumbnails에 넣지 않음
+  const doSave = async (
+    allItems: UploadItem[],
+    gameId: string | string[] | undefined
+  ) => {
+    const validItems = allItems.filter(item => item.url);
     const thumbnailItems = selectedThumbnails
       .map(i => {
-        const item = items[i];
+        const item = allItems[i];
         if (!item || !item.url) return null;
         return {
           name: item.name,
@@ -465,16 +312,18 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         };
       })
       .filter(Boolean);
+
     const payload = {
       title,
       desc,
       type: activeTab,
-      items,
-      thumbnails: thumbnailItems, 
-      itemsHistory: mergeItemsHistory(itemsHistory, items),
+      items: validItems,
+      thumbnails: thumbnailItems,
+      itemsHistory: mergeItemsHistory(itemsHistory, validItems),
       createdBy: userId,
       [isEditMode ? 'updatedAt' : 'createdAt']: new Date().toISOString(),
     };
+
     const res = await fetch(`/api/games?id=${gameId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -493,6 +342,194 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setIsUploading(false);
     setUploadProgress(0);
     setUploadMessage('');
+  };
+
+  const handleSubmit = async () => {
+    if (!title.trim()) {
+      showAlert('タイトルを入力してください。', 'error');
+      return;
+    }
+    if (!desc.trim()) {
+      showAlert('説明を入力してください。', 'error');
+      return;
+    }
+    if (activeTab === 'image' || activeTab === 'gif') {
+      if (fileNames.length < 2) {
+        showAlert('ファイルを2つ以上選択してください。', 'error');
+        return;
+      }
+    }
+    if (activeTab === 'youtube') {
+      const validVideoCount = videoRows.filter(row => row.name.trim() && row.url.trim() && row.stime.trim() && row.etime.trim()).length;
+      if (validVideoCount < 2) {
+        showAlert('YouTube情報を2つ以上入力してください。', 'error');
+        return;
+      }
+    }
+    if (selectedThumbnails.length !== 2) {
+      showAlert('代表画像を2つ選択してください。', 'error');
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadMessage('ゲームIDを作成中...');
+    setUploadProgress(5);
+
+    let gameId = id;
+    if (!isEditMode) {
+      const res = await fetch('/api/games', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title, desc, type: activeTab,
+          items: [], thumbnails: [], itemsHistory: [],
+          createdBy: userId, createdAt: new Date().toISOString(),
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.id) {
+        showAlert(result.message || 'ゲームIDの作成に失敗しました。', 'error');
+        setIsUploading(false);
+        return;
+      }
+      gameId = result.id;
+    }
+
+    setUploadMessage('ファイルをアップロード中...');
+    setUploadProgress(20);
+
+    const failedFiles: { fileName: string; reason: string }[] = [];
+    let items: UploadItem[] = [];
+
+    if (activeTab === 'image') {
+      const existingItems: UploadItem[] = uploadedUrls.map((url, i) => ({
+        name: fileNames[i], url, type: 'image',
+      }));
+      const newItems: UploadItem[] = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const itemName = fileNames[uploadedUrls.length + i] || file.name;
+        setUploadMessage(`画像をアップロード中 (${i + 1}/${files.length})`);
+        setUploadProgress(20 + Math.round((i / files.length) * 40));
+        try {
+          const compressedFile = await imageCompression(file, {
+            maxSizeMB: 2, maxWidthOrHeight: 1024, useWebWorker: true,
+          });
+          const formData = new FormData();
+          formData.append('file', compressedFile);
+          if (gameId) formData.append('folder', String(gameId));
+          const res = await fetch('/api/upload', { method: 'POST', body: formData });
+          const data = await res.json();
+          if (!res.ok || !data.results?.[0]?.url) {
+            failedFiles.push({ fileName: file.name, reason: data.message || 'アップロード中にエラーが発生しました' });
+          } else {
+            newItems.push({ name: itemName, url: data.results[0].url, type: 'image' });
+          }
+        } catch {
+          failedFiles.push({ fileName: file.name, reason: '通信エラーが発生しました。接続状況を確認してください' });
+        }
+      }
+      items = [...existingItems, ...newItems];
+    }
+
+    if (activeTab === 'gif') {
+      const existingItems: UploadItem[] = uploadedUrls.map((url, i) => ({
+        name: fileNames[i], url, type: 'gif',
+        ...(uploadedThumbUrls[i] ? { thumbUrl: uploadedThumbUrls[i] } : {}),
+      }));
+      const newItems: UploadItem[] = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const itemName = fileNames[uploadedUrls.length + i] || file.name;
+        setUploadMessage(`GIF/WEBP/MP4をアップロード中 (${i + 1}/${files.length})`);
+        setUploadProgress(20 + Math.round((i / files.length) * 40));
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+          if (gameId) formData.append('folder', String(gameId));
+          const res = await fetch('/api/upload', { method: 'POST', body: formData });
+          const data = await res.json();
+          if (!res.ok || !data.results?.[0]?.mp4Url) {
+            let reason = data.message || 'アップロード中にエラーが発生しました';
+            if (res.status === 400 && data.message?.includes('10MB')) reason = 'ファイルが大きすぎます（MP4は10MBまで）';
+            else if (res.status === 400 && data.message?.includes('20MB')) reason = 'ファイルが大きすぎます（GIF/WEBPは20MBまで）';
+            else if (res.status === 500) reason = '変換またはアップロード中にエラーが発生しました。しばらく待ってから再試行してください';
+            failedFiles.push({ fileName: file.name, reason });
+          } else {
+            newItems.push({
+              name: itemName,
+              url: data.results[0].mp4Url,
+              type: 'gif',
+              ...(data.results[0].thumbnailUrl ? { thumbUrl: data.results[0].thumbnailUrl } : {}),
+            });
+          }
+        } catch {
+          failedFiles.push({ fileName: file.name, reason: '通信エラーが発生しました。接続状況を確認してください' });
+        }
+      }
+      items = [...existingItems, ...newItems];
+    }
+
+    if (activeTab === 'youtube') {
+      setUploadMessage('YouTubeリンクを確認中...');
+      setUploadProgress(60);
+      const invalidRows: VideoRow[] = [];
+      for (const row of videoRows) {
+        const videoId = extractVideoId(row.url);
+        const isValid = videoId ? await isYoutubeThumbnailValid(videoId) : false;
+        if (!isValid) invalidRows.push(row);
+      }
+      if (invalidRows.length > 0) {
+        const failList = invalidRows
+          .map(r => `・${r.name || '(名前未入力)'}\n　→ 動画が見つからないか、再生できない可能性があります（URL: ${r.url || '未入力'}）`)
+          .join('\n');
+        showAlert(`以下のYouTubeリンクに問題があります。\n確認して修正してください。\n\n${failList}`, 'error');
+        setIsUploading(false);
+        return;
+      }
+      items = videoRows
+        .filter(row => row.name.trim() && row.url.trim())
+        .map(row => {
+          const videoId = extractVideoId(row.url);
+          return {
+            name: row.name,
+            url: videoId ? `https://www.youtube.com/embed/${videoId}?start=${row.stime}&end=${row.etime}` : '',
+            type: 'youtube' as const,
+          };
+        });
+    }
+
+    // 업로드 실패 항목 처리
+    if (failedFiles.length > 0) {
+      setIsUploading(false);
+      const validItems = items.filter(item => item.url);
+      const failList = failedFiles.map(f => `・${f.fileName}\n　→ ${f.reason}`).join('\n\n');
+
+      if (validItems.length < 2) {
+        showAlert(
+          `アップロードに失敗したファイルがあり、保存できるファイルが2件未満になりました。\n\nファイルを修正してから、もう一度お試しください。\n\n【失敗したファイル】\n${failList}`,
+          'error'
+        );
+        return;
+      }
+
+      showConfirm(
+        `一部のファイルをアップロードできませんでした。\n\n【失敗したファイル】\n${failList}\n\n成功した ${validItems.length} 件のファイルだけで保存しますか？\n（失敗したファイルは一覧から削除してから再度追加できます）`,
+        async () => {
+          setIsUploading(true);
+          setUploadMessage('ゲームを保存中...');
+          setUploadProgress(90);
+          await doSave(items, gameId);
+        }
+      );
+      return;
+    }
+
+    setUploadMessage('ゲームを保存中...');
+    setUploadProgress(90);
+    await doSave(items, gameId);
   };
 
   return (
@@ -613,7 +650,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                       backgroundColor: '#fff',
                     }}
                   >
-                    {activeTab === 'gif' && (!isNew && previewUrl.endsWith('.mp4')) || (isNew && file?.type === 'video/mp4') ? (
+                    {activeTab === 'gif' && (!isNew && previewUrl?.endsWith('.mp4')) || (isNew && file?.type === 'video/mp4') ? (
                       <video
                         src={previewUrl}
                         width={100}

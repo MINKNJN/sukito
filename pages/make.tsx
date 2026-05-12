@@ -161,7 +161,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 
     const isValidType =
       (activeTab === 'image' && /\.(jpe?g|png)$/i.test(file.name)) ||
-      (activeTab === 'gif' && /\.(gif|webp|mp4)$/i.test(file.name));
+      (activeTab === 'gif' && /\.(gif|mp4)$/i.test(file.name));
 
     if (!isValidSize) {
       showAlert(`「${file.name}」は${maxSizeMB}MB以下のみアップロード可能です。`, 'error');
@@ -177,7 +177,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 
   setFileNames(prev => [
     ...prev,
-    ...filtered.map(f => f.name.replace(/\.(jpe?g|png|gif|webp|mp4)$/i, '')),
+    ...filtered.map(f => f.name.replace(/\.(jpe?g|png|gif|mp4)$/i, '')),
   ]);
 };
 
@@ -228,13 +228,15 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     return null;
   };
 
-  const isYoutubeThumbnailValid = (videoId: string): Promise<boolean> => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.src = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
-      img.onload = () => resolve(true);
-      img.onerror = () => resolve(false);
-    });
+  const checkYoutubeEmbed = async (videoId: string): Promise<{ ok: boolean; status: number }> => {
+    try {
+      const res = await fetch(
+        `https://www.youtube.com/oembed?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${videoId}`)}&format=json`
+      );
+      return { ok: res.ok, status: res.status };
+    } catch {
+      return { ok: false, status: -1 };
+    }
   };
 
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>, index: number) => {
@@ -373,7 +375,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 
     setIsUploading(true);
     setUploadMessage('ゲームIDを作成中...');
-    setUploadProgress(5);
+    setUploadProgress(0);
 
     let gameId = id;
     if (!isEditMode) {
@@ -396,7 +398,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     }
 
     setUploadMessage('ファイルをアップロード中...');
-    setUploadProgress(20);
+    setUploadProgress(0);
 
     const failedFiles: { fileName: string; reason: string }[] = [];
     let items: UploadItem[] = [];
@@ -411,7 +413,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = files[i];
         const itemName = fileNames[uploadedUrls.length + i] || file.name;
         setUploadMessage(`画像をアップロード中 (${i + 1}/${files.length})`);
-        setUploadProgress(20 + Math.round((i / files.length) * 40));
+        setUploadProgress(Math.round((i + 1) / files.length * 100));
         try {
           const compressedFile = await imageCompression(file, {
             maxSizeMB: 2, maxWidthOrHeight: 1024, useWebWorker: true,
@@ -443,8 +445,8 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const itemName = fileNames[uploadedUrls.length + i] || file.name;
-        setUploadMessage(`GIF/WEBP/MP4をアップロード中 (${i + 1}/${files.length})`);
-        setUploadProgress(20 + Math.round((i / files.length) * 40));
+        setUploadMessage(`GIF/MP4をアップロード中 (${i + 1}/${files.length})`);
+        setUploadProgress(Math.round((i + 1) / files.length * 100));
         try {
           const formData = new FormData();
           formData.append('file', file);
@@ -474,18 +476,27 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 
     if (activeTab === 'youtube') {
       setUploadMessage('YouTubeリンクを確認中...');
-      setUploadProgress(60);
-      const invalidRows: VideoRow[] = [];
+      setUploadProgress(50);
+      const invalidRows: { row: VideoRow; reason: string }[] = [];
       for (const row of videoRows) {
         const videoId = extractVideoId(row.url);
-        const isValid = videoId ? await isYoutubeThumbnailValid(videoId) : false;
-        if (!isValid) invalidRows.push(row);
+        if (!videoId) {
+          invalidRows.push({ row, reason: 'YouTubeのURLまたは動画IDの形式が正しくありません。URLを確認してください。' });
+          continue;
+        }
+        const { ok, status } = await checkYoutubeEmbed(videoId);
+        if (!ok) {
+          let reason = '動画の確認中にエラーが発生しました。しばらく待ってから再試行してください。';
+          if (status === 401) reason = 'この動画は埋め込みが禁止されています。動画の設定で埋め込みが許可されているものに変更してください。';
+          else if (status === 404) reason = '動画が見つかりません。削除されているか非公開の可能性があります。別の動画を選んでください。';
+          invalidRows.push({ row, reason });
+        }
       }
       if (invalidRows.length > 0) {
         const failList = invalidRows
-          .map(r => `・${r.name || '(名前未入力)'}\n　→ 動画が見つからないか、再生できない可能性があります（URL: ${r.url || '未入力'}）`)
-          .join('\n');
-        showAlert(`以下のYouTubeリンクに問題があります。\n確認して修正してください。\n\n${failList}`, 'error');
+          .map(({ row, reason }) => `・${row.name || '(名前未入力)'}\n　→ ${reason}`)
+          .join('\n\n');
+        showAlert(`以下のYouTubeリンクに問題があります。\n\n${failList}`, 'error');
         setIsUploading(false);
         return;
       }
@@ -520,7 +531,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         async () => {
           setIsUploading(true);
           setUploadMessage('ゲームを保存中...');
-          setUploadProgress(90);
+          setUploadProgress(100);
           await doSave(items, gameId);
         }
       );
@@ -528,7 +539,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     }
 
     setUploadMessage('ゲームを保存中...');
-    setUploadProgress(90);
+    setUploadProgress(100);
     await doSave(items, gameId);
   };
 
@@ -628,7 +639,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                 </button>
                 <span style={{ marginLeft: 8 }}>{fileNames.length} ファイル</span>
                 <div style={{ flex: 1 }} />
-                <input type="file" ref={fileInputRef} multiple accept={activeTab === 'image' ? '.jpg,.jpeg,.png' : '.gif,.webp,.mp4'} onChange={handleFileChange} style={{ display: 'none' }} />
+                <input type="file" ref={fileInputRef} multiple accept={activeTab === 'image' ? '.jpg,.jpeg,.png' : '.gif,.mp4'} onChange={handleFileChange} style={{ display: 'none' }} />
               </div>
               {fileNames.map((name, i) => {
                 const isNew = i >= uploadedUrls.length;

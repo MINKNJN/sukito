@@ -32,7 +32,7 @@ type CheckResult = {
     status: string;
     brokenCount: number;
     totalCount: number;
-    brokenItems: Array<{ name: string; type: string }>;
+    brokenItems: Array<{ name: string; type: string; status: number }>;
   }>;
 } | null;
 
@@ -496,7 +496,7 @@ export default function AdminPage() {
                           <div key={g._id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: '#fff', borderRadius: 6, border: '1px solid #fecaca', marginBottom: 6, flexWrap: 'wrap' }}>
                             <span style={{ fontSize: 13, fontWeight: 600, flex: 1, minWidth: 120 }}>{g.title}</span>
                             <span style={{ fontSize: 12, color: '#dc2626' }}>깨진 항목 {g.brokenCount}/{g.totalCount}개</span>
-                            <span style={{ fontSize: 12, color: '#6b7280' }}>{g.brokenItems.map(i => `[${i.type}] ${i.name}`).join(', ')}</span>
+                            <span style={{ fontSize: 12, color: '#6b7280' }}>{g.brokenItems.map(i => `[${i.type}${i.status ? ` ${i.status}` : ''}] ${i.name}`).join(', ')}</span>
                             <button onClick={() => router.push(`/make?id=${g._id}`)} style={smBtn('#f3f4f6', '#374151')}>수정</button>
                             <button onClick={() => approveGame(g._id, 'reject', 'items')} style={smBtn('#fee2e2', '#dc2626')}>반려(항목수정)</button>
                           </div>

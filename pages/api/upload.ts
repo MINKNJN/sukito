@@ -142,7 +142,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         
         const fileSize = fs.statSync(filepath).size;
         const isMp4 = /\.mp4$/i.test(originalFilename);
-        const isGifWebp = /\.(gif|webp)$/i.test(originalFilename);
+        const isGif = /\.gif$/i.test(originalFilename);
 
         // 용량 제한: MP4는 10MB, 그 외는 20MB
         const MAX_FILE_SIZE = isMp4 ? 10 * 1024 * 1024 : 20 * 1024 * 1024;
@@ -152,7 +152,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         // 이미지/움짤 파일 실제 디코딩 검사 (sharp)
-        if (/\.(jpg|jpeg|png|gif|webp)$/i.test(originalFilename)) {
+        if (/\.(jpg|jpeg|png|gif)$/i.test(originalFilename)) {
           try {
             await sharp(filepath).metadata();
           } catch (e: any) {
@@ -191,8 +191,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               if (thumbPath && fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath);
             } catch {}
           }
-        // GIF/WEBP 분기: EC2에서 MP4로 변환 + 썸네일 추출
-        } else if (isGifWebp) {
+        // GIF 분기: EC2에서 MP4로 변환 + 썸네일 추출
+        } else if (isGif) {
           let mp4Path: string | null = null;
           let thumbPath: string | null = null;
           try {

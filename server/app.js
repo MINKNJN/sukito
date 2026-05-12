@@ -40,11 +40,10 @@ const upload = multer({
   storage: storage,
   fileFilter: (req, file, cb) => {
     const isGif = file.mimetype === 'image/gif' || file.originalname.toLowerCase().endsWith('.gif');
-    const isWebp = file.mimetype === 'image/webp' || file.originalname.toLowerCase().endsWith('.webp');
-    if (isGif || isWebp) {
+    if (isGif) {
       cb(null, true);
     } else {
-      cb(new Error('GIF/WEBP 파일만 업로드 가능합니다.'), false);
+      cb(new Error('GIF 파일만 업로드 가능합니다.'), false);
     }
   },
   limits: {

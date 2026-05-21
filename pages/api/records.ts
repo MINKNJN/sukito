@@ -8,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { gameId, winnerName, winnerUrl } = req.body;
+    const { gameId, winnerName, winnerUrl, winnerItemId } = req.body;
 
     if (
       !gameId ||
@@ -20,10 +20,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ message: '有効なデータではありません。' });
     }
 
-    if (!gameId || !winnerName || !winnerUrl) {
-      return res.status(400).json({ message: '必須データが欠落しています。' });
-    }
-
     const client = await clientPromise;
     const db = client.db('sukito');
     const collection = db.collection('records');
@@ -32,6 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       gameId,
       winnerName,
       winnerUrl,
+      ...(winnerItemId ? { winnerItemId } : {}),
       playedAt: new Date().toISOString()
     });
 

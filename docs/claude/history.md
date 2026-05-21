@@ -1,5 +1,38 @@
 # 변경 이력
 
+## 2026-05-21
+
+### webp 지원 제거
+- `pages/make.tsx`: gif 탭 file accept `.webp` 제거 → `.gif,.mp4`만 허용, 유효성 정규식 정리
+- `pages/api/upload.ts`: `isGifWebp` → `isGif`로 변경, sharp 검사에서 webp 제거
+- `server/app.js`: multer fileFilter에서 webp 제거
+
+### 업로드 로딩바 수정
+- `pages/make.tsx`: 파일 업로드 진행률을 파일 수 기준 1~100%로 수정 (기존 20~60% 고정 구간 제거)
+- `pages/make.tsx`: 저장 단계 progress 90% → 100%
+
+### 어드민 콘텐츠 검사 수정
+- `pages/api/admin/checkGameItems.ts`: HEAD → `GET Range: bytes=0-0` 전환 (CloudFront HEAD 거부 대응)
+- `pages/api/admin/checkGameItems.ts`: `makeLimiter(20)` 추가 — 동시 요청 수 20개 제한으로 타임아웃 해결
+- `pages/api/admin/checkGameItems.ts`: 실패 항목에 HTTP 상태 코드 포함 (오탐 진단용)
+
+### YouTube 임베딩 검사 강화
+- `pages/make.tsx`: `isYoutubeThumbnailValid` → `checkYoutubeEmbed` (썸네일 이미지 → oEmbed API로 교체)
+- `pages/make.tsx`: 실패 이유별 일본어 메시지 세분화 — URL 형식 오류 / 401 임베딩 금지 / 404 없는 영상
+- `pages/api/admin/checkGameItems.ts`: oEmbed URL `encodeURIComponent` 처리
+
+### 라운드 선택 UI 수정
+- `pages/play/[id].tsx`: 마지막 라운드 옵션 텍스트 `すべての候補でトーナメントを始める` → `ベスト{항목 수}`
+
+### 다중 탭 게임 중단 모달
+- `pages/play/[id].tsx`: `storage` 이벤트로 다른 탭 게임 시작 감지
+- `pages/play/[id].tsx`: 중단 시 중앙 오버레이 모달 표시 → 확인 버튼으로 홈 이동 (라운드 선택·게임 플레이 양쪽 적용)
+
+### 결과 페이지 랭킹 더 보기
+- `pages/result.tsx`: Top 10 고정 → 기본 10개 + `もっと見る` 버튼으로 10개씩 추가
+- `pages/result.tsx`: 헤더 `総合ランキング (Top 10)` → `総合ランキング`
+- `pages/api/ranking.ts`: aggregation `$limit: 20` 제거 — 전체 항목 순위 반환
+
 ## 2026-05-05
 
 ### 결과 페이지 랭킹 테이블 개선

@@ -8,7 +8,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { gameId, winnerName, winnerUrl, loserName, loserUrl } = req.body;
+    const { gameId, winnerName, winnerUrl, loserName, loserUrl, winnerItemId, loserItemId } = req.body;
 
     if (!gameId || typeof winnerName !== 'string' || !winnerName.trim() ||
         typeof winnerUrl !== 'string' || !winnerUrl.startsWith('http') ||
@@ -26,6 +26,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       winnerUrl,
       loserName,
       loserUrl,
+      ...(winnerItemId ? { winnerItemId } : {}),
+      ...(loserItemId ? { loserItemId } : {}),
       playedAt: new Date().toISOString(),
     });
 

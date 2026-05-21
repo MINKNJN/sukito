@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { IncomingForm } from 'formidable';
 import { uploadToS3 } from '@/lib/aws-s3';
-import { convertGifToMp4, extractFirstFrame } from '@/lib/ffmpeg';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import sharp from 'sharp';
 
 // EC2 배포 시 로컬 Express 서버 사용
@@ -21,7 +21,7 @@ const getUploadDir = () => {
     }
     return tmpDir;
   }
-  return '/tmp'; // 개발 환경에서는 /tmp 사용
+  return os.tmpdir(); // OS 기본 임시 디렉토리 사용 (Windows 호환)
 };
 
 // EC2 서버로 MP4 썸네일만 추출
@@ -118,7 +118,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 폼 파싱 결과 처리
     
     if (err) {
-      // 폼 파싱 오류
+      console.error('[upload] formidable parse error:', err);
       return res.status(500).json({ message: 'アップロード中にエラーが発生しました。' });
     }
 

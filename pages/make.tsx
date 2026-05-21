@@ -17,11 +17,13 @@ interface VideoRow {
   stime: string;
   etime: string;
   valid: boolean;
+  itemId?: string;
 }
 
 export default function MakePage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const replaceFileInputRef = useRef<HTMLInputElement>(null);
   const { id } = router.query;
 
   const [isEditMode, setIsEditMode] = useState(false);
@@ -33,6 +35,9 @@ export default function MakePage() {
   const [fileNames, setFileNames] = useState<string[]>([]);
   const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
   const [uploadedThumbUrls, setUploadedThumbUrls] = useState<string[]>([]);
+  const [uploadedItemIds, setUploadedItemIds] = useState<(string | undefined)[]>([]);
+  const [replacements, setReplacements] = useState<{ [index: number]: File }>({});
+  const [replacingIndex, setReplacingIndex] = useState<number | null>(null);
   const [videoRows, setVideoRows] = useState<VideoRow[]>([{
     url: '', name: '', stime: '', etime: '', valid: true
   }]);
@@ -109,7 +114,8 @@ export default function MakePage() {
                 name: i.name,
                 stime: match?.[1] || '',
                 etime: match?.[2] || '',
-                valid: true
+                valid: true,
+                itemId: i.itemId,
               };
             });
             setVideoRows(videos);
@@ -117,6 +123,7 @@ export default function MakePage() {
             setUploadedUrls(data.items.map((i: any) => i.url));
             setUploadedThumbUrls(data.items.map((i: any) => i.thumbUrl || ''));
             setFileNames(data.items.map((i: any) => i.name));
+            setUploadedItemIds(data.items.map((i: any) => i.itemId));
           }
         });
     }
@@ -186,6 +193,8 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFileNames([]);
     setUploadedUrls([]);
     setUploadedThumbUrls([]);
+    setUploadedItemIds([]);
+    setReplacements({});
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -208,11 +217,55 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     } else {
       const newUrls = [...uploadedUrls];
       const newNames = [...fileNames];
+      const newItemIds = [...uploadedItemIds];
       newUrls.splice(index, 1);
       newNames.splice(index, 1);
+      newItemIds.splice(index, 1);
       setUploadedUrls(newUrls);
       setFileNames(newNames);
+      setUploadedItemIds(newItemIds);
+      // 교체 예정 파일도 함께 제거
+      setReplacements(prev => {
+        const next = { ...prev };
+        delete next[index];
+        // index보다 큰 키는 한 칸씩 앞으로 이동
+        const shifted: { [k: number]: File } = {};
+        Object.entries(next).forEach(([k, v]) => {
+          const n = Number(k);
+          shifted[n > index ? n - 1 : n] = v;
+        });
+        return shifted;
+      });
     }
+  };
+
+  const handleReplaceClick = (index: number) => {
+    setReplacingIndex(index);
+    replaceFileInputRef.current?.click();
+  };
+
+  const handleReplaceFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || replacingIndex === null) {
+      setReplacingIndex(null);
+      return;
+    }
+    const isMp4 = /\.mp4$/i.test(file.name);
+    const maxSizeMB = isMp4 ? 10 : 20;
+    const isValidSize = file.size <= maxSizeMB * 1024 * 1024;
+    const isValidType =
+      (activeTab === 'image' && /\.(jpe?g|png)$/i.test(file.name)) ||
+      (activeTab === 'gif' && /\.(gif|mp4)$/i.test(file.name));
+
+    if (!isValidSize) {
+      showAlert(`「${file.name}」は${maxSizeMB}MB以下のみアップロード可能です。`, 'error');
+    } else if (!isValidType) {
+      showAlert(`「${file.name}」はサポートされていない形式です。`, 'error');
+    } else {
+      setReplacements(prev => ({ ...prev, [replacingIndex]: file }));
+    }
+    setReplacingIndex(null);
+    if (replaceFileInputRef.current) replaceFileInputRef.current.value = '';
   };
 
   const extractVideoId = (url: string): string | null => {
@@ -295,7 +348,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   };
   
 
-  type UploadItem = { name: string; url: string; type: 'image' | 'gif' | 'youtube'; thumbUrl?: string };
+  type UploadItem = { name: string; url: string; type: 'image' | 'gif' | 'youtube'; thumbUrl?: string; itemId?: string };
 
   const doSave = async (
     allItems: UploadItem[],
@@ -404,16 +457,50 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let items: UploadItem[] = [];
 
     if (activeTab === 'image') {
-      const existingItems: UploadItem[] = uploadedUrls.map((url, i) => ({
-        name: fileNames[i], url, type: 'image',
-      }));
-      const newItems: UploadItem[] = [];
+      const replaceCount = Object.keys(replacements).length;
+      const totalOps = replaceCount + files.length;
+      let opIndex = 0;
 
+      // 기존 항목 처리 (교체 예정 파일이 있으면 업로드)
+      const existingItems: UploadItem[] = [];
+      for (let i = 0; i < uploadedUrls.length; i++) {
+        const replacementFile = replacements[i];
+        if (replacementFile) {
+          opIndex++;
+          setUploadMessage(`画像を変更中 (${opIndex}/${totalOps})`);
+          setUploadProgress(Math.round(opIndex / totalOps * 100));
+          try {
+            const compressedFile = await imageCompression(replacementFile, {
+              maxSizeMB: 2, maxWidthOrHeight: 1024, useWebWorker: true,
+            });
+            const formData = new FormData();
+            formData.append('file', compressedFile);
+            if (gameId) formData.append('folder', String(gameId));
+            const res = await fetch('/api/upload', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (!res.ok || !data.results?.[0]?.url) {
+              failedFiles.push({ fileName: replacementFile.name, reason: data.message || 'アップロード中にエラーが発生しました' });
+              existingItems.push({ name: fileNames[i], url: uploadedUrls[i], type: 'image', ...(uploadedItemIds[i] ? { itemId: uploadedItemIds[i] } : {}) });
+            } else {
+              existingItems.push({ name: fileNames[i], url: data.results[0].url, type: 'image', ...(uploadedItemIds[i] ? { itemId: uploadedItemIds[i] } : {}) });
+            }
+          } catch {
+            failedFiles.push({ fileName: replacementFile.name, reason: '通信エラーが発生しました。接続状況を確認してください' });
+            existingItems.push({ name: fileNames[i], url: uploadedUrls[i], type: 'image', ...(uploadedItemIds[i] ? { itemId: uploadedItemIds[i] } : {}) });
+          }
+        } else {
+          existingItems.push({ name: fileNames[i], url: uploadedUrls[i], type: 'image', ...(uploadedItemIds[i] ? { itemId: uploadedItemIds[i] } : {}) });
+        }
+      }
+
+      // 신규 파일 업로드
+      const newItems: UploadItem[] = [];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const itemName = fileNames[uploadedUrls.length + i] || file.name;
-        setUploadMessage(`画像をアップロード中 (${i + 1}/${files.length})`);
-        setUploadProgress(Math.round((i + 1) / files.length * 100));
+        opIndex++;
+        setUploadMessage(`画像をアップロード中 (${opIndex}/${totalOps})`);
+        setUploadProgress(Math.round(opIndex / totalOps * 100));
         try {
           const compressedFile = await imageCompression(file, {
             maxSizeMB: 2, maxWidthOrHeight: 1024, useWebWorker: true,
@@ -436,17 +523,56 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     }
 
     if (activeTab === 'gif') {
-      const existingItems: UploadItem[] = uploadedUrls.map((url, i) => ({
-        name: fileNames[i], url, type: 'gif',
-        ...(uploadedThumbUrls[i] ? { thumbUrl: uploadedThumbUrls[i] } : {}),
-      }));
-      const newItems: UploadItem[] = [];
+      const replaceCount = Object.keys(replacements).length;
+      const totalOps = replaceCount + files.length;
+      let opIndex = 0;
 
+      // 기존 항목 처리 (교체 예정 파일이 있으면 업로드)
+      const existingItems: UploadItem[] = [];
+      for (let i = 0; i < uploadedUrls.length; i++) {
+        const replacementFile = replacements[i];
+        if (replacementFile) {
+          opIndex++;
+          setUploadMessage(`GIF/MP4を変更中 (${opIndex}/${totalOps})`);
+          setUploadProgress(Math.round(opIndex / totalOps * 100));
+          try {
+            const formData = new FormData();
+            formData.append('file', replacementFile);
+            if (gameId) formData.append('folder', String(gameId));
+            const res = await fetch('/api/upload', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (!res.ok || !data.results?.[0]?.mp4Url) {
+              let reason = data.message || 'アップロード中にエラーが発生しました';
+              if (res.status === 400 && data.message?.includes('10MB')) reason = 'ファイルが大きすぎます（MP4は10MBまで）';
+              else if (res.status === 500) reason = '変換またはアップロード中にエラーが発生しました。しばらく待ってから再試行してください';
+              failedFiles.push({ fileName: replacementFile.name, reason });
+              existingItems.push({ name: fileNames[i], url: uploadedUrls[i], type: 'gif', ...(uploadedThumbUrls[i] ? { thumbUrl: uploadedThumbUrls[i] } : {}), ...(uploadedItemIds[i] ? { itemId: uploadedItemIds[i] } : {}) });
+            } else {
+              existingItems.push({
+                name: fileNames[i],
+                url: data.results[0].mp4Url,
+                type: 'gif',
+                ...(data.results[0].thumbnailUrl ? { thumbUrl: data.results[0].thumbnailUrl } : {}),
+                ...(uploadedItemIds[i] ? { itemId: uploadedItemIds[i] } : {}),
+              });
+            }
+          } catch {
+            failedFiles.push({ fileName: replacementFile.name, reason: '通信エラーが発生しました。接続状況を確認してください' });
+            existingItems.push({ name: fileNames[i], url: uploadedUrls[i], type: 'gif', ...(uploadedThumbUrls[i] ? { thumbUrl: uploadedThumbUrls[i] } : {}), ...(uploadedItemIds[i] ? { itemId: uploadedItemIds[i] } : {}) });
+          }
+        } else {
+          existingItems.push({ name: fileNames[i], url: uploadedUrls[i], type: 'gif', ...(uploadedThumbUrls[i] ? { thumbUrl: uploadedThumbUrls[i] } : {}), ...(uploadedItemIds[i] ? { itemId: uploadedItemIds[i] } : {}) });
+        }
+      }
+
+      // 신규 파일 업로드
+      const newItems: UploadItem[] = [];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const itemName = fileNames[uploadedUrls.length + i] || file.name;
-        setUploadMessage(`GIF/MP4をアップロード中 (${i + 1}/${files.length})`);
-        setUploadProgress(Math.round((i + 1) / files.length * 100));
+        opIndex++;
+        setUploadMessage(`GIF/MP4をアップロード中 (${opIndex}/${totalOps})`);
+        setUploadProgress(Math.round(opIndex / totalOps * 100));
         try {
           const formData = new FormData();
           formData.append('file', file);
@@ -508,6 +634,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             name: row.name,
             url: videoId ? `https://www.youtube.com/embed/${videoId}?start=${row.stime}&end=${row.etime}` : '',
             type: 'youtube' as const,
+            ...(row.itemId ? { itemId: row.itemId } : {}),
           };
         });
     }
@@ -640,11 +767,25 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                 <span style={{ marginLeft: 8 }}>{fileNames.length} ファイル</span>
                 <div style={{ flex: 1 }} />
                 <input type="file" ref={fileInputRef} multiple accept={activeTab === 'image' ? '.jpg,.jpeg,.png' : '.gif,.mp4'} onChange={handleFileChange} style={{ display: 'none' }} />
+                <input type="file" ref={replaceFileInputRef} accept={activeTab === 'image' ? '.jpg,.jpeg,.png' : '.gif,.mp4'} onChange={handleReplaceFileChange} style={{ display: 'none' }} />
               </div>
               {fileNames.map((name, i) => {
                 const isNew = i >= uploadedUrls.length;
                 const file = files[i - uploadedUrls.length];
-                const previewUrl = isNew && file ? URL.createObjectURL(file) : uploadedUrls[i];
+                const replacementFile = !isNew ? replacements[i] : undefined;
+                const isReplacing = !!replacementFile;
+
+                // 미리보기: 교체 예정 파일 > 새 파일 > 기존 URL
+                const previewUrl = isReplacing
+                  ? URL.createObjectURL(replacementFile!)
+                  : isNew && file ? URL.createObjectURL(file)
+                  : uploadedUrls[i];
+
+                const isVideo =
+                  (isReplacing && (replacementFile!.type === 'video/mp4' || /\.mp4$/i.test(replacementFile!.name))) ||
+                  (!isReplacing && isNew && file?.type === 'video/mp4') ||
+                  (!isReplacing && !isNew && previewUrl?.endsWith('.mp4'));
+
                 const isSelected = selectedThumbnails.includes(i);
 
                 return (
@@ -652,16 +793,16 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                     key={i}
                     style={{
                       marginTop: 12,
-                      border: isSelected ? '2px solid #4caf50' : '1px solid #ccc',
+                      border: isReplacing ? '2px solid #f59e0b' : isSelected ? '2px solid #4caf50' : '1px solid #ccc',
                       padding: 10,
                       borderRadius: 8,
                       display: 'flex',
                       alignItems: 'flex-start',
                       gap: 12,
-                      backgroundColor: '#fff',
+                      backgroundColor: isReplacing ? '#fffbeb' : '#fff',
                     }}
                   >
-                    {activeTab === 'gif' && (!isNew && previewUrl?.endsWith('.mp4')) || (isNew && file?.type === 'video/mp4') ? (
+                    {activeTab === 'gif' && isVideo ? (
                       <video
                         src={previewUrl}
                         width={100}
@@ -681,7 +822,6 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                       />
                     )}
 
-
                     <div style={{ flex: 1 }}>
                       <input
                         value={name}
@@ -696,22 +836,62 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
                         }}
                       />
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      {isReplacing && (
+                        <div style={{ fontSize: '0.8rem', color: '#b45309', marginBottom: 4 }}>
+                          変更予定: {replacementFile!.name}
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.85rem' }}>
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => {
-                            if (!isSelected && selectedThumbnails.length >= 2) {
-                              showAlert('代表画像は最大2つまでです。', 'warning');
-                              return;
-                            }
-                            handleThumbnailSelect(i);
-                          }}
-                          style={{ width: 16, height: 16 }}
-                        />
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {
+                              if (!isSelected && selectedThumbnails.length >= 2) {
+                                showAlert('代表画像は最大2つまでです。', 'warning');
+                                return;
+                              }
+                              handleThumbnailSelect(i);
+                            }}
+                            style={{ width: 16, height: 16 }}
+                          />
                           代表画像
                         </label>
+
+                        {!isNew && !isReplacing && (
+                          <button
+                            onClick={() => handleReplaceClick(i)}
+                            style={{
+                              padding: '4px 8px',
+                              fontSize: '0.85rem',
+                              backgroundColor: '#fff7ed',
+                              border: '1px solid #f59e0b',
+                              borderRadius: 4,
+                              cursor: 'pointer',
+                              color: '#b45309',
+                            }}
+                          >
+                            変更
+                          </button>
+                        )}
+
+                        {isReplacing && (
+                          <button
+                            onClick={() => setReplacements(prev => { const n = { ...prev }; delete n[i]; return n; })}
+                            style={{
+                              padding: '4px 8px',
+                              fontSize: '0.85rem',
+                              backgroundColor: '#fef3c7',
+                              border: '1px solid #f59e0b',
+                              borderRadius: 4,
+                              cursor: 'pointer',
+                              color: '#92400e',
+                            }}
+                          >
+                            取消
+                          </button>
+                        )}
 
                         <button
                           onClick={() => handleRemoveFile(i)}

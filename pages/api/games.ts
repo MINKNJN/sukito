@@ -3,6 +3,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { deleteFromS3 } from '@/lib/aws-s3';
+import crypto from 'crypto';
 
 function mergeItemsHistory(original: any[], updates: any[]) {
   const key = (item: any) => `${item.url}-${item.type}`;
@@ -120,7 +121,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         const existingHistory = Array.isArray(game.itemsHistory) ? game.itemsHistory : [];
-        const newItems = Array.isArray(updateData.items) ? updateData.items : [];
+        const newItems = (Array.isArray(updateData.items) ? updateData.items : []).map((item: any) => ({
+          ...item,
+          itemId: item.itemId || crypto.randomUUID(),
+        }));
+        updateData.items = newItems;
 
         // S3削除: 既存にあったが、修正後にはないファイル削除
         try {

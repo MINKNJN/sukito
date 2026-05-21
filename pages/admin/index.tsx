@@ -88,6 +88,8 @@ export default function AdminPage() {
   const [checkResult, setCheckResult] = useState<CheckResult>(null);
   const [gameStatusCounts, setGameStatusCounts] = useState({ pending: 0, approved: 0, rejected: 0 });
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [migrateLoading, setMigrateLoading] = useState<1 | 2 | null>(null);
+  const [migrateResult, setMigrateResult] = useState<{ step: number; message: string; dryRun: boolean } | null>(null);
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -206,6 +208,29 @@ export default function AdminPage() {
       showToast('서버 오류가 발생했습니다.', false);
     } finally {
       setRegenLoading(false);
+    }
+  };
+
+  const handleMigrate = async (step: 1 | 2, dryRun: boolean) => {
+    setMigrateLoading(step);
+    setMigrateResult(null);
+    try {
+      const res = await fetch('/api/admin/migrateItemIds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ step, dryRun }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMigrateResult({ step, message: data.message, dryRun });
+        showToast(data.message);
+      } else {
+        showToast(data.message || '실패했습니다.', false);
+      }
+    } catch {
+      showToast('서버 오류가 발생했습니다.', false);
+    } finally {
+      setMigrateLoading(null);
     }
   };
 
@@ -501,6 +526,34 @@ export default function AdminPage() {
                             <button onClick={() => approveGame(g._id, 'reject', 'items')} style={smBtn('#fee2e2', '#dc2626')}>반려(항목수정)</button>
                           </div>
                         ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* itemId 마이그레이션 */}
+                  <div style={{ padding: '14px 16px', background: '#fff7ed', borderRadius: 8, border: '1px solid #fed7aa' }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: '#c2410c', marginBottom: 4 }}>itemId 마이그레이션</div>
+                    <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>
+                      기존 게임 항목·전적 데이터에 식별자(itemId)를 부여합니다.<br />
+                      1단계: 게임 항목에 itemId 추가 → 2단계: 전적/배틀 기록에 itemId 매칭
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                      <button onClick={() => handleMigrate(1, true)} disabled={migrateLoading !== null} style={{ ...smBtn('#fef3c7', '#92400e'), border: '1px solid #fcd34d', whiteSpace: 'nowrap', cursor: migrateLoading !== null ? 'default' : 'pointer' }}>
+                        {migrateLoading === 1 ? '처리 중...' : '1단계 DryRun'}
+                      </button>
+                      <button onClick={() => doConfirm('1단계를 실행합니다. 게임 항목에 itemId가 저장됩니다.', () => { setConfirm(null); handleMigrate(1, false); })} disabled={migrateLoading !== null} style={{ ...smBtn('#ffedd5', '#c2410c'), border: '1px solid #fed7aa', whiteSpace: 'nowrap', cursor: migrateLoading !== null ? 'default' : 'pointer' }}>
+                        1단계 실행
+                      </button>
+                      <button onClick={() => handleMigrate(2, true)} disabled={migrateLoading !== null} style={{ ...smBtn('#fef3c7', '#92400e'), border: '1px solid #fcd34d', whiteSpace: 'nowrap', cursor: migrateLoading !== null ? 'default' : 'pointer' }}>
+                        {migrateLoading === 2 ? '처리 중...' : '2단계 DryRun'}
+                      </button>
+                      <button onClick={() => doConfirm('2단계를 실행합니다. 전적·배틀 기록에 itemId가 매칭됩니다.', () => { setConfirm(null); handleMigrate(2, false); })} disabled={migrateLoading !== null} style={{ ...smBtn('#ffedd5', '#c2410c'), border: '1px solid #fed7aa', whiteSpace: 'nowrap', cursor: migrateLoading !== null ? 'default' : 'pointer' }}>
+                        2단계 실행
+                      </button>
+                    </div>
+                    {migrateResult && (
+                      <div style={{ fontSize: 13, color: migrateResult.dryRun ? '#92400e' : '#15803d', marginTop: 4, padding: '6px 10px', background: migrateResult.dryRun ? '#fef9c3' : '#f0fdf4', borderRadius: 6 }}>
+                        {migrateResult.message}
                       </div>
                     )}
                   </div>

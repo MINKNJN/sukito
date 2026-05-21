@@ -36,8 +36,8 @@ export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  const [winner, setWinner] = useState<{ name: string; url: string } | null>(null);
-  const [ranking, setRanking] = useState<{ name: string; url: string; count: number; battleWins: number; battleRate: number }[]>([]);
+  const [winner, setWinner] = useState<{ name: string; url: string; itemId?: string } | null>(null);
+  const [ranking, setRanking] = useState<{ name: string; url: string; count: number; battleWins: number; battleRate: number; itemId?: string }[]>([]);
   const [totalPlays, setTotalPlays] = useState<number>(0);
   const [totalBattles, setTotalBattles] = useState<number>(0);
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -182,7 +182,8 @@ export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
   };
 
   const winnerRank = ranking.findIndex(r => r.name === winner?.name && r.url === winner?.url) + 1;
-  const top10 = ranking.slice(0, 10);
+  const [visibleCount, setVisibleCount] = useState(10);
+  const visibleRanking = ranking.slice(0, visibleCount);
   const filteredRanking = ranking.filter(item => item.name.includes(searchKeyword));
 
   const handleCommentSubmit = async () => {
@@ -517,7 +518,7 @@ export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
           <h1>
             {searchKeyword
               ? `「${searchKeyword}」の検索結果 (${filteredRanking.length}件)`
-              : '総合ランキング (Top 10)'}
+              : '総合ランキング'}
           </h1>
           <input 
             type="text" 
@@ -535,7 +536,7 @@ export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
             }} 
           />
         </div>
-        {(searchKeyword ? filteredRanking : top10).length > 0 ? (
+        {(searchKeyword ? filteredRanking : visibleRanking).length > 0 ? (
           <div style={{ overflowX: 'auto', marginBottom: 24 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: isMobile ? 280 : undefined }}>
               <thead>
@@ -548,7 +549,7 @@ export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
                 </tr>
               </thead>
               <tbody>
-                {(searchKeyword ? filteredRanking : top10).map((item, idx) => {
+                {(searchKeyword ? filteredRanking : visibleRanking).map((item, idx) => {
                   const rankIndex = ranking.findIndex(r => r.name === item.name && r.url === item.url);
                   const percentage = totalPlays ? (item.count / totalPlays * 100).toFixed(2) : '0';
                   return (
@@ -602,6 +603,17 @@ export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
             </table>
           </div>
         ) : <p>まだプレイ履歴がありません。</p>}
+
+        {!searchKeyword && visibleCount < ranking.length && (
+          <div style={{ textAlign: 'center', marginBottom: 16 }}>
+            <button
+              onClick={() => setVisibleCount(v => v + 10)}
+              style={{ padding: '10px 32px', fontSize: '0.95rem', borderRadius: 8, border: '1px solid #ccc', background: '#f5f5f5', cursor: 'pointer' }}
+            >
+              もっと見る ({visibleCount}/{ranking.length})
+            </button>
+          </div>
+        )}
 
         <div style={{ width: '100%', height: 100, border: '2px dashed #ccc', margin: '20px 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <GoogleAd />

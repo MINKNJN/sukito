@@ -15,6 +15,7 @@ interface GameItem {
   url: string;
   type: 'image' | 'gif' | 'youtube';
   thumbUrl?: string;
+  itemId?: string;
 }
 
 interface Game {
@@ -117,6 +118,7 @@ const PlayPage: NextPage<PlayPageProps> = ({ game, ogThumbnail }) => {
   const [selectedSide, setSelectedSide] = useState<'left' | 'right' | null>(null);
   const isAnimatingRef = useRef(false);
   const [loading, setLoading] = useState(false);
+  const [showInterruptModal, setShowInterruptModal] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('sukito_game');
@@ -144,6 +146,21 @@ const PlayPage: NextPage<PlayPageProps> = ({ game, ogThumbnail }) => {
     }
     setLoading(false);
   }, [game]);
+
+  // 다른 탭에서 새 게임이 시작되면 현재 탭 게임 중단
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key !== 'sukito_game' || !e.newValue) return;
+      try {
+        const parsed = JSON.parse(e.newValue);
+        if (parsed.gameId !== game?._id) {
+          setShowInterruptModal(true);
+        }
+      } catch {}
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [game, router]);
 
   useLayoutEffect(() => {
     if (isPlaying) {
@@ -202,7 +219,13 @@ const PlayPage: NextPage<PlayPageProps> = ({ game, ogThumbnail }) => {
     fetch('/api/battles', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ gameId: game._id, winnerName: winner.name, winnerUrl: winner.url, loserName: loser.name, loserUrl: loser.url }),
+      body: JSON.stringify({
+        gameId: game._id,
+        winnerName: winner.name, winnerUrl: winner.url,
+        loserName: loser.name, loserUrl: loser.url,
+        ...(winner.itemId ? { winnerItemId: winner.itemId } : {}),
+        ...(loser.itemId ? { loserItemId: loser.itemId } : {}),
+      }),
     }).catch(() => {});
 
     setTimeout(() => {
@@ -224,9 +247,10 @@ const PlayPage: NextPage<PlayPageProps> = ({ game, ogThumbnail }) => {
                 gameId: game._id,
                 winnerName: winner.name,
                 winnerUrl: winner.url,
+                ...(winner.itemId ? { winnerItemId: winner.itemId } : {}),
               }),
             });
-            localStorage.setItem(`sukito_winner_${game._id}`, JSON.stringify(winner));
+            localStorage.setItem(`sukito_winner_${game._id}`, JSON.stringify({ name: winner.name, url: winner.url, itemId: winner.itemId }));
           } catch (e) {
             // 오류 무시
           }
@@ -267,6 +291,23 @@ const PlayPage: NextPage<PlayPageProps> = ({ game, ogThumbnail }) => {
   if (!isPlaying) {
     return (
       <>
+        {showInterruptModal && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ background: '#fff', borderRadius: 16, padding: '36px 32px', maxWidth: 360, width: '90%', textAlign: 'center', boxShadow: '0 8px 32px rgba(0,0,0,0.25)' }}>
+              <p style={{ fontSize: '1rem', lineHeight: 1.7, marginBottom: 24, color: '#333' }}>
+                他のタブで新しいゲームが始まりました。<br />
+                同時に複数のゲームを進めることはできません。<br />
+                このゲームは中断されます。
+              </p>
+              <button
+                onClick={() => router.push('/')}
+                style={{ padding: '10px 32px', fontSize: '1rem', fontWeight: 'bold', background: '#e53e3e', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}
+              >
+                確認
+              </button>
+            </div>
+          </div>
+        )}
         <Header />
         <Head>
           <title>{game.title} - トーナメント開始 | スキト</title>
@@ -362,7 +403,7 @@ const PlayPage: NextPage<PlayPageProps> = ({ game, ogThumbnail }) => {
                 {availableRounds.map(r => (
                   <option key={r} value={r}>ベスト{r}</option>
                 ))}
-                <option value={-1}>すべての候補でトーナメントを始める</option>
+                <option value={-1}>ベスト{game.items.length}</option>
               </select>
 
               <p>
@@ -582,6 +623,23 @@ const PlayPage: NextPage<PlayPageProps> = ({ game, ogThumbnail }) => {
 
   return (
     <>
+      {showInterruptModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: '36px 32px', maxWidth: 420, width: '90%', textAlign: 'center', boxShadow: '0 8px 32px rgba(0,0,0,0.25)' }}>
+            <p style={{ fontSize: '1rem', lineHeight: 1.7, marginBottom: 24, color: '#333' }}>
+              他のタブで新しいゲームが始まりました。<br />
+              同時に複数のゲームを進めることはできません。<br />
+              このゲームは中断されます。
+            </p>
+            <button
+              onClick={() => router.push('/')}
+              style={{ padding: '10px 32px', fontSize: '1rem', fontWeight: 'bold', background: '#e53e3e', color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer' }}
+            >
+              確認
+            </button>
+          </div>
+        </div>
+      )}
       <Header />
       <Head>
         <title>{`${game.title} - ${left?.name || ''} vs ${right?.name || ''} | スキト`}</title>
@@ -725,6 +783,7 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
             url: item.url,
             type: item.type || 'image',
             thumbUrl: item.thumbUrl ?? null,
+            ...(item.itemId ? { itemId: item.itemId } : {}),
           })),
           thumbnails,
         },

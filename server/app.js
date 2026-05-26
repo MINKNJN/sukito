@@ -208,7 +208,37 @@ app.get('/download/:filename', (req, res) => {
   }
 });
 
-// MP4 URL을 ffprobe로 체크 → 재인코딩 필요 여부 반환
+// MP4 첫 1KB로 faststart(moov atom 위치) 판별
+function checkFaststart(mp4Url) {
+  return new Promise((resolve) => {
+    const https = require('https');
+    const http = require('http');
+    const protocol = mp4Url.startsWith('https') ? https : http;
+    const req = protocol.get(mp4Url, { headers: { Range: 'bytes=0-1023' } }, (response) => {
+      const chunks = [];
+      response.on('data', (chunk) => chunks.push(chunk));
+      response.on('end', () => {
+        try {
+          const buf = Buffer.concat(chunks);
+          let offset = 0;
+          while (offset + 8 <= buf.length) {
+            const size = buf.readUInt32BE(offset);
+            const type = buf.slice(offset + 4, offset + 8).toString('ascii');
+            if (type === 'moov') { resolve(true); return; }
+            if (type === 'mdat') { resolve(false); return; }
+            if (size < 8) break;
+            offset += (size === 1 ? 16 : size); // size=1 은 64bit extended box
+          }
+          resolve(true); // 판별 불가 시 문제없음으로 간주
+        } catch { resolve(true); }
+      });
+    });
+    req.on('error', () => resolve(true));
+    req.setTimeout(5000, () => { req.destroy(); resolve(true); });
+  });
+}
+
+// MP4 URL을 ffprobe + faststart 체크 → 재인코딩 필요 여부 반환
 app.post('/check-mp4', async (req, res) => {
   const { mp4Url } = req.body;
   if (!mp4Url || typeof mp4Url !== 'string') {
@@ -217,14 +247,20 @@ app.post('/check-mp4', async (req, res) => {
 
   try {
     const safeUrl = mp4Url.replace(/"/g, '');
+
+    // 코덱 + 픽셀 포맷 확인
     const command = `ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,pix_fmt -of json "${safeUrl}"`;
     const { stdout } = await execAsync(command, { timeout: 15000 });
     const info = JSON.parse(stdout);
     const stream = info.streams?.[0];
     const codec = stream?.codec_name;
     const pixFmt = stream?.pix_fmt;
-    const needsReencode = codec !== 'h264' || pixFmt !== 'yuv420p';
-    res.json({ success: true, data: { codec, pixFmt, needsReencode } });
+
+    // faststart 확인 (moov가 mdat보다 앞에 있는지)
+    const hasFaststart = await checkFaststart(mp4Url);
+
+    const needsReencode = codec !== 'h264' || pixFmt !== 'yuv420p' || !hasFaststart;
+    res.json({ success: true, data: { codec, pixFmt, hasFaststart, needsReencode } });
   } catch (error) {
     console.error('/check-mp4 오류:', error);
     res.status(500).json({ success: false, message: 'FFprobeチェック失敗' });

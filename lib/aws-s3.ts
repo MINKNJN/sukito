@@ -44,6 +44,18 @@ export async function uploadToS3(filepath: string, originalFilename: string, mim
   }
 }
 
+// 지정한 키로 S3에 업로드 (기존 파일 덮어쓰기용)
+export async function uploadToS3WithKey(filepath: string, key: string, mimeType: string): Promise<string> {
+  const fileContent = fs.readFileSync(filepath);
+  await s3.upload({
+    Bucket: process.env.S3_BUCKET!,
+    Key: key,
+    Body: fileContent,
+    ContentType: mimeType,
+  }).promise();
+  return `${process.env.CLOUDFRONT_URL}/${key}`;
+}
+
 // S3에서 파일 삭제
 export async function deleteFromS3(urlOrKey: string): Promise<void> {
   try {

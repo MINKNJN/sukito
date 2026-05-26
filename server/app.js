@@ -208,6 +208,121 @@ app.get('/download/:filename', (req, res) => {
   }
 });
 
+// MP4 URL을 ffprobe로 체크 → 재인코딩 필요 여부 반환
+app.post('/check-mp4', async (req, res) => {
+  const { mp4Url } = req.body;
+  if (!mp4Url || typeof mp4Url !== 'string') {
+    return res.status(400).json({ success: false, message: 'mp4Url이 필요합니다.' });
+  }
+
+  try {
+    const safeUrl = mp4Url.replace(/"/g, '');
+    const command = `ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,pix_fmt -of json "${safeUrl}"`;
+    const { stdout } = await execAsync(command, { timeout: 15000 });
+    const info = JSON.parse(stdout);
+    const stream = info.streams?.[0];
+    const codec = stream?.codec_name;
+    const pixFmt = stream?.pix_fmt;
+    const needsReencode = codec !== 'h264' || pixFmt !== 'yuv420p';
+    res.json({ success: true, data: { codec, pixFmt, needsReencode } });
+  } catch (error) {
+    console.error('/check-mp4 오류:', error);
+    res.status(500).json({ success: false, message: 'FFprobeチェック失敗' });
+  }
+});
+
+// MP4 파일 직접 업로드 후 재인코딩 (upload.ts에서 호출)
+app.post('/reencode-upload', uploadMp4.single('mp4'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'MP4 파일을 업로드해주세요.' });
+  }
+
+  const inputPath = req.file.path;
+  const baseName = path.parse(req.file.filename).name;
+  const outputFileName = baseName + '_reencoded.mp4';
+  const outputPath = path.join(outputDir, outputFileName);
+  const thumbnailFileName = baseName + '_thumb.jpg';
+  const thumbnailPath = path.join(outputDir, thumbnailFileName);
+
+  try {
+    const reencodeCommand = `ffmpeg -i "${inputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -preset fast -crf 23 -an "${outputPath}"`;
+    await execAsync(reencodeCommand);
+    cleanupFiles(inputPath);
+
+    const thumbSuccess = await extractThumbnail(outputPath, thumbnailPath);
+
+    res.json({
+      success: true,
+      data: {
+        downloadUrl: `/download/${outputFileName}`,
+        thumbnailDownloadUrl: thumbSuccess ? `/download/${thumbnailFileName}` : null,
+      }
+    });
+  } catch (error) {
+    console.error('/reencode-upload 오류:', error);
+    cleanupFiles(inputPath);
+    cleanupFiles(outputPath);
+    res.status(500).json({ success: false, message: '재인코딩 중 오류가 발생했습니다.' });
+  }
+});
+
+// MP4 재인코딩 API (모바일 호환: yuv420p + faststart)
+app.post('/reencode', async (req, res) => {
+  const { mp4Url, filename } = req.body;
+  if (!mp4Url || !filename) {
+    return res.status(400).json({ success: false, message: 'mp4Url과 filename이 필요합니다.' });
+  }
+
+  const tempInputPath = path.join(uploadDir, filename + '_input.mp4');
+  const outputFileName = filename + '_reencoded.mp4';
+  const outputPath = path.join(outputDir, outputFileName);
+  const thumbnailFileName = filename + '_thumb.jpg';
+  const thumbnailPath = path.join(outputDir, thumbnailFileName);
+
+  try {
+    // MP4 다운로드
+    const https = require('https');
+    const http = require('http');
+    const protocol = mp4Url.startsWith('https') ? https : http;
+
+    await new Promise((resolve, reject) => {
+      const file = fs.createWriteStream(tempInputPath);
+      protocol.get(mp4Url, (response) => {
+        response.pipe(file);
+        file.on('finish', () => { file.close(); resolve(); });
+      }).on('error', (err) => {
+        fs.unlink(tempInputPath, () => {});
+        reject(err);
+      });
+    });
+
+    // FFmpeg 재인코딩 (모바일 호환 설정)
+    const reencodeCommand = `ffmpeg -i "${tempInputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -preset fast -crf 23 -an "${outputPath}"`;
+    await execAsync(reencodeCommand);
+    cleanupFiles(tempInputPath);
+
+    // 썸네일 추출
+    const thumbSuccess = await extractThumbnail(outputPath, thumbnailPath);
+
+    const stats = fs.statSync(outputPath);
+    const fileSize = (stats.size / (1024 * 1024)).toFixed(2);
+
+    res.json({
+      success: true,
+      data: {
+        downloadUrl: `/download/${outputFileName}`,
+        thumbnailDownloadUrl: thumbSuccess ? `/download/${thumbnailFileName}` : null,
+        fileSize: fileSize + ' MB',
+      }
+    });
+  } catch (error) {
+    console.error('/reencode 오류:', error);
+    cleanupFiles(tempInputPath);
+    cleanupFiles(outputPath);
+    res.status(500).json({ success: false, message: '재인코딩 중 오류가 발생했습니다.' });
+  }
+});
+
 // MP4 URL에서 첫 프레임 추출 API (기존 게임 썸네일 재생성용)
 app.post('/extract-thumbnail-from-url', async (req, res) => {
   const { mp4Url, filename } = req.body;

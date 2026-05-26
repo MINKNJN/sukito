@@ -90,6 +90,8 @@ export default function AdminPage() {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [migrateLoading, setMigrateLoading] = useState<1 | 2 | null>(null);
   const [migrateResult, setMigrateResult] = useState<{ step: number; message: string; dryRun: boolean } | null>(null);
+  const [reencodeLoading, setReencodeLoading] = useState(false);
+  const [reencodeResult, setReencodeResult] = useState<{ message: string; dryRun: boolean; count?: number; successCount?: number; failCount?: number; errors?: string[] } | null>(null);
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -208,6 +210,25 @@ export default function AdminPage() {
       showToast('서버 오류가 발생했습니다.', false);
     } finally {
       setRegenLoading(false);
+    }
+  };
+
+  const handleReencode = async (dryRun: boolean) => {
+    setReencodeLoading(true);
+    setReencodeResult(null);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/admin/reencodeMp4', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ dryRun }),
+      });
+      const data = await res.json();
+      setReencodeResult({ message: data.message, dryRun, count: data.count, successCount: data.successCount, failCount: data.failCount, errors: data.errors });
+    } catch {
+      setReencodeResult({ message: 'エラーが発生しました', dryRun });
+    } finally {
+      setReencodeLoading(false);
     }
   };
 
@@ -554,6 +575,43 @@ export default function AdminPage() {
                     {migrateResult && (
                       <div style={{ fontSize: 13, color: migrateResult.dryRun ? '#92400e' : '#15803d', marginTop: 4, padding: '6px 10px', background: migrateResult.dryRun ? '#fef9c3' : '#f0fdf4', borderRadius: 6 }}>
                         {migrateResult.message}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* MP4 재인코딩 */}
+                  <div style={{ padding: '12px 16px', borderTop: '1px solid #f3f4f6' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: '#374151' }}>MP4 再エンコード（モバイル対応）</div>
+                    <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>
+                      기존 MP4 항목을 yuv420p + faststart 재인코딩 → 모바일 검은 화면 수정
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                      <button
+                        onClick={() => handleReencode(true)}
+                        disabled={reencodeLoading}
+                        style={{ ...smBtn('#fef3c7', '#92400e'), border: '1px solid #fcd34d', whiteSpace: 'nowrap', cursor: reencodeLoading ? 'default' : 'pointer' }}
+                      >
+                        {reencodeLoading ? '처리 중...' : 'DryRun (대상 확인)'}
+                      </button>
+                      <button
+                        onClick={() => doConfirm('기존 MP4 파일을 모두 재인코딩합니다. 시간이 걸릴 수 있습니다.', () => { setConfirm(null); handleReencode(false); })}
+                        disabled={reencodeLoading}
+                        style={{ ...smBtn('#ffedd5', '#c2410c'), border: '1px solid #fed7aa', whiteSpace: 'nowrap', cursor: reencodeLoading ? 'default' : 'pointer' }}
+                      >
+                        실행
+                      </button>
+                    </div>
+                    {reencodeResult && (
+                      <div style={{ fontSize: 13, marginTop: 4, padding: '6px 10px', background: reencodeResult.dryRun ? '#fef9c3' : '#f0fdf4', borderRadius: 6 }}>
+                        <div style={{ color: reencodeResult.dryRun ? '#92400e' : '#15803d' }}>{reencodeResult.message}</div>
+                        {!reencodeResult.dryRun && reencodeResult.errors && reencodeResult.errors.length > 0 && (
+                          <details style={{ marginTop: 4 }}>
+                            <summary style={{ cursor: 'pointer', fontSize: 12, color: '#dc2626' }}>실패 목록 ({reencodeResult.errors.length}건)</summary>
+                            <ul style={{ margin: '4px 0 0', paddingLeft: 16, fontSize: 12, color: '#dc2626' }}>
+                              {reencodeResult.errors.map((e, i) => <li key={i}>{e}</li>)}
+                            </ul>
+                          </details>
+                        )}
                       </div>
                     )}
                   </div>

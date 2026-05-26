@@ -8,7 +8,6 @@ import { convertToThumbnail } from '@/lib/utils';
 import { getStorageWithExpire } from '@/lib/utils';
 import GoogleAd from '@/components/GoogleAd';
 import { useAlert } from '@/lib/alert';
-import { getRandomComment } from '@/lib/commentTemplates';
 import { trackResultShare } from '@/lib/tracking';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
@@ -18,6 +17,7 @@ interface SsrData {
   gameDesc: string;
   ssrWinner: { name: string; url: string } | null;
   ogImage: string;
+  itemNames: string[];
 }
 
 interface ResultPageProps {
@@ -64,10 +64,12 @@ export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/result?id=${id}` : '';
   const COMMENTS_PER_PAGE = 20;
 
-  // 랜덤 기본 코멘트 설정 함수
+  const itemNames = ssrData?.itemNames ?? [];
+
   const setRandomDefaultComment = () => {
-    const randomComment = getRandomComment();
-    setCommentContent(randomComment);
+    if (itemNames.length === 0) return;
+    const randomName = itemNames[Math.floor(Math.random() * itemNames.length)];
+    setCommentContent(randomName);
   };
 
   useEffect(() => {
@@ -145,8 +147,17 @@ export default function ResultPage({ ssrData, gameId }: ResultPageProps) {
       setSessionId(guestSessionId);
     }
 
-    // 기본 코멘트 설정
-    setRandomDefaultComment();
+    // 기본 코멘트: 플레이한 winner 이름 → 없으면 랜덤 아이템 이름
+    const localForComment = localStorage.getItem(`sukito_winner_${id}`);
+    let defaultComment = '';
+    if (localForComment) {
+      try {
+        const parsed = JSON.parse(localForComment);
+        if (parsed?.name) defaultComment = parsed.name;
+      } catch {}
+    }
+    if (!defaultComment) setRandomDefaultComment();
+    else setCommentContent(defaultComment);
   }, [id]);
 
   const fetchComments = async (page = 1) => {
@@ -991,6 +1002,10 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
       ogImage = thumbUrl || (winnerUrl.endsWith('.mp4') ? 'https://sukito.net/og-image.jpg' : winnerUrl);
     }
 
+    const itemNames: string[] = (game?.items ?? [])
+      .map((item: any) => item.name)
+      .filter((name: any) => typeof name === 'string' && name.trim() !== '');
+
     return {
       props: {
         gameId: id,
@@ -999,6 +1014,7 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
           gameDesc: game?.desc ?? '',
           ssrWinner,
           ogImage,
+          itemNames,
         },
       },
     };

@@ -24,29 +24,44 @@ const getUploadDir = () => {
   return os.tmpdir(); // OS 기본 임시 디렉토리 사용 (Windows 호환)
 };
 
-// EC2 서버로 MP4 썸네일만 추출
-async function extractThumbFromMp4OnEC2(filepath: string, originalFilename: string): Promise<string | null> {
+// EC2 서버로 MP4 재인코딩 (yuv420p + faststart) + 썸네일 추출
+async function reencodeAndThumbOnEC2(filepath: string, originalFilename: string): Promise<{ mp4Path: string; thumbPath: string | null }> {
   const axios = require('axios');
-  const FormData = require('form-data');
 
+  const mp4Url = `file://${filepath}`; // EC2가 로컬 파일에 접근할 수 없으므로 S3에 먼저 임시 업로드가 필요
+  // 대신 CloudFront URL을 전달하는 방식 대신, 파일을 직접 multipart로 전송
+  const FormData = require('form-data');
   const formData = new FormData();
   const fileBuffer = fs.readFileSync(filepath);
   formData.append('mp4', fileBuffer, { filename: originalFilename, contentType: 'video/mp4' });
 
-  const response = await axios.post(`${EC2_SERVER_URL}/thumbnail`, formData, {
+  // /reencode-upload 엔드포인트: 파일을 받아 재인코딩 후 반환
+  const response = await axios.post(`${EC2_SERVER_URL}/reencode-upload`, formData, {
     headers: { ...formData.getHeaders() },
-    timeout: 30000,
+    timeout: 120000,
     maxContentLength: 15 * 1024 * 1024,
     maxBodyLength: 15 * 1024 * 1024,
   });
 
   const result = response.data;
-  if (!result.success) return null;
+  if (!result.success) throw new Error(result.message || '再エンコード失敗');
 
-  const thumbResponse = await axios.get(`${EC2_SERVER_URL}${result.data.thumbnailDownloadUrl}`, { responseType: 'arraybuffer', timeout: 30000 });
-  const thumbPath = filepath.replace(/\.mp4$/i, '_thumb.jpg');
-  fs.writeFileSync(thumbPath, Buffer.from(thumbResponse.data));
-  return thumbPath;
+  // 재인코딩된 MP4 다운로드
+  const mp4Response = await axios.get(`${EC2_SERVER_URL}${result.data.downloadUrl}`, { responseType: 'arraybuffer', timeout: 60000 });
+  const mp4Path = filepath.replace(/\.mp4$/i, '_reencoded.mp4');
+  fs.writeFileSync(mp4Path, Buffer.from(mp4Response.data));
+
+  // 썸네일 다운로드
+  let thumbPath: string | null = null;
+  if (result.data.thumbnailDownloadUrl) {
+    try {
+      const thumbResponse = await axios.get(`${EC2_SERVER_URL}${result.data.thumbnailDownloadUrl}`, { responseType: 'arraybuffer', timeout: 30000 });
+      thumbPath = filepath.replace(/\.mp4$/i, '_thumb.jpg');
+      fs.writeFileSync(thumbPath, Buffer.from(thumbResponse.data));
+    } catch {}
+  }
+
+  return { mp4Path, thumbPath };
 }
 
 // EC2 서버로 GIF 변환 + 썸네일 추출 요청
@@ -166,18 +181,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           folder = String(fields.folder);
         }
 
-        // MP4 분기: 변환 없이 S3 직접 업로드 + EC2에서 썸네일만 추출
+        // MP4 분기: EC2에서 재인코딩(yuv420p+faststart) + 썸네일 추출 후 S3 저장
         if (isMp4) {
+          let reencodedPath: string | null = null;
           let thumbPath: string | null = null;
           try {
             const baseName = originalFilename.replace(/\.mp4$/i, '');
-            const mp4Url = await uploadToS3(filepath, originalFilename, 'video/mp4', folder);
+            const result = await reencodeAndThumbOnEC2(filepath, originalFilename);
+            reencodedPath = result.mp4Path;
+            thumbPath = result.thumbPath;
 
-            try {
-              thumbPath = await extractThumbFromMp4OnEC2(filepath, originalFilename);
-            } catch {
-              // 썸네일 추출 실패해도 mp4 업로드는 유지
-            }
+            const mp4Url = await uploadToS3(reencodedPath, originalFilename, 'video/mp4', folder);
 
             let thumbnailUrl: string | undefined;
             if (thumbPath && fs.existsSync(thumbPath)) {
@@ -188,6 +202,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           } finally {
             try {
               if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+              if (reencodedPath && fs.existsSync(reencodedPath)) fs.unlinkSync(reencodedPath);
               if (thumbPath && fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath);
             } catch {}
           }

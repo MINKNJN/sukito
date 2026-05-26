@@ -248,7 +248,7 @@ app.post('/check-mp4', async (req, res) => {
   try {
     const safeUrl = mp4Url.replace(/"/g, '');
 
-    // 코덱 + 픽셀 포맷 확인
+    // 비디오 코덱 + 픽셀 포맷 확인
     const command = `ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,pix_fmt -of json "${safeUrl}"`;
     const { stdout } = await execAsync(command, { timeout: 15000 });
     const info = JSON.parse(stdout);
@@ -256,11 +256,17 @@ app.post('/check-mp4', async (req, res) => {
     const codec = stream?.codec_name;
     const pixFmt = stream?.pix_fmt;
 
+    // 오디오 트랙 존재 여부 확인 (있으면 iOS Safari autoplay 불가)
+    const audioCmd = `ffprobe -v error -select_streams a -show_entries stream=codec_type -of json "${safeUrl}"`;
+    const { stdout: audioOut } = await execAsync(audioCmd, { timeout: 15000 });
+    const audioInfo = JSON.parse(audioOut);
+    const hasAudio = (audioInfo.streams?.length || 0) > 0;
+
     // faststart 확인 (moov가 mdat보다 앞에 있는지)
     const hasFaststart = await checkFaststart(mp4Url);
 
-    const needsReencode = codec !== 'h264' || pixFmt !== 'yuv420p' || !hasFaststart;
-    res.json({ success: true, data: { codec, pixFmt, hasFaststart, needsReencode } });
+    const needsReencode = codec !== 'h264' || pixFmt !== 'yuv420p' || hasAudio || !hasFaststart;
+    res.json({ success: true, data: { codec, pixFmt, hasAudio, hasFaststart, needsReencode } });
   } catch (error) {
     console.error('/check-mp4 오류:', error);
     res.status(500).json({ success: false, message: 'FFprobeチェック失敗' });

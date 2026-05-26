@@ -21,35 +21,6 @@ function extractS3Key(url: string): string | null {
   return null;
 }
 
-// ffprobe로 재인코딩 필요 여부 확인 (10개씩 병렬 처리)
-async function filterNeedsReencode(
-  targets: { gameId: string; gameTitle: string; itemName: string; mp4Url: string; thumbUrl?: string }[]
-) {
-  const CONCURRENCY = 10;
-  const result: typeof targets = [];
-
-  for (let i = 0; i < targets.length; i += CONCURRENCY) {
-    const batch = targets.slice(i, i + CONCURRENCY);
-    const checks = await Promise.all(
-      batch.map(async (target) => {
-        try {
-          const res = await axios.post(
-            `${EC2_SERVER_URL}/check-mp4`,
-            { mp4Url: target.mp4Url },
-            { timeout: 15000 }
-          );
-          return { target, needsReencode: res.data?.data?.needsReencode ?? true };
-        } catch {
-          // 체크 실패 시 재인코딩 대상으로 포함
-          return { target, needsReencode: true };
-        }
-      })
-    );
-    checks.filter((c) => c.needsReencode).forEach((c) => result.push(c.target));
-  }
-
-  return result;
-}
 
 async function reencodeViaEC2(
   mp4Url: string,
@@ -123,16 +94,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(503).json({ message: `EC2サーバーに接続できません: ${e?.message || String(e)}` });
     }
 
-    // ffprobe로 실제 재인코딩 필요 파일만 필터링
-    const targets = await filterNeedsReencode(candidates);
+    const targets = candidates;
 
     if (dryRun) {
       return res.status(200).json({
         dryRun: true,
-        totalCandidates: candidates.length,
         count: targets.length,
-        targets: targets.map((t) => ({ gameTitle: t.gameTitle, itemName: t.itemName, mp4Url: t.mp4Url })),
-        message: `[DryRun] 전체 ${candidates.length}件 중 재인코딩 필요 ${targets.length}件`,
+        targets: targets.map((t: typeof candidates[0]) => ({ gameTitle: t.gameTitle, itemName: t.itemName, mp4Url: t.mp4Url })),
+        message: `[DryRun] ${targets.length}件のMP4を再エンコードします`,
       });
     }
 

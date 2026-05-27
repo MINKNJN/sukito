@@ -181,6 +181,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     if (err) {
       console.error('[upload] formidable parse error:', err);
+      try {
+        fs.appendFileSync('/tmp/upload-debug.log', `[${new Date().toISOString()}] FORM_ERR: ${err?.message}\n${err?.stack}\n---\n`);
+      } catch {}
       return res.status(500).json({ message: 'アップロード中にエラーが発生しました。' });
     }
 
@@ -311,6 +314,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } catch (error: any) {
       console.error('[upload] catch error:', error?.message || error);
       console.error('[upload] stack:', error?.stack);
+      try {
+        fs.appendFileSync('/tmp/upload-debug.log', `[${new Date().toISOString()}] ERROR: ${error?.message}\n${error?.stack}\n---\n`);
+      } catch {}
 
       // 구체적인 에러 메시지 제공
       let errorMessage = 'アップロード中にエラーが発生しました。';

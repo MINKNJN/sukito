@@ -24,6 +24,53 @@ const getUploadDir = () => {
   return os.tmpdir(); // OS 기본 임시 디렉토리 사용 (Windows 호환)
 };
 
+// 로컬 MP4 파일의 H.264 level 확인 (ffprobe 직접 실행)
+async function checkLocalMp4Level(filepath: string): Promise<number> {
+  const { execFile } = require('child_process');
+  const { promisify } = require('util');
+  const execFileAsync = promisify(execFile);
+  try {
+    const { stdout } = await execFileAsync('ffprobe', [
+      '-v', 'error',
+      '-select_streams', 'v:0',
+      '-show_entries', 'stream=level',
+      '-of', 'json',
+      filepath,
+    ], { timeout: 10000 });
+    const info = JSON.parse(stdout);
+    return info.streams?.[0]?.level ?? 0;
+  } catch {
+    return 999; // 체크 실패 시 재인코딩 필요로 간주 (안전하게)
+  }
+}
+
+// EC2 서버에서 썸네일만 추출 (재인코딩 없이)
+async function extractThumbOnlyOnEC2(filepath: string, originalFilename: string): Promise<{ thumbPath: string | null }> {
+  const axios = require('axios');
+  const FormData = require('form-data');
+  try {
+    const formData = new FormData();
+    formData.append('mp4', fs.readFileSync(filepath), { filename: originalFilename, contentType: 'video/mp4' });
+    const response = await axios.post(`${EC2_SERVER_URL}/thumbnail`, formData, {
+      headers: { ...formData.getHeaders() },
+      timeout: 30000,
+      maxContentLength: 15 * 1024 * 1024,
+      maxBodyLength: 15 * 1024 * 1024,
+    });
+    const result = response.data;
+    if (!result.success || !result.data?.thumbnailDownloadUrl) return { thumbPath: null };
+    const thumbResponse = await axios.get(`${EC2_SERVER_URL}${result.data.thumbnailDownloadUrl}`, {
+      responseType: 'arraybuffer',
+      timeout: 30000,
+    });
+    const thumbPath = filepath.replace(/\.mp4$/i, '_thumb.jpg');
+    fs.writeFileSync(thumbPath, Buffer.from(thumbResponse.data));
+    return { thumbPath };
+  } catch {
+    return { thumbPath: null };
+  }
+}
+
 // EC2 서버로 MP4 재인코딩 (yuv420p + faststart) + 썸네일 추출
 async function reencodeAndThumbOnEC2(filepath: string, originalFilename: string): Promise<{ mp4Path: string; thumbPath: string | null }> {
   const axios = require('axios');
@@ -181,24 +228,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           folder = String(fields.folder);
         }
 
-        // MP4 분기: EC2에서 재인코딩(yuv420p+faststart) + 썸네일 추출 후 S3 저장
+        // MP4 분기: level 체크 후 필요한 경우만 재인코딩
         if (isMp4) {
           let reencodedPath: string | null = null;
           let thumbPath: string | null = null;
           try {
             const baseName = originalFilename.replace(/\.mp4$/i, '');
-            const result = await reencodeAndThumbOnEC2(filepath, originalFilename);
-            reencodedPath = result.mp4Path;
-            thumbPath = result.thumbPath;
+            const level = await checkLocalMp4Level(filepath);
 
-            const mp4Url = await uploadToS3(reencodedPath, originalFilename, 'video/mp4', folder);
+            if (level > 41) {
+              // Level 초과 → EC2 재인코딩 + 썸네일 추출
+              const result = await reencodeAndThumbOnEC2(filepath, originalFilename);
+              reencodedPath = result.mp4Path;
+              thumbPath = result.thumbPath;
 
-            let thumbnailUrl: string | undefined;
-            if (thumbPath && fs.existsSync(thumbPath)) {
-              thumbnailUrl = await uploadToS3(thumbPath, baseName + '_thumb.jpg', 'image/jpeg', folder);
+              const mp4Url = await uploadToS3(reencodedPath, originalFilename, 'video/mp4', folder);
+              let thumbnailUrl: string | undefined;
+              if (thumbPath && fs.existsSync(thumbPath)) {
+                thumbnailUrl = await uploadToS3(thumbPath, baseName + '_thumb.jpg', 'image/jpeg', folder);
+              }
+              uploadedResults.push({ mp4Url, thumbnailUrl });
+            } else {
+              // Level 정상 → 바로 S3 업로드 + 썸네일만 EC2에서 추출
+              const mp4Url = await uploadToS3(filepath, originalFilename, 'video/mp4', folder);
+              let thumbnailUrl: string | undefined;
+              const thumbResult = await extractThumbOnlyOnEC2(filepath, originalFilename);
+              thumbPath = thumbResult.thumbPath;
+              if (thumbPath && fs.existsSync(thumbPath)) {
+                thumbnailUrl = await uploadToS3(thumbPath, baseName + '_thumb.jpg', 'image/jpeg', folder);
+              }
+              uploadedResults.push({ mp4Url, thumbnailUrl });
             }
-
-            uploadedResults.push({ mp4Url, thumbnailUrl });
           } finally {
             try {
               if (fs.existsSync(filepath)) fs.unlinkSync(filepath);

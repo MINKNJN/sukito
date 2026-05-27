@@ -65,7 +65,7 @@ const uploadMp4 = multer({
 // GIF를 MP4로 변환하는 함수
 async function convertGifToMp4(inputPath, outputPath) {
   try {
-    const command = `ffmpeg -i "${inputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -profile:v high -level:v 4.1 -preset fast -crf 23 "${outputPath}"`;
+    const command = `ffmpeg -i "${inputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -profile:v high -level:v 4.1 -preset fast -crf 23 -threads 1 -an "${outputPath}"`;
     await execAsync(command);
     return true;
   } catch (error) {
@@ -194,10 +194,8 @@ app.get('/download/:filename', (req, res) => {
           message: '다운로드 중 오류가 발생했습니다.' 
         });
       } else {
-        // 다운로드 완료 후 파일 정리
-        setTimeout(() => {
-          cleanupFiles(filePath);
-        }, 5000); // 5초 후 정리
+        // 다운로드 완료 후 즉시 정리
+        cleanupFiles(filePath);
       }
     });
   } else {
@@ -321,7 +319,7 @@ app.post('/reencode-upload', uploadMp4.single('mp4'), async (req, res) => {
   const thumbnailPath = path.join(outputDir, thumbnailFileName);
 
   try {
-    const reencodeCommand = `ffmpeg -i "${inputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -profile:v high -level:v 4.1 -preset fast -crf 23 -an "${outputPath}"`;
+    const reencodeCommand = `ffmpeg -i "${inputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -profile:v high -level:v 4.1 -preset fast -crf 23 -threads 1 -an "${outputPath}"`;
     await execAsync(reencodeCommand);
     cleanupFiles(inputPath);
 
@@ -373,7 +371,7 @@ app.post('/reencode', async (req, res) => {
     });
 
     // FFmpeg 재인코딩 (모바일 호환 설정)
-    const reencodeCommand = `ffmpeg -i "${tempInputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -profile:v high -level:v 4.1 -preset fast -crf 23 -an "${outputPath}"`;
+    const reencodeCommand = `ffmpeg -i "${tempInputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -profile:v high -level:v 4.1 -preset fast -crf 23 -threads 1 -an "${outputPath}"`;
     await execAsync(reencodeCommand);
     cleanupFiles(tempInputPath);
 

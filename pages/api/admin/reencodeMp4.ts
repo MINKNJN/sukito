@@ -72,7 +72,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
 
-  const { dryRun } = req.body as { dryRun: boolean };
+  const { dryRun, preCheckedTargets } = req.body as {
+    dryRun: boolean;
+    preCheckedTargets?: { gameId: string; gameTitle: string; itemName: string; mp4Url: string; thumbUrl?: string }[];
+  };
 
   try {
     const client = await clientPromise;
@@ -104,37 +107,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return;
     }
 
-    // Level 초과 파일 필터링 (5개씩 배치, SSE로 진행 상황 전송)
-    const BATCH_SIZE = 5;
-    const targets: typeof candidates = [];
+    // 실행 시 DryRun에서 확인한 targets가 있으면 체크 생략
+    let targets: typeof candidates = [];
 
-    send({ type: 'start', phase: 'checking', total: candidates.length });
+    if (!dryRun && preCheckedTargets && preCheckedTargets.length > 0) {
+      targets = preCheckedTargets;
+    } else {
+      // Level 초과 파일 필터링 (5개씩 배치, SSE로 진행 상황 전송)
+      const BATCH_SIZE = 5;
+      send({ type: 'start', phase: 'checking', total: candidates.length });
 
-    for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
-      const batch = candidates.slice(i, i + BATCH_SIZE);
-      const batchResults = await Promise.all(
-        batch.map(async (c) => {
-          try {
-            const checkRes = await axios.post(
-              `${EC2_SERVER_URL}/check-mp4`,
-              { mp4Url: c.mp4Url },
-              { timeout: 20000 }
-            );
-            return { candidate: c, needsReencode: checkRes.data?.data?.needsReencode === true };
-          } catch {
-            return { candidate: c, needsReencode: false };
-          }
-        })
-      );
-      for (const r of batchResults) {
-        if (r.needsReencode) targets.push(r.candidate);
+      for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
+        const batch = candidates.slice(i, i + BATCH_SIZE);
+        const batchResults = await Promise.all(
+          batch.map(async (c) => {
+            try {
+              const checkRes = await axios.post(
+                `${EC2_SERVER_URL}/check-mp4`,
+                { mp4Url: c.mp4Url },
+                { timeout: 20000 }
+              );
+              return { candidate: c, needsReencode: checkRes.data?.data?.needsReencode === true };
+            } catch {
+              return { candidate: c, needsReencode: false };
+            }
+          })
+        );
+        for (const r of batchResults) {
+          if (r.needsReencode) targets.push(r.candidate);
+        }
+        send({
+          type: 'checking',
+          checked: Math.min(i + BATCH_SIZE, candidates.length),
+          total: candidates.length,
+          found: targets.length,
+        });
       }
-      send({
-        type: 'checking',
-        checked: Math.min(i + BATCH_SIZE, candidates.length),
-        total: candidates.length,
-        found: targets.length,
-      });
     }
 
     if (dryRun) {
@@ -205,10 +213,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         errors.push(errMsg);
         send({ type: 'result', status: 'error', current: i + 1, total: targets.length, error: errMsg });
       } finally {
+        // Next.js 측 tmp 파일 즉시 삭제
         try {
           if (mp4Path && fs.existsSync(mp4Path)) fs.unlinkSync(mp4Path);
           if (thumbPath && fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath);
         } catch {}
+      }
+
+      // 파일 처리 후 3초 대기 — EC2 메모리/CPU 회복 시간 확보
+      if (i < targets.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
     }
 

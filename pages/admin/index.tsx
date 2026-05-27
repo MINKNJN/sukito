@@ -99,6 +99,7 @@ export default function AdminPage() {
     found?: number;
     currentItem?: string;
   } | null>(null);
+  const [reencodeTargets, setReencodeTargets] = useState<{ gameId: string; gameTitle: string; itemName: string; mp4Url: string; thumbUrl?: string }[] | null>(null);
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -226,10 +227,15 @@ export default function AdminPage() {
     setReencodeProgress(null);
     try {
       const token = localStorage.getItem('token');
+      const body: any = { dryRun };
+      // 실행 시 DryRun에서 확인한 targets 전달 → 재체크 생략
+      if (!dryRun && reencodeTargets && reencodeTargets.length > 0) {
+        body.preCheckedTargets = reencodeTargets;
+      }
       const response = await fetch('/api/admin/reencodeMp4', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ dryRun }),
+        body: JSON.stringify(body),
       });
       if (!response.body) throw new Error('Stream not supported');
 
@@ -269,6 +275,8 @@ export default function AdminPage() {
                 failCount: data.failCount,
                 errors: data.errors,
               });
+              // DryRun 완료 시 targets 저장 → 실행 시 재체크 생략
+              if (data.dryRun && data.targets) setReencodeTargets(data.targets);
               setReencodeProgress(null);
             }
           } catch {}
@@ -631,24 +639,30 @@ export default function AdminPage() {
 
                   {/* MP4 재인코딩 */}
                   <div style={{ padding: '12px 16px', borderTop: '1px solid #f3f4f6' }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: '#374151' }}>MP4 再エンコード（モバイル対応）</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: '#374151' }}>MP4 再エンコード（iOS Safari 対応）</div>
                     <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>
-                      기존 MP4 항목을 yuv420p + faststart 재인코딩 → 모바일 검은 화면 수정
+                      H.264 Level 4.1 초과 파일을 재인코딩 → iOS Safari 검은 화면 수정<br />
+                      DryRun으로 대상 확인 후 실행하면 체크 없이 바로 처리됩니다.
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
                       <button
-                        onClick={() => handleReencode(true)}
+                        onClick={() => { setReencodeTargets(null); handleReencode(true); }}
                         disabled={reencodeLoading}
                         style={{ ...smBtn('#fef3c7', '#92400e'), border: '1px solid #fcd34d', whiteSpace: 'nowrap', cursor: reencodeLoading ? 'default' : 'pointer' }}
                       >
-                        {reencodeLoading ? '처리 중...' : 'DryRun (대상 확인)'}
+                        {reencodeLoading ? '체크 중...' : 'DryRun (Level 초과 파일 확인)'}
                       </button>
                       <button
-                        onClick={() => doConfirm('Level 초과 MP4 파일을 재인코딩합니다. 시간이 걸릴 수 있습니다.', () => { setConfirm(null); handleReencode(false); })}
+                        onClick={() => doConfirm(
+                          reencodeTargets
+                            ? `DryRun에서 찾은 ${reencodeTargets.length}건을 재인코딩합니다.`
+                            : 'DryRun 없이 실행하면 Level 체크부터 다시 시작합니다.',
+                          () => { setConfirm(null); handleReencode(false); }
+                        )}
                         disabled={reencodeLoading}
                         style={{ ...smBtn('#ffedd5', '#c2410c'), border: '1px solid #fed7aa', whiteSpace: 'nowrap', cursor: reencodeLoading ? 'default' : 'pointer' }}
                       >
-                        실행
+                        {reencodeTargets ? `실행 (${reencodeTargets.length}건)` : '실행'}
                       </button>
                     </div>
 

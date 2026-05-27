@@ -275,6 +275,38 @@ app.post('/check-mp4', async (req, res) => {
   }
 });
 
+// 여러 MP4 URL을 배치로 level 체크 → DryRun용
+app.post('/check-mp4-batch', async (req, res) => {
+  const { urls } = req.body;
+  if (!Array.isArray(urls) || urls.length === 0) {
+    return res.status(400).json({ success: false, message: 'urls 배열이 필요합니다.' });
+  }
+
+  const CONCURRENT = 10;
+  const results = [];
+
+  for (let i = 0; i < urls.length; i += CONCURRENT) {
+    const batch = urls.slice(i, i + CONCURRENT);
+    const batchResults = await Promise.all(
+      batch.map(async (url) => {
+        try {
+          const safeUrl = url.replace(/"/g, '');
+          const command = `ffprobe -v error -select_streams v:0 -show_entries stream=level -of json "${safeUrl}"`;
+          const { stdout } = await execAsync(command, { timeout: 15000 });
+          const info = JSON.parse(stdout);
+          const level = info.streams?.[0]?.level ?? 0;
+          return { url, needsReencode: level > 41, level };
+        } catch {
+          return { url, needsReencode: false, level: null };
+        }
+      })
+    );
+    results.push(...batchResults);
+  }
+
+  res.json({ success: true, results });
+});
+
 // MP4 파일 직접 업로드 후 재인코딩 (upload.ts에서 호출)
 app.post('/reencode-upload', uploadMp4.single('mp4'), async (req, res) => {
   if (!req.file) {

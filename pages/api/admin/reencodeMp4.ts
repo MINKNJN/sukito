@@ -21,7 +21,6 @@ function extractS3Key(url: string): string | null {
   return null;
 }
 
-
 async function reencodeViaEC2(
   mp4Url: string,
   tmpDir: string
@@ -63,6 +62,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (requireAdmin(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ message: 'Method Not Allowed' });
 
+  // SSE 헤더 설정
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const send = (data: object) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
   const { dryRun } = req.body as { dryRun: boolean };
 
   try {
@@ -70,7 +79,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const db = client.db('sukito');
     const games = await db.collection('games').find({ 'items.type': 'gif' }).toArray();
 
-    // 후보 수집
     const candidates: { gameId: string; gameTitle: string; itemName: string; mp4Url: string; thumbUrl?: string }[] = [];
     for (const game of games) {
       const items: any[] = Array.isArray(game.items) ? game.items : [];
@@ -91,42 +99,81 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       await axios.get(`${EC2_SERVER_URL}/health`, { timeout: 5000 });
     } catch (e: any) {
-      return res.status(503).json({ message: `EC2サーバーに接続できません: ${e?.message || String(e)}` });
+      send({ type: 'error', message: `EC2サーバーに接続できません: ${e?.message || String(e)}` });
+      res.end();
+      return;
     }
 
-    // level > 4.1 (level > 41) 인 파일만 필터링
-    const checkResults = await Promise.all(
-      candidates.map(async (c) => {
-        try {
-          const res = await axios.post(`${EC2_SERVER_URL}/check-mp4`, { mp4Url: c.mp4Url }, { timeout: 20000 });
-          return { candidate: c, needsReencode: res.data?.data?.needsReencode === true, level: res.data?.data?.level };
-        } catch {
-          return { candidate: c, needsReencode: false, level: null };
-        }
-      })
-    );
-    const targets = checkResults.filter(r => r.needsReencode).map(r => r.candidate);
+    // Level 초과 파일 필터링 (5개씩 배치, SSE로 진행 상황 전송)
+    const BATCH_SIZE = 5;
+    const targets: typeof candidates = [];
+
+    send({ type: 'start', phase: 'checking', total: candidates.length });
+
+    for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
+      const batch = candidates.slice(i, i + BATCH_SIZE);
+      const batchResults = await Promise.all(
+        batch.map(async (c) => {
+          try {
+            const checkRes = await axios.post(
+              `${EC2_SERVER_URL}/check-mp4`,
+              { mp4Url: c.mp4Url },
+              { timeout: 20000 }
+            );
+            return { candidate: c, needsReencode: checkRes.data?.data?.needsReencode === true };
+          } catch {
+            return { candidate: c, needsReencode: false };
+          }
+        })
+      );
+      for (const r of batchResults) {
+        if (r.needsReencode) targets.push(r.candidate);
+      }
+      send({
+        type: 'checking',
+        checked: Math.min(i + BATCH_SIZE, candidates.length),
+        total: candidates.length,
+        found: targets.length,
+      });
+    }
 
     if (dryRun) {
-      return res.status(200).json({
+      send({
+        type: 'done',
         dryRun: true,
         total: candidates.length,
         count: targets.length,
         targets: targets.map((t) => ({ gameTitle: t.gameTitle, itemName: t.itemName, mp4Url: t.mp4Url })),
-        message: `[DryRun] 全体 ${candidates.length}件 中 再エンコード必要 ${targets.length}件`,
+        message: `[DryRun] 全体 ${candidates.length}件 中 Level超過 ${targets.length}件`,
       });
+      res.end();
+      return;
     }
 
+    // 실행: Level 초과 파일만 재인코딩
     const tmpDir = os.tmpdir();
     let successCount = 0;
     let failCount = 0;
     const errors: string[] = [];
 
-    for (const target of targets) {
+    send({ type: 'start', phase: 'processing', total: targets.length });
+
+    for (let i = 0; i < targets.length; i++) {
+      const target = targets[i];
+      send({
+        type: 'progress',
+        current: i + 1,
+        total: targets.length,
+        gameTitle: target.gameTitle,
+        itemName: target.itemName,
+      });
+
       const s3Key = extractS3Key(target.mp4Url);
       if (!s3Key) {
         failCount++;
-        errors.push(`${target.gameTitle} / ${target.itemName}: CloudFrontURLではありません`);
+        const errMsg = `${target.gameTitle} / ${target.itemName}: CloudFrontURLではありません`;
+        errors.push(errMsg);
+        send({ type: 'result', status: 'error', current: i + 1, total: targets.length, error: errMsg });
         continue;
       }
 
@@ -150,11 +197,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
 
         successCount++;
+        send({ type: 'result', status: 'success', current: i + 1, total: targets.length });
       } catch (e: any) {
         failCount++;
         const msg = e?.response?.data?.message || e?.message || e?.code || String(e);
-        console.error(`[reencodeMp4] 失敗: ${target.gameTitle} / ${target.itemName}`, e);
-        errors.push(`${target.gameTitle} / ${target.itemName}: ${msg}`);
+        const errMsg = `${target.gameTitle} / ${target.itemName}: ${msg}`;
+        errors.push(errMsg);
+        send({ type: 'result', status: 'error', current: i + 1, total: targets.length, error: errMsg });
       } finally {
         try {
           if (mp4Path && fs.existsSync(mp4Path)) fs.unlinkSync(mp4Path);
@@ -163,7 +212,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     }
 
-    return res.status(200).json({
+    send({
+      type: 'done',
       dryRun: false,
       total: targets.length,
       successCount,
@@ -171,8 +221,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       errors,
       message: `${successCount}件成功 / ${failCount}件失敗`,
     });
+    res.end();
   } catch (error: any) {
-    console.error('reencodeMp4 失敗:', error);
-    return res.status(500).json({ message: error?.message || 'Internal Server Error' });
+    send({ type: 'error', message: error?.message || 'Internal Server Error' });
+    res.end();
   }
 }

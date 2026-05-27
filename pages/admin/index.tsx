@@ -92,6 +92,13 @@ export default function AdminPage() {
   const [migrateResult, setMigrateResult] = useState<{ step: number; message: string; dryRun: boolean } | null>(null);
   const [reencodeLoading, setReencodeLoading] = useState(false);
   const [reencodeResult, setReencodeResult] = useState<{ message: string; dryRun: boolean; count?: number; successCount?: number; failCount?: number; errors?: string[] } | null>(null);
+  const [reencodeProgress, setReencodeProgress] = useState<{
+    phase: 'checking' | 'processing';
+    current: number;
+    total: number;
+    found?: number;
+    currentItem?: string;
+  } | null>(null);
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -216,17 +223,60 @@ export default function AdminPage() {
   const handleReencode = async (dryRun: boolean) => {
     setReencodeLoading(true);
     setReencodeResult(null);
+    setReencodeProgress(null);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('/api/admin/reencodeMp4', {
+      const response = await fetch('/api/admin/reencodeMp4', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ dryRun }),
       });
-      const data = await res.json();
-      setReencodeResult({ message: data.message, dryRun, count: data.count, successCount: data.successCount, failCount: data.failCount, errors: data.errors });
+      if (!response.body) throw new Error('Stream not supported');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop() || '';
+        for (const part of parts) {
+          const line = part.trim();
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.type === 'start') {
+              setReencodeProgress({ phase: data.phase, current: 0, total: data.total });
+            } else if (data.type === 'checking') {
+              setReencodeProgress(prev => prev
+                ? { ...prev, current: data.checked, total: data.total, found: data.found }
+                : { phase: 'checking', current: data.checked, total: data.total, found: data.found }
+              );
+            } else if (data.type === 'progress') {
+              setReencodeProgress(prev => prev
+                ? { ...prev, current: data.current, total: data.total, currentItem: `${data.gameTitle} / ${data.itemName}` }
+                : { phase: 'processing', current: data.current, total: data.total, currentItem: `${data.gameTitle} / ${data.itemName}` }
+              );
+            } else if (data.type === 'done' || data.type === 'error') {
+              setReencodeResult({
+                message: data.message,
+                dryRun: data.dryRun ?? dryRun,
+                count: data.count,
+                successCount: data.successCount,
+                failCount: data.failCount,
+                errors: data.errors,
+              });
+              setReencodeProgress(null);
+            }
+          } catch {}
+        }
+      }
     } catch {
       setReencodeResult({ message: 'エラーが発生しました', dryRun });
+      setReencodeProgress(null);
     } finally {
       setReencodeLoading(false);
     }
@@ -594,13 +644,40 @@ export default function AdminPage() {
                         {reencodeLoading ? '처리 중...' : 'DryRun (대상 확인)'}
                       </button>
                       <button
-                        onClick={() => doConfirm('기존 MP4 파일을 모두 재인코딩합니다. 시간이 걸릴 수 있습니다.', () => { setConfirm(null); handleReencode(false); })}
+                        onClick={() => doConfirm('Level 초과 MP4 파일을 재인코딩합니다. 시간이 걸릴 수 있습니다.', () => { setConfirm(null); handleReencode(false); })}
                         disabled={reencodeLoading}
                         style={{ ...smBtn('#ffedd5', '#c2410c'), border: '1px solid #fed7aa', whiteSpace: 'nowrap', cursor: reencodeLoading ? 'default' : 'pointer' }}
                       >
                         실행
                       </button>
                     </div>
+
+                    {/* 진행 상황 표시 */}
+                    {reencodeProgress && (
+                      <div style={{ marginBottom: 8, padding: '10px 12px', background: '#f0f9ff', borderRadius: 6, border: '1px solid #bae6fd' }}>
+                        <div style={{ fontSize: 13, color: '#0369a1', marginBottom: 6, fontWeight: 600 }}>
+                          {reencodeProgress.phase === 'checking'
+                            ? `🔍 파일 체크 중... ${reencodeProgress.current}/${reencodeProgress.total} (Level 초과 ${reencodeProgress.found ?? 0}건 발견)`
+                            : `⚙️ 재인코딩 중... ${reencodeProgress.current}/${reencodeProgress.total}`
+                          }
+                        </div>
+                        <div style={{ height: 8, background: '#e0f2fe', borderRadius: 4, overflow: 'hidden' }}>
+                          <div style={{
+                            height: '100%',
+                            width: `${reencodeProgress.total > 0 ? Math.round((reencodeProgress.current / reencodeProgress.total) * 100) : 0}%`,
+                            background: reencodeProgress.phase === 'checking' ? '#0284c7' : '#f97316',
+                            transition: 'width 0.3s ease',
+                            borderRadius: 4,
+                          }} />
+                        </div>
+                        {reencodeProgress.phase === 'processing' && reencodeProgress.currentItem && (
+                          <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {reencodeProgress.currentItem}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {reencodeResult && (
                       <div style={{ fontSize: 13, marginTop: 4, padding: '6px 10px', background: reencodeResult.dryRun ? '#fef9c3' : '#f0fdf4', borderRadius: 6 }}>
                         <div style={{ color: reencodeResult.dryRun ? '#92400e' : '#15803d' }}>{reencodeResult.message}</div>

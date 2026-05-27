@@ -65,7 +65,7 @@ const uploadMp4 = multer({
 // GIF를 MP4로 변환하는 함수
 async function convertGifToMp4(inputPath, outputPath) {
   try {
-    const command = `ffmpeg -i "${inputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" "${outputPath}"`;
+    const command = `ffmpeg -i "${inputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -profile:v high -level:v 4.1 -preset fast -crf 23 "${outputPath}"`;
     await execAsync(command);
     return true;
   } catch (error) {
@@ -248,13 +248,14 @@ app.post('/check-mp4', async (req, res) => {
   try {
     const safeUrl = mp4Url.replace(/"/g, '');
 
-    // 비디오 코덱 + 픽셀 포맷 확인
-    const command = `ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,pix_fmt -of json "${safeUrl}"`;
+    // 비디오 코덱 + 픽셀 포맷 + level 확인
+    const command = `ffprobe -v error -select_streams v:0 -show_entries stream=codec_name,pix_fmt,level -of json "${safeUrl}"`;
     const { stdout } = await execAsync(command, { timeout: 15000 });
     const info = JSON.parse(stdout);
     const stream = info.streams?.[0];
     const codec = stream?.codec_name;
     const pixFmt = stream?.pix_fmt;
+    const level = stream?.level ?? 0; // e.g. 32 = Level 3.2, 41 = Level 4.1, 60 = Level 6.0
 
     // 오디오 트랙 존재 여부 확인 (있으면 iOS Safari autoplay 불가)
     const audioCmd = `ffprobe -v error -select_streams a -show_entries stream=codec_type -of json "${safeUrl}"`;
@@ -265,8 +266,9 @@ app.post('/check-mp4', async (req, res) => {
     // faststart 확인 (moov가 mdat보다 앞에 있는지)
     const hasFaststart = await checkFaststart(mp4Url);
 
-    const needsReencode = codec !== 'h264' || pixFmt !== 'yuv420p' || hasAudio || !hasFaststart;
-    res.json({ success: true, data: { codec, pixFmt, hasAudio, hasFaststart, needsReencode } });
+    // level > 41 은 iOS Safari 미지원 (4.1이 최대)
+    const needsReencode = codec !== 'h264' || pixFmt !== 'yuv420p' || hasAudio || !hasFaststart || level > 41;
+    res.json({ success: true, data: { codec, pixFmt, level, hasAudio, hasFaststart, needsReencode } });
   } catch (error) {
     console.error('/check-mp4 오류:', error);
     res.status(500).json({ success: false, message: 'FFprobeチェック失敗' });
@@ -287,7 +289,7 @@ app.post('/reencode-upload', uploadMp4.single('mp4'), async (req, res) => {
   const thumbnailPath = path.join(outputDir, thumbnailFileName);
 
   try {
-    const reencodeCommand = `ffmpeg -i "${inputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -preset fast -crf 23 -an "${outputPath}"`;
+    const reencodeCommand = `ffmpeg -i "${inputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -profile:v high -level:v 4.1 -preset fast -crf 23 -an "${outputPath}"`;
     await execAsync(reencodeCommand);
     cleanupFiles(inputPath);
 
@@ -339,7 +341,7 @@ app.post('/reencode', async (req, res) => {
     });
 
     // FFmpeg 재인코딩 (모바일 호환 설정)
-    const reencodeCommand = `ffmpeg -i "${tempInputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -preset fast -crf 23 -an "${outputPath}"`;
+    const reencodeCommand = `ffmpeg -i "${tempInputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -profile:v high -level:v 4.1 -preset fast -crf 23 -an "${outputPath}"`;
     await execAsync(reencodeCommand);
     cleanupFiles(tempInputPath);
 

@@ -94,14 +94,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(503).json({ message: `EC2サーバーに接続できません: ${e?.message || String(e)}` });
     }
 
-    const targets = candidates;
+    // level > 4.1 (level > 41) 인 파일만 필터링
+    const checkResults = await Promise.all(
+      candidates.map(async (c) => {
+        try {
+          const res = await axios.post(`${EC2_SERVER_URL}/check-mp4`, { mp4Url: c.mp4Url }, { timeout: 20000 });
+          return { candidate: c, needsReencode: res.data?.data?.needsReencode === true, level: res.data?.data?.level };
+        } catch {
+          return { candidate: c, needsReencode: false, level: null };
+        }
+      })
+    );
+    const targets = checkResults.filter(r => r.needsReencode).map(r => r.candidate);
 
     if (dryRun) {
       return res.status(200).json({
         dryRun: true,
+        total: candidates.length,
         count: targets.length,
-        targets: targets.map((t: typeof candidates[0]) => ({ gameTitle: t.gameTitle, itemName: t.itemName, mp4Url: t.mp4Url })),
-        message: `[DryRun] ${targets.length}件のMP4を再エンコードします`,
+        targets: targets.map((t) => ({ gameTitle: t.gameTitle, itemName: t.itemName, mp4Url: t.mp4Url })),
+        message: `[DryRun] 全体 ${candidates.length}件 中 再エンコード必要 ${targets.length}件`,
       });
     }
 

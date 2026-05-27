@@ -7,7 +7,8 @@
       "Bash(dir:*)",
       "Bash(ls d:/sukito/*.md d:/sukito/*.sh)",
       "Bash(npx tsc:*)",
-      "Bash(Remove-Item \"d:\\\\sukito\\\\lib\\\\commentTemplates.ts\")"
+      "Bash(Remove-Item \"d:\\\\sukito\\\\lib\\\\commentTemplates.ts\")",
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=512\" npm run build)"
     ],
     "deny": [],
     "ask": []

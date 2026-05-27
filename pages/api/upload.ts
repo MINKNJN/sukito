@@ -40,7 +40,7 @@ async function checkLocalMp4Level(filepath: string): Promise<number> {
     const info = JSON.parse(stdout);
     return info.streams?.[0]?.level ?? 0;
   } catch {
-    return 999; // 체크 실패 시 재인코딩 필요로 간주 (안전하게)
+    return 0; // 체크 실패 시 직접 업로드로 fallback
   }
 }
 
@@ -75,11 +75,11 @@ async function extractThumbOnlyOnEC2(filepath: string, originalFilename: string)
 async function reencodeAndThumbOnEC2(filepath: string, originalFilename: string): Promise<{ mp4Path: string; thumbPath: string | null }> {
   const axios = require('axios');
 
-  const mp4Url = `file://${filepath}`; // EC2가 로컬 파일에 접근할 수 없으므로 S3에 먼저 임시 업로드가 필요
-  // 대신 CloudFront URL을 전달하는 방식 대신, 파일을 직접 multipart로 전송
+  // 파일을 직접 multipart로 EC2에 전송
   const FormData = require('form-data');
   const formData = new FormData();
   const fileBuffer = fs.readFileSync(filepath);
+  console.log(`[upload] reencodeAndThumbOnEC2 start: ${originalFilename}, size=${fileBuffer.length}, EC2=${EC2_SERVER_URL}`);
   formData.append('mp4', fileBuffer, { filename: originalFilename, contentType: 'video/mp4' });
 
   // /reencode-upload 엔드포인트: 파일을 받아 재인코딩 후 반환
@@ -235,6 +235,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           try {
             const baseName = originalFilename.replace(/\.mp4$/i, '');
             const level = await checkLocalMp4Level(filepath);
+            console.log(`[upload] MP4 level check: ${level} (file: ${originalFilename})`);
 
             if (level > 41) {
               // Level 초과 → EC2 재인코딩 + 썸네일 추출
@@ -308,18 +309,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // 업로드 완료
       return res.status(200).json({ results: uploadedResults });
     } catch (error: any) {
-      // 업로드 에러 처리
-      
+      console.error('[upload] catch error:', error?.message || error);
+      console.error('[upload] stack:', error?.stack);
+
       // 구체적인 에러 메시지 제공
       let errorMessage = 'アップロード中にエラーが発生しました。';
-      if (error.message.includes('Sharp')) {
+      if (error.message?.includes('Sharp')) {
         errorMessage = '画像ファイルの処理中にエラーが発生しました。';
-      } else if (error.message.includes('S3')) {
+      } else if (error.message?.includes('S3')) {
         errorMessage = 'ファイルの保存中にエラーが発生しました。';
-      } else if (error.message.includes('EC2')) {
+      } else if (error.message?.includes('EC2')) {
         errorMessage = 'ファイル変換中にエラーが発生しました。';
       }
-      
+
       return res.status(500).json({ message: errorMessage });
     }
   });

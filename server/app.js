@@ -5,9 +5,43 @@ const path = require('path');
 const fs = require('fs');
 const { exec } = require('child_process');
 const util = require('util');
+const https = require('https');
+const http = require('http');
 
 const app = express();
 const execAsync = util.promisify(exec);
+
+// FFmpeg 동시 실행 제한 큐 (동시 1개, 대기 최대 2개)
+const FFMPEG_MAX_CONCURRENT = 1;
+const FFMPEG_MAX_QUEUE = 2;
+let ffmpegRunning = 0;
+const ffmpegWaitQueue = [];
+
+function runFFmpegExclusive(fn) {
+  if (ffmpegRunning >= FFMPEG_MAX_CONCURRENT && ffmpegWaitQueue.length >= FFMPEG_MAX_QUEUE) {
+    return Promise.reject(Object.assign(new Error('QUEUE_FULL'), { code: 'QUEUE_FULL' }));
+  }
+  return new Promise((resolve, reject) => {
+    const task = () => {
+      ffmpegRunning++;
+      Promise.resolve()
+        .then(() => fn())
+        .then(resolve)
+        .catch(reject)
+        .finally(() => {
+          ffmpegRunning--;
+          if (ffmpegWaitQueue.length > 0) {
+            ffmpegWaitQueue.shift()();
+          }
+        });
+    };
+    if (ffmpegRunning < FFMPEG_MAX_CONCURRENT) {
+      task();
+    } else {
+      ffmpegWaitQueue.push(task);
+    }
+  });
+}
 
 // 미들웨어 설정
 app.use(cors());
@@ -120,63 +154,53 @@ app.post('/thumbnail', uploadMp4.single('mp4'), async (req, res) => {
 
 // GIF to MP4 변환 API
 app.post('/convert', upload.single('gif'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'GIF/WEBP 파일을 업로드해주세요.' });
+  }
+
+  const inputPath = req.file.path;
+  const outputFileName = path.parse(req.file.filename).name + '.mp4';
+  const outputPath = path.join(outputDir, outputFileName);
+  const thumbnailFileName = path.parse(outputFileName).name + '_thumb.jpg';
+  const thumbnailPath = path.join(outputDir, thumbnailFileName);
+
+  let clientAborted = false;
+  req.on('close', () => { clientAborted = true; });
+
   try {
-    if (!req.file) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'GIF/WEBP 파일을 업로드해주세요.' 
-      });
-    }
-
-    const inputPath = req.file.path;
-    const outputFileName = path.parse(req.file.filename).name + '.mp4';
-    const outputPath = path.join(outputDir, outputFileName);
-
-    console.log(`변환 시작: ${req.file.originalname}`);
-
-    // GIF를 MP4로 변환
-    const success = await convertGifToMp4(inputPath, outputPath);
-
-    if (success) {
-      // 썸네일 추출
-      const thumbnailFileName = path.parse(outputFileName).name + '_thumb.jpg';
-      const thumbnailPath = path.join(outputDir, thumbnailFileName);
-      const thumbSuccess = await extractThumbnail(outputPath, thumbnailPath);
-
-      const stats = fs.statSync(outputPath);
-      const fileSize = (stats.size / (1024 * 1024)).toFixed(2); // MB
-
-      res.json({
-        success: true,
-        message: '변환 완료',
-        data: {
-          originalName: req.file.originalname,
-          outputFileName: outputFileName,
-          fileSize: fileSize + ' MB',
-          downloadUrl: `/download/${outputFileName}`,
-          thumbnailDownloadUrl: thumbSuccess ? `/download/${thumbnailFileName}` : null,
-        }
-      });
-
-      // 원본 파일 정리
-      cleanupFiles(inputPath);
-    } else {
-      res.status(500).json({ 
-        success: false, 
-        message: '변환 중 오류가 발생했습니다.' 
-      });
-      
-      // 실패 시 파일들 정리
-      cleanupFiles(inputPath);
-      cleanupFiles(outputPath);
-    }
-
-  } catch (error) {
-    console.error('API 오류:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: '서버 오류가 발생했습니다.' 
+    await runFFmpegExclusive(async () => {
+      if (clientAborted) throw new Error('CLIENT_DISCONNECTED');
+      console.log(`변환 시작: ${req.file.originalname}`);
+      const success = await convertGifToMp4(inputPath, outputPath);
+      if (!success) throw new Error('변환 실패');
+      await extractThumbnail(outputPath, thumbnailPath);
     });
+
+    if (clientAborted) {
+      cleanupFiles(inputPath); cleanupFiles(outputPath); cleanupFiles(thumbnailPath);
+      return;
+    }
+
+    const stats = fs.statSync(outputPath);
+    res.json({
+      success: true,
+      message: '변환 완료',
+      data: {
+        originalName: req.file.originalname,
+        outputFileName,
+        fileSize: (stats.size / (1024 * 1024)).toFixed(2) + ' MB',
+        downloadUrl: `/download/${outputFileName}`,
+        thumbnailDownloadUrl: fs.existsSync(thumbnailPath) ? `/download/${thumbnailFileName}` : null,
+      }
+    });
+    cleanupFiles(inputPath);
+  } catch (error) {
+    cleanupFiles(inputPath); cleanupFiles(outputPath); cleanupFiles(thumbnailPath);
+    if (error.code === 'QUEUE_FULL') {
+      return res.status(503).json({ success: false, message: '混雑しています。しばらく待ってから再度お試しください。' });
+    }
+    console.error('/convert 오류:', error);
+    res.status(500).json({ success: false, message: '변환 중 오류가 발생했습니다.' });
   }
 });
 
@@ -318,24 +342,37 @@ app.post('/reencode-upload', uploadMp4.single('mp4'), async (req, res) => {
   const thumbnailFileName = baseName + '_thumb.jpg';
   const thumbnailPath = path.join(outputDir, thumbnailFileName);
 
+  let clientAborted = false;
+  req.on('close', () => { clientAborted = true; });
+
   try {
-    const reencodeCommand = `ffmpeg -i "${inputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -profile:v high -level:v 4.1 -preset fast -crf 23 -threads 1 -an "${outputPath}"`;
-    await execAsync(reencodeCommand);
+    await runFFmpegExclusive(async () => {
+      if (clientAborted) throw new Error('CLIENT_DISCONNECTED');
+      const reencodeCommand = `ffmpeg -i "${inputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -profile:v high -level:v 4.1 -preset fast -crf 23 -threads 1 -an "${outputPath}"`;
+      await execAsync(reencodeCommand);
+      await extractThumbnail(outputPath, thumbnailPath);
+    });
+
     cleanupFiles(inputPath);
 
-    const thumbSuccess = await extractThumbnail(outputPath, thumbnailPath);
+    if (clientAborted) {
+      cleanupFiles(outputPath); cleanupFiles(thumbnailPath);
+      return;
+    }
 
     res.json({
       success: true,
       data: {
         downloadUrl: `/download/${outputFileName}`,
-        thumbnailDownloadUrl: thumbSuccess ? `/download/${thumbnailFileName}` : null,
+        thumbnailDownloadUrl: fs.existsSync(thumbnailPath) ? `/download/${thumbnailFileName}` : null,
       }
     });
   } catch (error) {
+    cleanupFiles(inputPath); cleanupFiles(outputPath); cleanupFiles(thumbnailPath);
+    if (error.code === 'QUEUE_FULL') {
+      return res.status(503).json({ success: false, message: '混雑しています。しばらく待ってから再度お試しください。' });
+    }
     console.error('/reencode-upload 오류:', error);
-    cleanupFiles(inputPath);
-    cleanupFiles(outputPath);
     res.status(500).json({ success: false, message: '재인코딩 중 오류가 발생했습니다.' });
   }
 });
@@ -353,46 +390,49 @@ app.post('/reencode', async (req, res) => {
   const thumbnailFileName = filename + '_thumb.jpg';
   const thumbnailPath = path.join(outputDir, thumbnailFileName);
 
-  try {
-    // MP4 다운로드
-    const https = require('https');
-    const http = require('http');
-    const protocol = mp4Url.startsWith('https') ? https : http;
+  let clientAborted = false;
+  req.on('close', () => { clientAborted = true; });
 
+  try {
+    // MP4 다운로드 (큐 밖에서 — 네트워크 작업이라 CPU 부하 없음)
+    const protocol = mp4Url.startsWith('https') ? https : http;
     await new Promise((resolve, reject) => {
       const file = fs.createWriteStream(tempInputPath);
       protocol.get(mp4Url, (response) => {
         response.pipe(file);
         file.on('finish', () => { file.close(); resolve(); });
-      }).on('error', (err) => {
-        fs.unlink(tempInputPath, () => {});
-        reject(err);
-      });
+      }).on('error', (err) => { fs.unlink(tempInputPath, () => {}); reject(err); });
     });
 
-    // FFmpeg 재인코딩 (모바일 호환 설정)
-    const reencodeCommand = `ffmpeg -i "${tempInputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -profile:v high -level:v 4.1 -preset fast -crf 23 -threads 1 -an "${outputPath}"`;
-    await execAsync(reencodeCommand);
+    await runFFmpegExclusive(async () => {
+      if (clientAborted) throw new Error('CLIENT_DISCONNECTED');
+      const reencodeCommand = `ffmpeg -i "${tempInputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -profile:v high -level:v 4.1 -preset fast -crf 23 -threads 1 -an "${outputPath}"`;
+      await execAsync(reencodeCommand);
+      await extractThumbnail(outputPath, thumbnailPath);
+    });
+
     cleanupFiles(tempInputPath);
 
-    // 썸네일 추출
-    const thumbSuccess = await extractThumbnail(outputPath, thumbnailPath);
+    if (clientAborted) {
+      cleanupFiles(outputPath); cleanupFiles(thumbnailPath);
+      return;
+    }
 
     const stats = fs.statSync(outputPath);
-    const fileSize = (stats.size / (1024 * 1024)).toFixed(2);
-
     res.json({
       success: true,
       data: {
         downloadUrl: `/download/${outputFileName}`,
-        thumbnailDownloadUrl: thumbSuccess ? `/download/${thumbnailFileName}` : null,
-        fileSize: fileSize + ' MB',
+        thumbnailDownloadUrl: fs.existsSync(thumbnailPath) ? `/download/${thumbnailFileName}` : null,
+        fileSize: (stats.size / (1024 * 1024)).toFixed(2) + ' MB',
       }
     });
   } catch (error) {
+    cleanupFiles(tempInputPath); cleanupFiles(outputPath); cleanupFiles(thumbnailPath);
+    if (error.code === 'QUEUE_FULL') {
+      return res.status(503).json({ success: false, message: '混雑しています。しばらく待ってから再度お試しください。' });
+    }
     console.error('/reencode 오류:', error);
-    cleanupFiles(tempInputPath);
-    cleanupFiles(outputPath);
     res.status(500).json({ success: false, message: '재인코딩 중 오류가 발생했습니다.' });
   }
 });

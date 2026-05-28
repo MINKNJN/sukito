@@ -90,16 +90,6 @@ export default function AdminPage() {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [migrateLoading, setMigrateLoading] = useState<1 | 2 | null>(null);
   const [migrateResult, setMigrateResult] = useState<{ step: number; message: string; dryRun: boolean } | null>(null);
-  const [reencodeLoading, setReencodeLoading] = useState(false);
-  const [reencodeResult, setReencodeResult] = useState<{ message: string; dryRun: boolean; count?: number; successCount?: number; failCount?: number; errors?: string[] } | null>(null);
-  const [reencodeProgress, setReencodeProgress] = useState<{
-    phase: 'checking' | 'processing';
-    current: number;
-    total: number;
-    found?: number;
-    currentItem?: string;
-  } | null>(null);
-  const [reencodeTargets, setReencodeTargets] = useState<{ gameId: string; gameTitle: string; itemName: string; mp4Url: string; thumbUrl?: string }[] | null>(null);
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -218,75 +208,6 @@ export default function AdminPage() {
       showToast('서버 오류가 발생했습니다.', false);
     } finally {
       setRegenLoading(false);
-    }
-  };
-
-  const handleReencode = async (dryRun: boolean) => {
-    setReencodeLoading(true);
-    setReencodeResult(null);
-    setReencodeProgress(null);
-    try {
-      const token = localStorage.getItem('token');
-      const body: any = { dryRun };
-      // 실행 시 DryRun에서 확인한 targets 전달 → 재체크 생략
-      if (!dryRun && reencodeTargets && reencodeTargets.length > 0) {
-        body.preCheckedTargets = reencodeTargets;
-      }
-      const response = await fetch('/api/admin/reencodeMp4', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(body),
-      });
-      if (!response.body) throw new Error('Stream not supported');
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const parts = buffer.split('\n\n');
-        buffer = parts.pop() || '';
-        for (const part of parts) {
-          const line = part.trim();
-          if (!line.startsWith('data: ')) continue;
-          try {
-            const data = JSON.parse(line.slice(6));
-            if (data.type === 'start') {
-              setReencodeProgress({ phase: data.phase, current: 0, total: data.total });
-            } else if (data.type === 'checking') {
-              setReencodeProgress(prev => prev
-                ? { ...prev, current: data.checked, total: data.total, found: data.found }
-                : { phase: 'checking', current: data.checked, total: data.total, found: data.found }
-              );
-            } else if (data.type === 'progress') {
-              setReencodeProgress(prev => prev
-                ? { ...prev, current: data.current, total: data.total, currentItem: `${data.gameTitle} / ${data.itemName}` }
-                : { phase: 'processing', current: data.current, total: data.total, currentItem: `${data.gameTitle} / ${data.itemName}` }
-              );
-            } else if (data.type === 'done' || data.type === 'error') {
-              setReencodeResult({
-                message: data.message,
-                dryRun: data.dryRun ?? dryRun,
-                count: data.count,
-                successCount: data.successCount,
-                failCount: data.failCount,
-                errors: data.errors,
-              });
-              // DryRun 완료 시 targets 저장 → 실행 시 재체크 생략
-              if (data.dryRun && data.targets) setReencodeTargets(data.targets);
-              setReencodeProgress(null);
-            }
-          } catch {}
-        }
-      }
-    } catch {
-      setReencodeResult({ message: 'エラーが発生しました', dryRun });
-      setReencodeProgress(null);
-    } finally {
-      setReencodeLoading(false);
     }
   };
 
@@ -637,75 +558,6 @@ export default function AdminPage() {
                     )}
                   </div>
 
-                  {/* MP4 재인코딩 */}
-                  <div style={{ padding: '12px 16px', borderTop: '1px solid #f3f4f6' }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: '#374151' }}>MP4 再エンコード（iOS Safari 対応）</div>
-                    <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>
-                      H.264 Level 4.1 초과 파일을 재인코딩 → iOS Safari 검은 화면 수정<br />
-                      DryRun으로 대상 확인 후 실행하면 체크 없이 바로 처리됩니다.
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                      <button
-                        onClick={() => { setReencodeTargets(null); handleReencode(true); }}
-                        disabled={reencodeLoading}
-                        style={{ ...smBtn('#fef3c7', '#92400e'), border: '1px solid #fcd34d', whiteSpace: 'nowrap', cursor: reencodeLoading ? 'default' : 'pointer' }}
-                      >
-                        {reencodeLoading ? '체크 중...' : 'DryRun (Level 초과 파일 확인)'}
-                      </button>
-                      <button
-                        onClick={() => doConfirm(
-                          reencodeTargets
-                            ? `DryRun에서 찾은 ${reencodeTargets.length}건을 재인코딩합니다.`
-                            : 'DryRun 없이 실행하면 Level 체크부터 다시 시작합니다.',
-                          () => { setConfirm(null); handleReencode(false); }
-                        )}
-                        disabled={reencodeLoading}
-                        style={{ ...smBtn('#ffedd5', '#c2410c'), border: '1px solid #fed7aa', whiteSpace: 'nowrap', cursor: reencodeLoading ? 'default' : 'pointer' }}
-                      >
-                        {reencodeTargets ? `실행 (${reencodeTargets.length}건)` : '실행'}
-                      </button>
-                    </div>
-
-                    {/* 진행 상황 표시 */}
-                    {reencodeProgress && (
-                      <div style={{ marginBottom: 8, padding: '10px 12px', background: '#f0f9ff', borderRadius: 6, border: '1px solid #bae6fd' }}>
-                        <div style={{ fontSize: 13, color: '#0369a1', marginBottom: 6, fontWeight: 600 }}>
-                          {reencodeProgress.phase === 'checking'
-                            ? `🔍 파일 체크 중... ${reencodeProgress.current}/${reencodeProgress.total} (Level 초과 ${reencodeProgress.found ?? 0}건 발견)`
-                            : `⚙️ 재인코딩 중... ${reencodeProgress.current}/${reencodeProgress.total}`
-                          }
-                        </div>
-                        <div style={{ height: 8, background: '#e0f2fe', borderRadius: 4, overflow: 'hidden' }}>
-                          <div style={{
-                            height: '100%',
-                            width: `${reencodeProgress.total > 0 ? Math.round((reencodeProgress.current / reencodeProgress.total) * 100) : 0}%`,
-                            background: reencodeProgress.phase === 'checking' ? '#0284c7' : '#f97316',
-                            transition: 'width 0.3s ease',
-                            borderRadius: 4,
-                          }} />
-                        </div>
-                        {reencodeProgress.phase === 'processing' && reencodeProgress.currentItem && (
-                          <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {reencodeProgress.currentItem}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {reencodeResult && (
-                      <div style={{ fontSize: 13, marginTop: 4, padding: '6px 10px', background: reencodeResult.dryRun ? '#fef9c3' : '#f0fdf4', borderRadius: 6 }}>
-                        <div style={{ color: reencodeResult.dryRun ? '#92400e' : '#15803d' }}>{reencodeResult.message}</div>
-                        {!reencodeResult.dryRun && reencodeResult.errors && reencodeResult.errors.length > 0 && (
-                          <details style={{ marginTop: 4 }}>
-                            <summary style={{ cursor: 'pointer', fontSize: 12, color: '#dc2626' }}>실패 목록 ({reencodeResult.errors.length}건)</summary>
-                            <ul style={{ margin: '4px 0 0', paddingLeft: 16, fontSize: 12, color: '#dc2626' }}>
-                              {reencodeResult.errors.map((e, i) => <li key={i}>{e}</li>)}
-                            </ul>
-                          </details>
-                        )}
-                      </div>
-                    )}
-                  </div>
                 </div>
               )}
             </div>

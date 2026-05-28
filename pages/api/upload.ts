@@ -44,28 +44,23 @@ async function checkLocalMp4Level(filepath: string): Promise<number> {
   }
 }
 
-// EC2 서버에서 썸네일만 추출 (재인코딩 없이)
-async function extractThumbOnlyOnEC2(filepath: string, originalFilename: string): Promise<{ thumbPath: string | null }> {
-  const axios = require('axios');
-  const FormData = require('form-data');
+// 로컬 ffmpeg으로 MP4 썸네일 추출 (EC2 왕복 없음)
+async function extractThumbnailLocally(filepath: string): Promise<{ thumbPath: string | null }> {
+  const { execFile } = require('child_process');
+  const { promisify } = require('util');
+  const execFileAsync = promisify(execFile);
+  const thumbPath = filepath.replace(/\.mp4$/i, '_thumb.jpg');
   try {
-    const formData = new FormData();
-    formData.append('mp4', fs.readFileSync(filepath), { filename: originalFilename, contentType: 'video/mp4' });
-    const response = await axios.post(`${EC2_SERVER_URL}/thumbnail`, formData, {
-      headers: { ...formData.getHeaders() },
-      timeout: 30000,
-      maxContentLength: 15 * 1024 * 1024,
-      maxBodyLength: 15 * 1024 * 1024,
-    });
-    const result = response.data;
-    if (!result.success || !result.data?.thumbnailDownloadUrl) return { thumbPath: null };
-    const thumbResponse = await axios.get(`${EC2_SERVER_URL}${result.data.thumbnailDownloadUrl}`, {
-      responseType: 'arraybuffer',
-      timeout: 30000,
-    });
-    const thumbPath = filepath.replace(/\.mp4$/i, '_thumb.jpg');
-    fs.writeFileSync(thumbPath, Buffer.from(thumbResponse.data));
-    return { thumbPath };
+    await execFileAsync('ffmpeg', [
+      '-i', filepath,
+      '-vf', 'select=eq(n\\,5)',
+      '-vframes', '1',
+      '-f', 'image2',
+      '-y',
+      thumbPath,
+    ], { timeout: 15000 });
+    if (fs.existsSync(thumbPath)) return { thumbPath };
+    return { thumbPath: null };
   } catch {
     return { thumbPath: null };
   }
@@ -181,9 +176,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     if (err) {
       console.error('[upload] formidable parse error:', err);
-      try {
-        fs.appendFileSync('/tmp/upload-debug.log', `[${new Date().toISOString()}] FORM_ERR: ${err?.message}\n${err?.stack}\n---\n`);
-      } catch {}
       return res.status(500).json({ message: 'アップロード中にエラーが発生しました。' });
     }
 
@@ -253,10 +245,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               }
               uploadedResults.push({ mp4Url, thumbnailUrl });
             } else {
-              // Level 정상 → 바로 S3 업로드 + 썸네일만 EC2에서 추출
+              // Level 정상 → 바로 S3 업로드 + 로컬 ffmpeg으로 썸네일 추출 (EC2 왕복 없음)
               const mp4Url = await uploadToS3(filepath, originalFilename, 'video/mp4', folder);
               let thumbnailUrl: string | undefined;
-              const thumbResult = await extractThumbOnlyOnEC2(filepath, originalFilename);
+              const thumbResult = await extractThumbnailLocally(filepath);
               thumbPath = thumbResult.thumbPath;
               if (thumbPath && fs.existsSync(thumbPath)) {
                 thumbnailUrl = await uploadToS3(thumbPath, baseName + '_thumb.jpg', 'image/jpeg', folder);
@@ -313,10 +305,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(200).json({ results: uploadedResults });
     } catch (error: any) {
       console.error('[upload] catch error:', error?.message || error);
-      console.error('[upload] stack:', error?.stack);
-      try {
-        fs.appendFileSync('/tmp/upload-debug.log', `[${new Date().toISOString()}] ERROR: ${error?.message}\n${error?.stack}\n---\n`);
-      } catch {}
+
+      // EC2 큐 초과(503) → 그대로 전달
+      if (error.response?.status === 503) {
+        return res.status(503).json({ message: error.response.data?.message || '混雑しています。しばらく待ってから再度お試しください。' });
+      }
 
       // 구체적인 에러 메시지 제공
       let errorMessage = 'アップロード中にエラーが発生しました。';

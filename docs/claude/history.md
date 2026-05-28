@@ -1,5 +1,34 @@
 # 변경 이력
 
+## 2026-05-27~28
+
+### iOS Safari 검은 화면 수정 (H.264 Level)
+- `server/app.js`: `/convert`, `/reencode-upload`, `/reencode` 세 FFmpeg 명령에 `-profile:v high -level:v 4.1 -threads 1` 추가
+- `server/app.js`: `/check-mp4` 엔드포인트에 level 필드 추가 (`level > 41` → needsReencode)
+
+### MP4 업로드 최적화 (조건부 재인코딩)
+- `pages/api/upload.ts`: `checkLocalMp4Level()` 추가 — 업로드된 MP4의 H.264 level을 로컬 ffprobe로 확인
+- `pages/api/upload.ts`: level ≤ 41이면 S3 직접 업로드, level > 41이면 EC2 재인코딩 후 업로드
+
+### MP4 썸네일 추출 최적화 (EC2 왕복 제거)
+- `pages/api/upload.ts`: `extractThumbOnlyOnEC2()` 제거 → `extractThumbnailLocally()` 추가
+- level ≤ 41인 정상 MP4는 EC2 왕복 없이 로컬 ffmpeg으로 썸네일 추출
+
+### FFmpeg 동시 실행 제한 큐 추가
+- `server/app.js`: `runFFmpegExclusive()` 큐 추가 — 동시 1개 제한, 대기 최대 2개, 초과 시 503 반환
+- `/convert`, `/reencode-upload`, `/reencode` 세 엔드포인트에 큐 적용
+- 클라이언트 연결 끊김(`req.on('close')`) 처리 추가
+
+### 503 에러 전달
+- `pages/api/upload.ts`: EC2에서 503 반환 시 일본어 메시지 그대로 클라이언트에 전달
+
+### Admin 재인코딩 도구 삭제
+- `pages/api/admin/reencodeMp4.ts`: 파일 삭제
+- `pages/admin/index.tsx`: 재인코딩 관련 state·함수·UI 전부 제거
+
+### Nginx timeout 설정 (수동 적용 필요)
+- `/etc/nginx/sites-available/default` 내 `proxy_read_timeout 300s`, `proxy_send_timeout 300s` 추가 권장
+
 ## 2026-05-21
 
 ### webp 지원 제거

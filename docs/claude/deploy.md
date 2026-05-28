@@ -39,12 +39,22 @@ pm2 start ecosystem.config.js
 
 ## Nginx
 
-설정 파일 위치: `/etc/nginx/sites-available/sukito`
+설정 파일 위치: `/etc/nginx/sites-available/default`
 
 ```bash
 sudo nginx -t            # 설정 검증
 sudo systemctl reload nginx
 ```
+
+### 필수 설정 (504 방지)
+
+location 블록 안에 추가:
+```nginx
+proxy_read_timeout 300s;
+proxy_send_timeout 300s;
+```
+
+GIF 변환·MP4 재인코딩은 FFmpeg 처리로 60초 이상 걸릴 수 있어 Nginx 기본값(60s) 초과 시 504 발생.
 
 ## 아키텍처
 

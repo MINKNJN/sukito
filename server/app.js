@@ -99,7 +99,7 @@ const uploadMp4 = multer({
 // GIF를 MP4로 변환하는 함수
 async function convertGifToMp4(inputPath, outputPath) {
   try {
-    const command = `ffmpeg -i "${inputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -profile:v high -level:v 4.1 -preset fast -crf 23 -threads 1 -an "${outputPath}"`;
+    const command = `ffmpeg -i "${inputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -profile:v high -level:v 4.1 -preset ultrafast -crf 23 -threads 1 -an "${outputPath}"`;
     await execAsync(command);
     return true;
   } catch (error) {
@@ -348,7 +348,7 @@ app.post('/reencode-upload', uploadMp4.single('mp4'), async (req, res) => {
   try {
     await runFFmpegExclusive(async () => {
       if (clientAborted) throw new Error('CLIENT_DISCONNECTED');
-      const reencodeCommand = `ffmpeg -i "${inputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -profile:v high -level:v 4.1 -preset fast -crf 23 -threads 1 -an "${outputPath}"`;
+      const reencodeCommand = `ffmpeg -i "${inputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -profile:v high -level:v 4.1 -preset ultrafast -crf 23 -threads 1 -an "${outputPath}"`;
       await execAsync(reencodeCommand);
       await extractThumbnail(outputPath, thumbnailPath);
     });
@@ -406,7 +406,7 @@ app.post('/reencode', async (req, res) => {
 
     await runFFmpegExclusive(async () => {
       if (clientAborted) throw new Error('CLIENT_DISCONNECTED');
-      const reencodeCommand = `ffmpeg -i "${tempInputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -profile:v high -level:v 4.1 -preset fast -crf 23 -threads 1 -an "${outputPath}"`;
+      const reencodeCommand = `ffmpeg -i "${tempInputPath}" -movflags faststart -pix_fmt yuv420p -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" -c:v libx264 -profile:v high -level:v 4.1 -preset ultrafast -crf 23 -threads 1 -an "${outputPath}"`;
       await execAsync(reencodeCommand);
       await extractThumbnail(outputPath, thumbnailPath);
     });

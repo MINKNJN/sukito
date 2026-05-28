@@ -80,7 +80,7 @@ async function reencodeAndThumbOnEC2(filepath: string, originalFilename: string)
   // /reencode-upload 엔드포인트: 파일을 받아 재인코딩 후 반환
   const response = await axios.post(`${EC2_SERVER_URL}/reencode-upload`, formData, {
     headers: { ...formData.getHeaders() },
-    timeout: 120000,
+    timeout: 300000,
     maxContentLength: 15 * 1024 * 1024,
     maxBodyLength: 15 * 1024 * 1024,
   });
